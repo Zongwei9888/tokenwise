@@ -155,9 +155,9 @@ describe('tokenwise usage errors', () => {
     const bad = tokenwise(['report', '--bogus'])
     expect(bad.status).toBe(2)
     expect(bad.err).toBe("tokenwise report: Unknown option '--bogus'\nRun `tokenwise --help` for usage.\n")
-    // `tokenwise run` hands its arguments to the command.
-    // `tokenwise run` hands --help to the program (printf: GNU echo would answer --help itself).
-    expect(tokenwise(['run', '--', 'printf', '%s\\n', '--help']).out).toBe('--help\n')
+    // `tokenwise run` hands --help to the program, not to itself. The shell's own printf prints it
+    // (a standalone echo or printf, such as the Rust coreutils on Ubuntu 26.04, may answer --help itself).
+    expect(tokenwise(['run', '--', 'sh', '-c', 'printf "%s\\n" "$1"', 'sh', '--help']).out).toBe('--help\n')
   })
 })
 
