@@ -55,7 +55,7 @@ agent, and each of them starts from zero.
 
 **12 comparisons. 12 times cheaper. 0 times worse.** Four models, three kinds of work.
 
-**38% fewer on the very same task.** Same coding task, same model, and it was solved more often (83% → 85%).
+**Same coding task, 38% fewer tokens,** and it was solved more often (83% → 85%).
 
 <sub>From our paper's evaluation: DeepSeek V4 Flash, MiniMax-M3, GLM-5.3 Flash and Qwen3.8 Flash in DeepSeek Harness, against the harness's own context management, counting every token including cache reads. Paper coming soon.</sub>
 
