@@ -34,6 +34,8 @@ const STILLS = [
   ...['shell', 'more'].map(icon => ({ name: `icons/agent-${icon}`, page: `badge.html?kind=agent&icon=${icon}`, w: 64, h: 64, scale: 2, fit: '.b' })),
   ...['how', 'evolve'].flatMap(v => ['en', 'zh'].map(l =>
     ({ name: `story-${v}${l === 'zh' ? '-zh' : ''}`, page: `story.html?v=${v}&lang=${l}`, w: 1200, h: 400, scale: 2, fit: '.d' }))),
+  // README: what TokenWise saves, per kind of work and model (from the paper's evaluation).
+  ...['en', 'zh'].map(l => ({ name: `savings${l === 'zh' ? '-zh' : ''}`, page: `savings.html?lang=${l}`, w: 1200, h: 400, scale: 2, fit: '.d' })),
   { name: 'before-after', page: 'before-after.html', w: 1600, h: 900, scale: 2 },
   { name: 'before-after-zh', page: 'before-after.html?lang=zh', w: 1600, h: 900, scale: 2 },
 ]

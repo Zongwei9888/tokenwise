@@ -11,6 +11,7 @@ pytest log through the real filter (260 lines → 17, 19.0 KB → 852 bytes).
 | `images/social-preview.png` | 1280×640 | GitHub → Settings → Social preview; link cards on X, LinkedIn, Slack |
 | `images/social-preview-zh.png` | 1280×640 | the same, Chinese (WeChat, Zhihu, Juejin, V2EX) |
 | `images/banner.png`, `banner-zh.png` | 3200×1120 | top of a blog post or a launch page |
+| `images/savings.png`, `-zh` | 2400 wide | the README's savings chart: per kind of work and model, from the paper's evaluation |
 | `images/story-how.png`, `-zh` | 2400 wide | the README's overview: one layer, context on demand, self-evolving |
 | `images/story-evolve.png`, `-zh` | 2400 wide | self-evolution in four steps (for posts and talks) |
 | `images/before-after.png`, `-zh` | 3200×1800 | the one-image demo: same run, 17 lines instead of 260 |

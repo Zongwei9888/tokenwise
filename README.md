@@ -21,29 +21,13 @@
 
 ## Why TokenWise
 
-Coding agents spend most of their context reading what they never needed:
-passing tests, progress bars, download logs, the same build banner for the
-hundredth time. You pay for every one of those tokens, and the context fills up
-before the work is done.
+**Cut your agent's token bill by up to half. It saves more the longer you use it, and one install covers every agent.**
 
-Then the agent compacts its history to make room, and the one line that
-mattered is gone. Saving tokens by throwing things away just moves the cost.
+<p align="center"><img src="media/images/savings.png" alt="Same tasks, up to half the tokens; 12 comparisons, 12 times cheaper. Fixing bugs and building features: up to 38% fewer tokens (DeepSeek V4 38%, MiniMax-M3 23%, GLM-5.3 20%, Qwen3.8 14%). Long jobs in the terminal: up to 50% fewer (27%, 42%, 50%, 25%). Very long sessions: up to 45% fewer (21%, 22%, 45%, 40%). Saves more as it learns: on tasks it has never seen, up to 27% fewer than before learning (15%, 27%, 25%, 12%)." width="100%"></p>
 
-And every project is different. Its own scripts, its own logs, its own noise —
-a fixed list of rules never learns any of it. Meanwhile you use more than one
-agent, and each of them starts from zero.
+<sub>From our paper's evaluation: DeepSeek V4 Flash, MiniMax-M3, GLM-5.3 Flash and Qwen3.8 Flash in DeepSeek Harness, against the harness's own context management, counting every token including cache reads. Paper coming soon.</sub>
 
-**TokenWise sits between your agents and the model, and gives every one of them:**
-
-- **Context on demand.** The model reads only what it needs right now. Everything
-  else stays intact on your machine, one call away, even after the agent compacts
-  its memory. You save tokens, not information.
-- **Self-evolving.** TokenWise learns your project from your own sessions and
-  saves more every round. A new rule is used only after it is checked against
-  everything recorded, and it switches itself off if it ever gets in the way.
-- **Cross-platform.** One install for Claude Code, Codex, Hermes, OpenCode,
-  CodeBuddy, Grok, DeepSeek Harness, pi and any shell, with more on the way.
-  What one agent learns, all of them use.
+**How it does it:** one layer between your agents and the model, shared by all of them.
 
 <p align="center"><img src="media/images/story-how.png" alt="Your agents send everything they read through TokenWise, one layer shared by every agent. Context on demand: what the model needs stays in context, everything else stays on your machine, one call back. Self-evolving: use, learn, verify, every agent; saves more each round. The model reads only what it needs." width="100%"></p>
 
@@ -57,6 +41,7 @@ TokenWise adopts a rule only if it saves more on **every** recorded run, drops n
 error and also works on runs it has not seen. From the next command on, every
 agent uses it. If an agent keeps having to look past a rule, the rule switches
 itself off, and any adoption can be undone.
+On tasks it has never seen, the learned rules save another 12–27% of tokens.
 
 Start a round from wherever you work: `/tokenwise:learn` in Claude Code,
 CodeBuddy and Grok, `$tokenwise learn` in Codex, the TokenWise panel in pi and
