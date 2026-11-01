@@ -45,6 +45,20 @@ agent, and each of them starts from zero.
   CodeBuddy, Grok, DeepSeek Harness, pi and any shell, with more on the way.
   What one agent learns, all of them use.
 
+### Up to half the tokens. Never a worse result.
+
+| While your agent is… | Token bill | How the work turns out |
+|---|---|---|
+| **fixing bugs, building features**<br><sub>everyday coding</sub> | **14–38% smaller** | as many tasks solved, or more |
+| **grinding through long terminal jobs**<br><sub>dozens of commands in a row</sub> | **25–50% smaller**<br><sub>the same budget goes up to twice as far</sub> | up to 7.5 points more tasks solved |
+| **in sessions that outgrow the context**<br><sub>very long conversations</sub> | **21–45% smaller** | remembers better: a fact that kept changing is recalled right 98% of the time, not 45% |
+
+**12 comparisons. 12 times cheaper. 0 times worse.** Four models, three kinds of work.
+
+**1.42M → 0.88M tokens.** The same coding task on the same model, and it was solved more often (83% → 85%).
+
+<sub>From our paper's evaluation: DeepSeek V4 Flash, MiniMax-M3, GLM-5.3 Flash and Qwen3.8 Flash in DeepSeek Harness, against the harness's own context management, counting every token including cache reads. Paper coming soon.</sub>
+
 <p align="center"><img src="media/images/story-how.png" alt="Your agents send everything they read through TokenWise, one layer shared by every agent. Context on demand: what the model needs stays in context, everything else stays on your machine, one call back. Self-evolving: use, learn, verify, every agent; saves more each round. The model reads only what it needs." width="100%"></p>
 
 ## 🧬 Self-evolving
@@ -57,6 +71,7 @@ TokenWise adopts a rule only if it saves more on **every** recorded run, drops n
 error and also works on runs it has not seen. From the next command on, every
 agent uses it. If an agent keeps having to look past a rule, the rule switches
 itself off, and any adoption can be undone.
+On tasks it has never seen, the learned rules save another 12–27% of tokens.
 
 Start a round from wherever you work: `/tokenwise:learn` in Claude Code,
 CodeBuddy and Grok, `$tokenwise learn` in Codex, the TokenWise panel in pi and
