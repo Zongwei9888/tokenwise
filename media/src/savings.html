@@ -1,0 +1,96 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="brand.css">
+<style>
+  /* The README's savings figure: one card per kind of work, one bar per model.
+     Gray track = the token bill without TokenWise (100%); teal bar = the bill with it. */
+  body { display: block; }
+  .d { width: 1200px; padding: 34px 36px 30px; background: var(--paper); border-radius: 26px; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+  .head h2 { font-size: 52px; color: var(--ink); }
+  .zh .head h2 { font-size: 40px; }
+  .pill { flex: none; display: flex; align-items: center; gap: 10px; padding: 9px 18px 9px 10px; border-radius: 999px; background: var(--teal); color: #fff; font-weight: 700; font-stretch: 88%; font-size: 19px; white-space: nowrap; }
+  .pill i { width: 28px; height: 28px; border-radius: 50%; background: #FDE68A; color: #5A4300; display: grid; place-items: center; font-style: normal; font-size: 16px; }
+  .key { display: flex; gap: 22px; margin: 14px 0 20px; color: #4F6B66; font-size: 15px; font-weight: 550; font-stretch: 94%; }
+  .key span { display: flex; align-items: center; gap: 8px; }
+  .key b { display: block; width: 26px; height: 10px; border-radius: 4px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .card { background: #fff; border: 1px solid var(--rule); border-radius: 20px; padding: 22px 22px 18px; display: flex; flex-direction: column; }
+  .card h3 { font-weight: 760; font-stretch: 84%; font-size: 24px; letter-spacing: -.005em; }
+  .zh .card h3 { font-stretch: 100%; font-size: 22px; }
+  .card .sub { color: #5B7671; font-size: 15px; margin-top: 3px; font-stretch: 96%; }
+  .hero { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px; color: var(--teal); }
+  .hero small { font-size: 18px; font-weight: 650; font-stretch: 90%; color: #3D5A55; }
+  .hero strong { font-size: 76px; font-weight: 820; font-stretch: 66%; line-height: .95; letter-spacing: -.02em; }
+  .note { color: #3D5A55; font-size: 15px; font-weight: 600; font-stretch: 94%; min-height: 20px; }
+  .bars { margin-top: auto; padding-top: 16px; display: grid; gap: 11px; }
+  .bar { display: grid; grid-template-columns: 92px 1fr 46px; align-items: center; gap: 10px; font-size: 14.5px; }
+  .bar .m { color: #3D5A55; font-stretch: 92%; white-space: nowrap; }
+  .bar .t { position: relative; height: 10px; border-radius: 4px; background: #D3DFDA; }
+  .bar .f { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--teal); }
+  .bar .v { text-align: right; color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+
+  .evolve { margin-top: 20px; background: var(--teal); border-radius: 20px; padding: 22px 26px; display: grid; grid-template-columns: 1fr 210px 430px; gap: 28px; align-items: center; color: #fff; }
+  .evolve h3 { font-weight: 780; font-stretch: 82%; font-size: 30px; display: flex; align-items: center; gap: 12px; }
+  .zh .evolve h3 { font-stretch: 100%; font-size: 28px; }
+  .evolve h3 i { width: 36px; height: 36px; border-radius: 50%; background: #FDE68A; color: #5A4300; display: grid; place-items: center; }
+  .evolve h3 .mi { width: 22px; height: 22px; }
+  .evolve p { margin-top: 8px; color: #D7F5EE; font-size: 16px; line-height: 1.45; font-stretch: 96%; }
+  .evolve .hero { margin: 0; color: #fff; }
+  .evolve .hero small { color: #D7F5EE; }
+  .evolve .bars { margin: 0; padding: 0; gap: 10px; }
+  .evolve .bar .m { color: #D7F5EE; }
+  .evolve .bar .t { background: rgba(255,255,255,.2); }
+  .evolve .bar .f { background: var(--mint); }
+  .evolve .bar .v { color: #fff; }
+  .mi { display: block; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+</style></head>
+<body>
+<div class="d" id="d"></div>
+<script type="module">
+const zh = new URLSearchParams(location.search).get('lang') === 'zh'
+if (zh) document.body.classList.add('zh')
+
+// From the paper's evaluation (total tokens per task or question, cache reads included), against
+// DeepSeek Harness's own context management. Same model order everywhere: color and position follow the model.
+const MODELS = ['DeepSeek V4', 'MiniMax-M3', 'GLM-5.3', 'Qwen3.8']
+const SAVED = {
+  coding: [38.2, 22.5, 20.3, 13.8],    // EvoAgentBench-SE, Table 1
+  terminal: [27.4, 41.6, 50.2, 25.3],  // LongCLI-Bench, Table 2 (evolved policy)
+  session: [21.1, 22.1, 44.6, 39.7],   // MemoryAgentBench, Table 3
+  learned: [15.0, 27.2, 24.7, 12.0],   // LongCLI-Bench, evolved vs initial rules
+}
+const T = zh ? {
+  title: '同样的任务，token 最多省一半', pill: '12 组对比 · 12 次都更省',
+  with: '装上 TokenWise', without: '不装（100%）', upto: '最多',
+  cards: [['coding', '修 bug、写功能', '日常编码', ''],
+    ['terminal', '在终端里连跑几十步', '长程命令行任务', '同样的预算，最多多跑一倍'],
+    ['session', '聊到上下文装不下', '超长会话', '']],
+  evolve: '越用越省', evolveSub: '学会你的项目后，没见过的任务也比学习前更省。',
+} : {
+  title: 'Same tasks. Up to half the tokens.', pill: '12 comparisons · 12 times cheaper',
+  with: 'With TokenWise', without: 'Without (100%)', upto: 'up to',
+  cards: [['coding', 'Fixing bugs, building features', 'everyday coding', ''],
+    ['terminal', 'Long jobs in the terminal', 'dozens of commands in a row', 'the same budget goes up to twice as far'],
+    ['session', 'Very long sessions', 'more than the context can hold', '']],
+  evolve: 'Saves more as it learns', evolveSub: 'Once it has learned your project, even on tasks it has never seen, compared with before learning.',
+}
+const pct = v => `−${Math.round(v)}%`
+const bars = values => `<div class="bars">${values.map((v, i) => `<div class="bar"><span class="m">${MODELS[i]}</span>
+  <span class="t"><span class="f" style="width:${(100 - v).toFixed(1)}%"></span></span><span class="v">${pct(v)}</span></div>`).join('')}</div>`
+const hero = values => `<div class="hero"><small>${T.upto}</small><strong>${pct(Math.max(...values))}</strong></div>`
+
+document.getElementById('d').innerHTML = `
+  <div class="head"><h2 class="display">${T.title}</h2><div class="pill"><i>✓</i>${T.pill}</div></div>
+  <div class="key"><span><b style="background:var(--teal)"></b>${T.with}</span><span><b style="background:#D3DFDA"></b>${T.without}</span></div>
+  <div class="grid">${T.cards.map(([k, h, sub, note]) => `<div class="card"><h3>${h}</h3><div class="sub">${sub}</div>
+    ${hero(SAVED[k])}<div class="note">${note}</div>${bars(SAVED[k])}</div>`).join('')}</div>
+  <div class="evolve"><div><h3><i><b class="mi" style="--i:url(.icons/evolve.png)"></b></i>${T.evolve}</h3><p>${T.evolveSub}</p></div>
+    ${hero(SAVED.learned)}${bars(SAVED.learned)}</div>`
+
+await document.fonts.ready
+const icon = Object.assign(new Image(), { src: '.icons/evolve.png' })
+await (icon.complete ? null : new Promise(r => { icon.onload = icon.onerror = r }))
+window.ready = true
+</script>
+</body></html>
