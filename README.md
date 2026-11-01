@@ -45,17 +45,15 @@ agent, and each of them starts from zero.
   CodeBuddy, Grok, DeepSeek Harness, pi and any shell, with more on the way.
   What one agent learns, all of them use.
 
-### Up to half the tokens. Never a worse result.
+### Up to half the tokens
 
-| While your agent is… | Token bill | How the work turns out |
-|---|---|---|
-| **fixing bugs, building features**<br><sub>everyday coding</sub> | **14–38% smaller** | as many tasks solved, or more |
-| **grinding through long terminal jobs**<br><sub>dozens of commands in a row</sub> | **25–50% smaller**<br><sub>the same budget goes up to twice as far</sub> | up to 7.5 points more tasks solved |
-| **in sessions that outgrow the context**<br><sub>very long conversations</sub> | **21–45% smaller** | remembers better: a fact that kept changing is recalled right 98% of the time, not 45% |
+| While your agent is… | Token bill |
+|---|---|
+| **fixing bugs, building features**<br><sub>everyday coding</sub> | **14–38% smaller** |
+| **grinding through long terminal jobs**<br><sub>dozens of commands in a row</sub> | **25–50% smaller**<br><sub>the same budget goes up to twice as far</sub> |
+| **in sessions that outgrow the context**<br><sub>very long conversations</sub> | **21–45% smaller** |
 
-**12 comparisons. 12 times cheaper. 0 times worse.** Four models, three kinds of work.
-
-**Same coding task, 38% fewer tokens,** and it was solved more often (83% → 85%).
+**12 comparisons, 12 times cheaper.** Four models, three kinds of work, no exceptions.
 
 <sub>From our paper's evaluation: DeepSeek V4 Flash, MiniMax-M3, GLM-5.3 Flash and Qwen3.8 Flash in DeepSeek Harness, against the harness's own context management, counting every token including cache reads. Paper coming soon.</sub>
 
