@@ -12,6 +12,10 @@ Fail-open: no ``tokenwise``, a timeout, an error or an unrecognized output leave
 the output exactly as Hermes captured it. ``TOKENWISE_DISABLE=1`` turns it
 off. Background-process output (no exit code yet) is left alone.
 
+The startup notice (a learning run finished, or a command keeps coming back
+long) comes from ``tokenwise notice hermes`` when a session starts, and is
+posted into that conversation with ``ctx.post_message``.
+
 LightShadow (``shadow.py``): with ``context.engine: tokenwise`` in Hermes's
 config, ``register`` also calls ``ctx.register_context_engine`` with Hermes's
 own compressor plus recoverable tool results and a ``tokenwise_recall`` tool.
@@ -21,6 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
+import contextvars
 import os
 import shutil
 import subprocess
@@ -94,6 +99,39 @@ def _transform(command: str = "", output: str = "", returncode: Any = None, task
     return projected if isinstance(projected, str) and projected != output else None
 
 
+def _notice(*flags: str) -> Optional[str]:
+    """``tokenwise notice hermes`` with *flags*: the notice's text, or None."""
+    if os.environ.get("TOKENWISE_DISABLE", "").strip() in ("1", "true", "yes"):
+        return None
+    tokenwise = _lc()
+    if not tokenwise:
+        return None
+    try:
+        done = subprocess.run([tokenwise, "notice", "hermes", *flags], capture_output=True, text=True, encoding="utf-8", timeout=_TIMEOUT_S)
+    except Exception:
+        return None
+    text = done.stdout.strip() if done.returncode == 0 else ""
+    return text or None
+
+
+def _session_notice(ctx):
+    """on_session_start: post the notice into the new conversation, off the turn's path. It counts as told only
+    once Hermes has posted it (a one-shot ``hermes -q`` may exit first, and no live conversation refuses it)."""
+    def post() -> None:
+        try:
+            text = _notice("--peek")
+            if text and getattr(ctx.post_message(text), "ok", False):
+                _notice("--told")
+        except Exception:  # The notice is a courtesy.
+            logger.debug("tokenwise: startup notice failed", exc_info=True)
+
+    def start(**_: Any) -> None:
+        # The copied context keeps the session binding post_message needs.
+        threading.Thread(target=contextvars.copy_context().run, args=(post,), daemon=True, name="tokenwise-notice").start()
+        return None
+    return start
+
+
 def _engine_selected() -> bool:
     try:
         from hermes_cli.config import load_config_readonly
@@ -106,6 +144,8 @@ def _engine_selected() -> bool:
 def register(ctx) -> None:
     ctx.register_hook("pre_tool_call", _remember_session)
     ctx.register_hook("transform_terminal_output", _transform)
+    if hasattr(ctx, "post_message"):
+        ctx.register_hook("on_session_start", _session_notice(ctx))
     # Only when chosen: Hermes holds one plugin context engine, and another plugin's must keep its slot.
     if hasattr(ctx, "register_context_engine") and _engine_selected():
         try:

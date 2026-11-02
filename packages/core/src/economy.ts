@@ -159,6 +159,9 @@ export function classifyMiss(command: string): EconomyMatchDetail {
  * projection is admitted only when it is strictly smaller in UTF-8 bytes and
  * saves at least `minimumSavedTokens` tokens; otherwise the result passes.
  */
+/** A command line that runs the tokenwise CLI (by name or path, after variable assignments). */
+const OWN_COMMAND = /^\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:\S*\/)?(?:tokenwise|tw)(?:\s|$)/u
+
 export function decideShellProjection(result: ShellResult, options: EconomyDecisionOptions): EconomyDecision {
   const { policy } = options
   const minimumSavedTokens = Math.max(1, options.minimumSavedTokens ?? 1)
@@ -166,6 +169,8 @@ export function decideShellProjection(result: ShellResult, options: EconomyDecis
   const pass = (reason: EconomyPassReason, extra: Omit<EconomyPass, 'kind' | 'reason' | 'policyHash'> = {}): EconomyPass =>
     ({ kind: 'pass', reason, ...extra, policyHash: policy.policyHash })
   if (typeof result.command !== 'string' || result.command.trim() === '') return pass('invalid-command')
+  // TokenWise's own output (a checkup, a before-and-after preview) is meant to be read as it is.
+  if (OWN_COMMAND.test(result.command)) return pass('no-filter-match', { matchDetail: 'command-not-covered' })
   if (result.interrupted) return pass('interrupted-result')
   if (result.truncated) return pass('already-truncated')
   if (!Number.isSafeInteger(result.exitCode) || !streamAt(result.rendered, result.stdout)) return pass('unsupported-result-shape')

@@ -6,6 +6,47 @@ First open-source release line: compact tool output on eight hosts and any shell
 recoverable compaction on every host whose plugin interface
 allows it (in full on five, assisted on three), and self-evolving filters. (0.1.0 and 0.2.0 were never published; their contents are part of this release.)
 
+- OpenCode and Hermes show the startup notice too (a learning run finished,
+  a command keeps coming back long): a toast in OpenCode, a line posted into
+  the conversation in Hermes, both from the new `tokenwise notice <agent>`.
+  In Grok the notice now appears at the end of a new session's first turn:
+  Grok showed a startup message only when the session was reopened.
+- Learned rules leave alone what the agent looked up (`grep`, `ls`, `find`,
+  `git diff`/`show`/`log`, `curl`, ...), as they do file contents: its output is
+  the answer the agent asked for. Such commands are not evidence, are never
+  suggested for teaching, and `tokenwise teach` says why.
+- Teaching happens in a private temporary directory, so in an agent's sandbox
+  (Codex, DSH, Claude Code's) only `tokenwise teach keep` needs escalated
+  permissions, and it finds the workspace even when the sandbox had a TMPDIR
+  of its own. `teach keep` and `teach preview` verify against the data
+  directory, never against checker files the teaching agent could edit; a
+  `teach` with nothing to teach leaves a teaching in progress alone; reading a
+  file (`cat`, `sed -n`) is refused with that reason.
+- Commands are grouped past wrappers and their options (`nice -n 10 make`,
+  `sudo -u pg psql`, `env FOO=1 npm test`, `timeout 60 npm test`), and a
+  script with a subcommand is a tool of its own (`python manage.py test`,
+  `node --test`). Quoted text no longer splits a command into steps when
+  telling lookups and file reads apart.
+- Learning with Codex works with current Codex releases, which dropped
+  `--full-auto`: the learner runs with `--sandbox workspace-write`.
+- In an agent's sandbox (Codex, DSH), a `tokenwise` command that cannot write
+  its data says so in one line and asks to be run again with escalated
+  permissions, instead of failing with a stack trace; `tokenwise checkup` works
+  there as it only reads.
+- Every `TOKENWISE_*` setting can also be written `TW_*` (`TW_HOME`,
+  `TW_DISABLE`): Codex and DSH drop variables with TOKEN in their name from the
+  shells they run, so `tokenwise` commands there never saw `TOKENWISE_HOME`.
+- The `tokenwise` skill, which `tokenwise setup` installs in every agent
+  (`/tokenwise`, `$tokenwise` in Codex): a checkup of what TokenWise shortens
+  and which commands are worth teaching it, and teaching a command with the
+  person watching. Their agent writes the rule (`tokenwise teach`), shows the
+  before and after on their own recorded output (`tokenwise teach preview`),
+  and keeps it only on their yes (`tokenwise teach keep`, verified exactly
+  like a learning run and marked as taught). The Codex plugin no longer ships
+  its own copy. The startup notices name what was learned and point to the
+  skill.
+- TokenWise's own output (a checkup, a preview) is never shortened, and is
+  not evidence to learn from.
 - New filters, each with a written contract (`tokenwise filters`) and real
   captured outputs in the conformance corpus (filter runtime `static-v13`;
   every earlier case unchanged):

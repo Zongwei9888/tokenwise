@@ -95,4 +95,33 @@ describe('TokenWise for OpenCode', () => {
     expect(bashShellResult({}, bashOutput('a', 0))).toBeUndefined()
     expect(bashShellResult({ command: 'ls' }, { output: 'a', metadata: null })).toMatchObject({ interrupted: true })
   })
+
+  it('shows the startup notice as a toast when a top-level session starts', async () => {
+    const toasts: unknown[] = []
+    let told = 0
+    const client = { tui: { calls: toasts, async showToast(options: unknown) { this.calls.push(options) } } }
+    const hooks = await createTokenWise({ env: { TOKENWISE_HOME: temp() }, notice: async () => 'TokenWise: output from make keeps coming back long.',
+      told: async () => { told++ } })({ directory: temp(), client })
+    await hooks.event!({ event: { type: 'session.created', properties: { info: { id: 'ses_child', parentID: 'ses_1' } } } })
+    await hooks.event!({ event: { type: 'session.updated', properties: { info: { id: 'ses_1' } } } })
+    await new Promise(resolve => setTimeout(resolve, 10))
+    expect(toasts).toEqual([])
+    await hooks.event!({ event: { type: 'session.created', properties: { info: { id: 'ses_1' } } } })
+    await new Promise(resolve => setTimeout(resolve, 10))
+    expect(toasts).toEqual([{ body: { title: 'TokenWise', message: 'TokenWise: output from make keeps coming back long.', variant: 'info', duration: 15_000 } }])
+    // Told only once the toast is up.
+    expect(told).toBe(1)
+  })
+
+  it('shows nothing, and never fails, without a notice or a TUI', async () => {
+    const failing = { tui: { showToast: async () => { throw new Error('no TUI') } } }
+    let told = 0
+    const hooks = await createTokenWise({ env: { TOKENWISE_HOME: temp() }, notice: async () => 'hello', told: async () => { told++ } })({ directory: temp(), client: failing })
+    await expect(hooks.event!({ event: { type: 'session.created', properties: { info: { id: 's' } } } })).resolves.toBeUndefined()
+    await new Promise(resolve => setTimeout(resolve, 10))
+    // A toast that did not show leaves the notice to be told.
+    expect(told).toBe(0)
+    const quiet = await createTokenWise({ env: { TOKENWISE_HOME: temp(), PATH: '' } })({ directory: temp(), client: failing })
+    await expect(quiet.event!({ event: { type: 'session.created', properties: { info: { id: 's' } } } })).resolves.toBeUndefined()
+  })
 })

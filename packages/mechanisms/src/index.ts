@@ -19,9 +19,11 @@ export {
   learnerRunning, LEARNER_INSTRUCTION, LEARNERS, newRunId, nodeBinary, onPath, prepareRun, processAlive, readEvolveStatus, readRunStatus, readScan,
   refreshScan, releaseRunLock, reviewActiveRules, ruleUse, runDirOf, runEvolution, runLearner, runnerMain, RULES_MD, scanEvidence, shellQuote,
   outcomeRules, outcomeSentence, pruneRuns, ruleChanges, startEvolution, takeAnnouncement, takeReadyNotice, workspaceCheck, workspaceTry, writeRunStatus,
-  DISABLE_RECALLS, DISABLE_SHARE, READY_CASES, READY_TOKENS,
+  DISABLE_RECALLS, DISABLE_SHARE, READY_CASES, READY_TOKENS, sameCommand, teachPrompt,
 } from './learning.ts'
 export type {
   ActiveRulesView, BackgroundOptions, EvolveCheck, EvolveContext, EvolveOutcome, EvolvePhase, EvolveResult, EvolveRunOptions, EvolveRunResult,
   EvolveRunStatus, EvolveScan, EvolveStatus, RuleUse, SwitchedOff,
 } from './learning.ts'
+export { checkup, currentTeach, dropTeach, keepTeach, noisyCommands, preview, startTeach } from './teach.ts'
+export type { Checkup, NoisyCommand, Preview, PreviewExample, TeachKeep, TeachStart, TeachState } from './teach.ts'

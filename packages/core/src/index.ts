@@ -7,7 +7,7 @@ export type { MappedProjection, OmittedSourceRange, SourceLine, SourceMap, Sourc
 export { DEFAULT_FILTER_OPTIONS, FILTER_OPTION_LIMITS, resolveFilterOptions } from './filter-options.ts'
 export type { FilterOptions } from './filter-options.ts'
 export { STATIC_FILTERS, projectStaticFilter } from './filters/index.ts'
-export { developerCommand, lastEffectiveCommand, literalCommand, readsFileContent, toolArgv } from './command.ts'
+export { developerCommand, lastEffectiveCommand, literalCommand, looksUp, readsFileContent, toolArgv } from './command.ts'
 export { hasBuiltinCommand, inspectShell } from './shell-inspection.ts'
 export type { ShellInspection } from './shell-inspection.ts'
 export { rewriteCommand } from './command-rewrite.ts'

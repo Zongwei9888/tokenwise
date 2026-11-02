@@ -27,6 +27,20 @@ the model-bound result of `ls -la pkg` went from 4,197 to 1,350 bytes, and
   `/opt/homebrew/bin` or `/usr/local/bin` (a gateway started at login may
   have a shorter `PATH`); `TOKENWISE_BIN` names it explicitly.
 
+## The tokenwise skill and the startup notice
+
+`tokenwise setup hermes` also copies the tokenwise skill into
+`~/.hermes/skills`. Ask for it with `/tokenwise`: it shows what TokenWise
+shortens and which commands are worth teaching it, and teaches it one with
+you, keeping the rule only when you say so.
+
+When a session starts (`on_session_start`), the plugin posts a line into the
+conversation once when a learning run has finished or a command keeps
+coming back long (from `tokenwise notice hermes`; Hermes 0.22.5's
+`ctx.post_message`: the TUI's status line, or a line after the turn in the
+classic CLI). Hermes cannot be the learner of a background run; the skill
+uses another installed agent for that.
+
 ## Compaction (full, as a context engine)
 
 ```sh

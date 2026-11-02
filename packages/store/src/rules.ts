@@ -25,6 +25,8 @@ export interface RuleAdoption {
   readonly cases?: number
   readonly gainTokens?: number
   readonly note?: string
+  /** Set when a person taught the rules in their own agent (`tokenwise teach`): the command, and the rules it added or changed. */
+  readonly taught?: { readonly command: string; readonly rules: readonly string[] }
 }
 
 export interface ActiveRules {

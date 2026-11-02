@@ -43,10 +43,15 @@ agent uses it. If an agent keeps having to look past a rule, the rule switches
 itself off, and any adoption can be undone.
 On tasks it has never seen, the learned rules save another 12–27% of tokens.
 
-Start a round from wherever you work: `/tokenwise:learn` in Claude Code,
-CodeBuddy and Grok, `$tokenwise learn` in Codex, the TokenWise panel in pi and
-DeepSeek Harness, or `tokenwise learn` in any terminal. Your agents also tell you
-when recorded output is worth learning from.
+**Teach it yourself.** Type `/tokenwise` in your agent (`$tokenwise` in Codex)
+and it shows which of your commands still print long output. Pick one: your
+agent writes the rule, shows you what the model would read before and after on
+your own recorded output, and keeps it only when you say so. Your agents also
+tell you when a command keeps coming back long.
+
+Or let it learn in the background: `/tokenwise:learn` in Claude Code, CodeBuddy
+and Grok, `$tokenwise learn` in Codex, the TokenWise panel in pi and DeepSeek
+Harness, or `tokenwise learn` in any terminal.
 
 ## 💾 Context on demand
 
@@ -95,8 +100,9 @@ npm install -g ./packages/cli
 tokenwise setup        # finds your agents and adds TokenWise to each
 ```
 
-There is nothing to configure: it works from the next command. When you want it
-to learn your project, run `/tokenwise:learn` (or the equivalent above).
+There is nothing to configure: it works from the next command. To see what it
+does for you, or to teach it one of your commands, type `/tokenwise` in your
+agent (`$tokenwise` in Codex).
 `tokenwise report` shows what was saved; `tokenwise uninstall` takes it out again.
 
 ## ✨ Technical highlights
@@ -150,6 +156,11 @@ mkdir -p ~/.hermes/plugins
 cp -R adapters/hermes/tokenwise ~/.hermes/plugins/tokenwise
 hermes plugins enable tokenwise && hermes config set context.engine tokenwise
 
+# The tokenwise skill, where each agent reads skills
+cp -R skills/tokenwise ~/.claude/skills/            # Claude Code; likewise ~/.codebuddy/skills, ~/.grok/skills,
+                                                    # ~/.config/opencode/skills and ~/.hermes/skills
+cp -R skills/tokenwise ~/.agents/skills/            # Codex, pi and DeepSeek Harness
+
 # Anything else: wrap the command
 tokenwise run -c 'cargo test'
 ```
@@ -174,7 +185,8 @@ tokenwise run -c 'cargo test'
 | Grok Build 1.0+ | hooks; the catalog follows Grok's own summary | `/tokenwise:learn` |
 | Any agent or shell | `tokenwise run`, recall over MCP | `tokenwise learn` |
 
-Each agent's folder under [`adapters/`](adapters) has the details;
+Every agent also gets the `tokenwise` skill: `/tokenwise`, `$tokenwise` in Codex,
+`/skill:tokenwise` in pi. Each agent's folder under [`adapters/`](adapters) has the details;
 [docs/adapters.md](docs/adapters.md) shows how to connect another agent.
 
 </details>
@@ -187,6 +199,9 @@ Each agent's folder under [`adapters/`](adapters) has the details;
 |---|---|
 | `tokenwise setup [agent...]`, `uninstall [--purge]` | add TokenWise to your agents, or take it out |
 | `tokenwise report [--host H] [--session S]` | what was saved, per session or agent |
+| `tokenwise checkup` | what it shortens, its learned rules, and the commands worth teaching it |
+| `tokenwise teach "<command>"`, `teach check\|preview\|keep\|drop` | teach it one command from your own agent |
+| `tokenwise preview "<command>"` | a recorded output of that command: the original and what the model reads |
 | `tokenwise learn --learner L`, `learn status\|cancel` | start learning in the background, follow it, stop it |
 | `tokenwise rules [list\|off\|on\|rollback]` | the learned rules |
 | `tokenwise filters` | every built-in rule and what it guarantees to keep |
@@ -203,7 +218,9 @@ Each agent's folder under [`adapters/`](adapters) has the details;
 <br>
 
 Nothing needs configuring. To change something, write `~/.tokenwise/config.json`;
-`TOKENWISE_DISABLE=1` switches everything off for one run.
+`TOKENWISE_DISABLE=1` switches everything off for one run. Every `TOKENWISE_*`
+setting can also be written `TW_*` (`TW_HOME`, `TW_DISABLE`): Codex and DSH drop
+variables with TOKEN in their name from the shells they run.
 
 Everything stays on your machine: originals are readable only by you and deleted
 after 14 days. The one thing that leaves your machine is a learning round you

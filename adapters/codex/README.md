@@ -64,9 +64,12 @@ install or update the plugin, trust its hooks again in `/hooks`.
 
 ## Learning
 
-The plugin's `tokenwise` skill learns with Codex as the learner: type
-`$tokenwise learn` (or ask Codex to have TokenWise learn), `$tokenwise status`
-or `$tokenwise rules`. The command writes to `~/.tokenwise` and the learner
+`tokenwise setup` installs the `tokenwise` skill in `~/.agents/skills`: type
+`$tokenwise` to see what TokenWise shortens and which commands are worth
+teaching it, and to teach it one with you (Codex writes the rule, shows you the
+before and after on your own output, and keeps it only when you say so). It
+also learns in the background with Codex as the learner: `$tokenwise learn`,
+`$tokenwise learn status`, `$tokenwise rules`. The command writes to `~/.tokenwise` and the learner
 needs the network, so Codex asks to run it outside the sandbox. At startup the
 plugin says when recorded output is worth learning from and when a run has
 finished.
@@ -84,6 +87,11 @@ Or copy `hooks/hooks.json` to `~/.codex/hooks.json` (or a project's
 `.codex/hooks.json`). Then start Codex, trust the hook in `/hooks`, and check
 savings with `tokenwise report --host codex`.
 
-Disable at any time with `TOKENWISE_DISABLE=1`, or set
-`{"output": {"mode": "observe"}}` in `~/.tokenwise/config.json` to record
-what would change without changing anything.
+To switch it off, set `{"output": {"mode": "off"}}` in
+`~/.tokenwise/config.json`, or `"observe"` to record what would change without
+changing anything. Environment variables are less direct here: the Codex app
+runs hooks and commands in its background app server, which keeps the
+environment it started with, and leaves variables with TOKEN in their name out
+of the shells it runs. Set them where that server starts (your shell profile),
+spelled `TW_*` (`TW_HOME`, `TW_DISABLE`), and restart it. `codex exec` runs in
+the terminal you start it from and takes them directly.

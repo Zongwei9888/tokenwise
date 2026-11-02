@@ -7,6 +7,7 @@ import { grokAfterCompact, grokPendingCatalog } from './grok-shadow.ts'
 import { cliContext, onPath, shellQuote } from './context.ts'
 import { allowedByRules } from './claude-permissions.ts'
 import { startupNotice } from './learn.ts'
+import { keepPending, takePending } from './shadow.ts'
 import { projectOutput } from './project.ts'
 
 /**
@@ -243,7 +244,10 @@ export function grokEntry(input: HookInput, env: NodeJS.ProcessEnv = process.env
   if (event === 'Stop') {
     if (input.reason !== undefined && input.reason !== 'end_turn') return undefined
     const catalog = grokPendingCatalog(input)
-    return catalog ? JSON.stringify({ hookSpecificOutput: { hookEventName: 'Stop', additionalContext: catalog } }) : undefined
+    const sessionId = typeof input.session_id === 'string' && input.session_id ? input.session_id : undefined
+    const message = sessionId && takePending(GROK_NOTICE, sessionId) ? startupNotice('grok') : undefined
+    if (!catalog && !message) return undefined
+    return JSON.stringify({ ...message ? { systemMessage: message } : {}, ...catalog ? { hookSpecificOutput: { hookEventName: 'Stop', additionalContext: catalog } } : {} })
   }
   const economy = grokHook(input, env)
   if (event !== 'PostToolUse') return economy
@@ -269,6 +273,18 @@ const HANDLERS: Record<HookHost, (input: HookInput) => string | undefined> = {
   codex: input => codexAfterCompact(input) ?? codexPreToolUse(input), claude: claudeHook, codebuddy: codebuddyHook, grok: grokEntry, hermes: hermesHook,
 }
 
+/**
+ * Grok shows a SessionStart `systemMessage` only when the session is reopened
+ * (seen on Grok 1.0.70), but a Stop one at once: a new session marks that its
+ * notice is due, and the end of its first turn says it (and only then counts it
+ * as told, so a session closed sooner leaves it for the next).
+ */
+const GROK_NOTICE = 'grok-notice'
+function holdGrokNotice(input: HookInput): undefined {
+  if (typeof input.session_id === 'string' && input.session_id && startupNotice('grok', process.env, { peek: true })) keepPending(GROK_NOTICE, input.session_id, 'due')
+  return undefined
+}
+
 /** A new session, not one resumed or continued after a compaction: `startup` (Claude Code, Codex, CodeBuddy), `new` (Grok). */
 const isStartup = (input: HookInput) => input.hook_event_name === 'SessionStart' && (input.source === 'startup' || input.source === 'new')
 const notice = (text: string | undefined) => text === undefined ? undefined : JSON.stringify({ systemMessage: text })
@@ -278,7 +294,7 @@ export async function hook(host: string | undefined): Promise<number> {
   try {
     if (host === undefined || !Object.hasOwn(HANDLERS, host)) return 0
     const input = JSON.parse(await readStdin()) as HookInput
-    const output = isStartup(input) ? notice(startupNotice(host)) : HANDLERS[host as HookHost](input)
+    const output = !isStartup(input) ? HANDLERS[host as HookHost](input) : host === 'grok' ? holdGrokNotice(input) : notice(startupNotice(host))
     if (output) process.stdout.write(output + '\n')
   } catch { /* Passthrough. */ }
   return 0

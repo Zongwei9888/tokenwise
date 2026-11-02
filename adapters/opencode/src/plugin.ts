@@ -13,13 +13,15 @@ import type { ArtifactPort } from '@tokenwise/protocol'
 import { FileArtifactStore, FileJournal, RuleStore, collectDaily, dataDirs, loadConfig, readJournals, resolveDataDir, writableDataDir } from '@tokenwise/store'
 import { bashShellResult } from './bash.ts'
 import type { BashOutput } from './bash.ts'
+import { readNotice, showNotice } from './notice.ts'
+import type { ToastClient } from './notice.ts'
 import { createShadowHooks } from './shadow.ts'
 import type { OpenCodeClient, ShadowHooks } from './shadow.ts'
 
 export const HOST = 'opencode'
 
 /** The part of OpenCode's plugin context TokenWise reads. */
-export interface PluginInput { readonly directory?: string; readonly client?: OpenCodeClient }
+export interface PluginInput { readonly directory?: string; readonly client?: OpenCodeClient & ToastClient }
 export interface ToolAfterInput { readonly tool: string; readonly sessionID?: string; readonly callID?: string; readonly args?: unknown }
 export interface Hooks extends Partial<ShadowHooks> {
   'tool.execute.after'?: (input: ToolAfterInput, output: BashOutput) => Promise<void>
@@ -29,6 +31,9 @@ export interface TokenWiseOpenCodeOptions {
   readonly env?: NodeJS.ProcessEnv
   /** Diagnostics; errors never reach the tool result or the compaction. */
   readonly onError?: (error: unknown) => void
+  /** The startup notice's text, and marking it told (tests); default: `tokenwise notice opencode --peek`, then `--told`. */
+  readonly notice?: () => Promise<string | undefined>
+  readonly told?: () => Promise<unknown>
 }
 
 /** The plugin: one instance per project directory OpenCode serves. */
@@ -69,6 +74,15 @@ export function createTokenWise(options: TokenWiseOpenCodeOptions = {}): (input:
           if (text !== undefined) output.output = text
         } catch (error) { options.onError?.(error) }
       }
+    }
+    // Switched off: nothing at all.
+    if (!Object.keys(hooks).length) return hooks
+    // A new top-level session (not a subagent's) shows the startup notice, without holding up OpenCode's events.
+    const shadowEvent = hooks.event
+    hooks.event = async input => {
+      if (shadowEvent) await shadowEvent(input)
+      const event = input?.event
+      if (event?.type === 'session.created' && !event.properties?.info?.parentID) void showNotice(client, options.notice ?? (() => readNotice(env)), options.told ?? (() => readNotice(env, '--told')))
     }
     return hooks
   }

@@ -25,6 +25,8 @@ export interface Sources {
   /** The OpenCode plugin file and the Hermes plugin directory. */
   readonly opencode: string
   readonly hermes: string
+  /** The tokenwise skill directory every agent gets (`@tokenwise`, `/tokenwise`, `$tokenwise`). */
+  readonly skill: string
 }
 
 /** A checkout when the CLI runs from one; otherwise the published sources. */
@@ -32,11 +34,12 @@ export function sources(cliFile = fileURLToPath(import.meta.url)): Sources {
   const root = join(dirname(cliFile), '..', '..', '..')
   if (existsSync(join(root, '.claude-plugin', 'marketplace.json')) && existsSync(join(root, 'adapters'))) {
     return { marketplace: root, pi: join(root, 'adapters', 'pi'), dsh: join(root, 'adapters', 'dsh'),
-      opencode: join(root, 'adapters', 'opencode', 'dist', 'index.js'), hermes: join(root, 'adapters', 'hermes', 'tokenwise') }
+      opencode: join(root, 'adapters', 'opencode', 'dist', 'index.js'), hermes: join(root, 'adapters', 'hermes', 'tokenwise'),
+      skill: join(root, 'skills', 'tokenwise') }
   }
   const assets = join(dirname(cliFile), '..', 'assets')
   return { marketplace: REPOSITORY, pi: 'npm:@tokenwise/pi', dsh: '@tokenwise/dsh',
-    opencode: join(assets, 'opencode', 'tokenwise.js'), hermes: join(assets, 'hermes', 'tokenwise') }
+    opencode: join(assets, 'opencode', 'tokenwise.js'), hermes: join(assets, 'hermes', 'tokenwise'), skill: join(assets, 'skills', 'tokenwise') }
 }
 
 export type Step =
@@ -52,6 +55,8 @@ interface Agent {
   readonly bin: string
   install(s: Sources, o: Options): Step[]
   uninstall(s: Sources, o: Options): Step[]
+  /** Where the agent reads the tokenwise skill from. */
+  skillDir(env: NodeJS.ProcessEnv): string
   /** What is left for the user to do after installing. */
   readonly next?: string
 }
@@ -59,6 +64,19 @@ interface Agent {
 const opencodeFile = (env: NodeJS.ProcessEnv) => join(env.XDG_CONFIG_HOME || join(env.HOME || homedir(), '.config'), 'opencode', 'plugins', 'tokenwise.js')
 const hermesDir = (env: NodeJS.ProcessEnv) => join(env.HERMES_HOME || join(env.HOME || homedir(), '.hermes'), 'plugins', 'tokenwise')
 const codebuddyCache = (env: NodeJS.ProcessEnv) => join(env.HOME || homedir(), '.codebuddy', 'plugins', 'cache', 'tokenwise')
+const home = (env: NodeJS.ProcessEnv) => env.HOME || homedir()
+/** The Agent Skills location Codex and pi read, and DeepSeek Harness by default. */
+const agentsSkill = (env: NodeJS.ProcessEnv) => join(home(env), '.agents', 'skills', 'tokenwise')
+const skillDirs: Readonly<Record<string, (env: NodeJS.ProcessEnv) => string>> = {
+  pi: agentsSkill,
+  dsh: env => join(env.DSH_AGENTS_HOME || join(home(env), '.agents'), 'skills', 'tokenwise'),
+  claude: env => join(env.CLAUDE_CONFIG_DIR || join(home(env), '.claude'), 'skills', 'tokenwise'),
+  codex: agentsSkill,
+  codebuddy: env => join(home(env), '.codebuddy', 'skills', 'tokenwise'),
+  grok: env => join(home(env), '.grok', 'skills', 'tokenwise'),
+  opencode: env => join(env.XDG_CONFIG_HOME || join(home(env), '.config'), 'opencode', 'skills', 'tokenwise'),
+  hermes: env => join(env.HERMES_HOME || join(home(env), '.hermes'), 'skills', 'tokenwise'),
+}
 
 /** Claude Code, Codex, CodeBuddy and Grok: a marketplace named tokenwise, then the plugin from it. Adding it again fails harmlessly. */
 const marketplace = (bin: string, add: string[], remove: string[],
@@ -67,7 +85,7 @@ const marketplace = (bin: string, add: string[], remove: string[],
   uninstall: (_, o) => [{ run: [bin, 'plugin', ...remove] }, { run: [bin, 'plugin', 'marketplace', 'remove', 'tokenwise'], mayFail: true }, ...extra.after?.(o) ?? []],
 })
 
-export const AGENTS: readonly Agent[] = [
+const AGENT_PLUGINS: readonly Omit<Agent, 'skillDir'>[] = [
   { id: 'pi', name: 'pi', bin: 'pi',
     install: s => [{ run: ['pi', 'install', s.pi] }], uninstall: s => [{ run: ['pi', 'remove', s.pi] }] },
   { id: 'dsh', name: 'DeepSeek Harness', bin: 'dsh',
@@ -90,6 +108,8 @@ export const AGENTS: readonly Agent[] = [
     uninstall: (_, o) => [{ run: ['hermes', 'config', 'set', 'context.engine', 'compressor'], mayFail: true },
       { run: ['hermes', 'plugins', 'disable', 'tokenwise'], mayFail: true }, { remove: hermesDir(o.env) }] },
 ]
+
+export const AGENTS: readonly Agent[] = AGENT_PLUGINS.map(agent => ({ ...agent, skillDir: skillDirs[agent.id]! }))
 
 export function describeStep(step: Step): string {
   if ('run' in step) return step.run.map(arg => /^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", `'\\''`)}'`).join(' ')
@@ -151,7 +171,12 @@ export function setup(args: SetupArgs): number {
   for (const agent of chosen) {
     process.stdout.write(`\n${agent.name}\n`)
     let ok = true
-    for (const step of args.action === 'setup' ? agent.install(s, options) : agent.uninstall(s, options)) {
+    const skill = agent.skillDir(env)
+    // Agents can share a skill directory: it goes only with the last of them still on this machine.
+    const shared = AGENTS.some(other => other !== agent && !chosen.includes(other) && other.skillDir(env) === skill && onPath(other.bin, env))
+    const steps = args.action === 'setup' ? [...agent.install(s, options), { copy: s.skill, to: skill }]
+      : [...agent.uninstall(s, options), ...shared ? [] : [{ remove: skill }]]
+    for (const step of steps) {
       process.stdout.write(`  $ ${describeStep(step)}\n`)
       if (!args.dryRun && !run(step, env)) { ok = false; break }
     }

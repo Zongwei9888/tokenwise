@@ -50,7 +50,7 @@ export interface ShadowHooks {
   'experimental.chat.messages.transform': (input: object, output: { messages: OpenCodeMessage[] }) => Promise<void>
   'experimental.text.complete': (input: { sessionID: string; messageID: string; partID: string }, output: { text: string }) => Promise<void>
   'tool.definition': (input: { toolID: string }, output: { description?: string; parameters?: unknown; jsonSchema?: unknown }) => Promise<void>
-  event: (input: { event: { type?: string; properties?: { sessionID?: string; info?: { id?: string } } } }) => Promise<void>
+  event: (input: { event: { type?: string; properties?: { sessionID?: string; info?: { id?: string; parentID?: string } } } }) => Promise<void>
   tool: Record<string, { description: string; args: Record<string, unknown>; execute: (args: Record<string, unknown>, ctx: ToolContext) => Promise<string> }>
 }
 

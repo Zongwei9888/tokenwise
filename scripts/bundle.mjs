@@ -81,10 +81,12 @@ await Promise.all([
   bundleDshClient(),
 ])
 
-// `tokenwise setup` installs the OpenCode and Hermes plugins from these copies when the CLI comes from npm.
+// `tokenwise setup` installs the OpenCode and Hermes plugins from these copies when the CLI comes from npm…
 rmSync(at('packages/cli/assets'), { recursive: true, force: true })
 mkdirSync(at('packages/cli/assets/opencode'), { recursive: true })
 copyFileSync(at('adapters/opencode/dist/index.js'), at('packages/cli/assets/opencode/tokenwise.js'))
 cpSync(at('adapters/hermes/tokenwise'), at('packages/cli/assets/hermes/tokenwise'), { recursive: true,
   filter: source => !source.includes('__pycache__') })
+// …and the tokenwise skill every agent gets.
+cpSync(at('skills/tokenwise'), at('packages/cli/assets/skills/tokenwise'), { recursive: true })
 console.log('bundled @tokenwise/pi, @tokenwise/dsh (Host and browser halves), their learning runners, @tokenwise/opencode and @tokenwise/cli')

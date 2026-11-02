@@ -99,5 +99,20 @@ describe('evolution', () => {
     // Loops and conditions name the command inside them (a startup notice once named `for t`).
     expect(['for t in a b; do python3 -m pytest $t; done', 'while true; do ./poll.sh; done', 'if [ -f x ]; then make build; fi']
       .map(commandHead)).toEqual(['python3 -m pytest', './poll.sh', 'make build'])
+    // Steps that print nothing and leading words give way to the command that prints; any interpreter's -m tool is one tool.
+    expect(['sleep 3; tmux capture-pane -p', 'time python3 -m pytest', '[ -f x ] && make build', 'for f in *; do [ -d $f ] || continue; ./check.sh $f; done',
+      'mkdir -p out && ./build.sh', '~/venv/bin/python -m pytest -q', '/usr/bin/python3 -m pip install x']
+      .map(commandHead)).toEqual(['tmux capture-pane', 'python3 -m pytest', 'make build', './check.sh', './build.sh', 'python -m pytest', 'python3 -m pip'])
+    // Wrappers with their own options and values; a script with a subcommand is a tool of its own.
+    expect(['nice -n 10 make test', 'sudo -u pg psql -c x', 'time -p cargo build', 'command -v x && make', 'env FOO=1 npm test', 'timeout 60 npm test',
+      'timeout -s KILL 5m ./e2e.sh', 'env', 'python manage.py test', 'python3 app.py', 'node --test', 'node server.js'].map(commandHead))
+      .toEqual(['make test', 'psql', 'cargo build', 'make', 'npm test', 'npm test', './e2e.sh', 'env', 'python manage.py test', 'python3', 'node --test', 'node'])
+  })
+
+  it('leaves out of evidence what the agent looked up, as it does file contents', () => {
+    const listing = Array.from({ length: 60 }, (_, i) => `src/file_${i}.ts:${i}: const value = ${i}`).join('\n') + '\n'
+    const cases = collectEvidence([record('grep -rn value src', listing), record('git diff HEAD~1', listing), record('curl -s https://x.dev/a', listing),
+      record('./build.sh', progress)], artifacts([listing, progress]))
+    expect(cases.map(item => item.result.command)).toEqual(['./build.sh'])
   })
 })

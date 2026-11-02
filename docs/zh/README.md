@@ -37,7 +37,9 @@
 
 一条规则必须在**每一次**历史记录上都更省、一条报错都不丢，在没见过的记录上也成立，TokenWise 才会采用。从下一条命令起，所有 agent 都用上它。如果某个 agent 总要绕开一条规则去看原文，这条规则会自己关掉；任何一次采用都可以撤回。学到的规则在从没见过的任务上，还能再省 12–27% 的 token。
 
-在哪儿工作就在哪儿发起学习：Claude Code、CodeBuddy 和 Grok 里用 `/tokenwise:learn`，Codex 里用 `$tokenwise learn`，pi 和 DeepSeek Harness 里用 TokenWise 面板，任何终端里都可以运行 `tokenwise learn`。有值得学的内容时，agent 也会主动提醒你。
+**亲手教它。** 在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`），它会告诉你哪些命令的输出还很长。挑一个，agent 当场写好规则，拿你自己的真实输出给你看模型读到的前后对比，你同意了才生效。某条命令的输出一直很长时，agent 也会主动提醒你。
+
+也可以让它在后台自己学：Claude Code、CodeBuddy 和 Grok 里用 `/tokenwise:learn`，Codex 里用 `$tokenwise learn`，pi 和 DeepSeek Harness 里用 TokenWise 面板，任何终端里都可以运行 `tokenwise learn`。
 
 ## 💾 按需读取
 
@@ -81,7 +83,7 @@ npm install -g ./packages/cli
 tokenwise setup        # 自动找到本机的 agent，逐个装好
 ```
 
-不用任何配置，下一条命令就生效。想让它学你的项目时，运行 `/tokenwise:learn`（或上面对应的方式）。`tokenwise report` 查看省了多少，`tokenwise uninstall` 可以卸载。
+不用任何配置，下一条命令就生效。想看它为你做了什么，或者教它处理你的某条命令，在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`）。`tokenwise report` 查看省了多少，`tokenwise uninstall` 可以卸载。
 
 ## ✨ 技术要点
 
@@ -130,6 +132,11 @@ hermes plugins enable tokenwise && hermes config set context.engine tokenwise
 
 # 其他任何 agent：用它包一层命令
 tokenwise run -c 'cargo test'
+
+# tokenwise skill：复制到各个 agent 读取 skill 的目录
+cp -R skills/tokenwise ~/.claude/skills/            # Claude Code；~/.codebuddy/skills、~/.grok/skills、
+                                                    # ~/.config/opencode/skills、~/.hermes/skills 同理
+cp -R skills/tokenwise ~/.agents/skills/            # Codex、pi 和 DeepSeek Harness
 ```
 
 `tokenwise setup` 会替你执行这些命令；`tokenwise setup --dry-run` 只打印不执行。
@@ -152,7 +159,7 @@ tokenwise run -c 'cargo test'
 | Grok Build 1.0+ | hook；目录跟在 Grok 自己的摘要后面 | `/tokenwise:learn` |
 | 任何 agent 或 shell | `tokenwise run`，通过 MCP 取回原文 | `tokenwise learn` |
 
-各 agent 的细节见 [`adapters/`](../../adapters) 下对应的目录；[docs/adapters.md](../adapters.md) 介绍如何接入新的 agent。
+每个 agent 还会装上 `tokenwise` skill：`/tokenwise`，Codex 里是 `$tokenwise`，pi 里是 `/skill:tokenwise`。各 agent 的细节见 [`adapters/`](../../adapters) 下对应的目录；[docs/adapters.md](../adapters.md) 介绍如何接入新的 agent。
 
 </details>
 
@@ -164,6 +171,9 @@ tokenwise run -c 'cargo test'
 |---|---|
 | `tokenwise setup [agent...]`、`uninstall [--purge]` | 装进你的 agent，或卸载 |
 | `tokenwise report [--host H] [--session S]` | 按会话或 agent 查看省了多少 |
+| `tokenwise checkup` | 它精简了什么、学到的规则、还值得教它的命令 |
+| `tokenwise teach "<命令>"`、`teach check\|preview\|keep\|drop` | 在你自己的 agent 里教它处理一条命令 |
+| `tokenwise preview "<命令>"` | 这条命令的一次真实输出：原文和模型实际读到的内容 |
 | `tokenwise learn --learner L`、`learn status\|cancel` | 在后台开始学习、查看进度、停止 |
 | `tokenwise rules [list\|off\|on\|rollback]` | 学到的规则 |
 | `tokenwise filters` | 所有内置规则，以及各自保证保留什么 |
@@ -179,7 +189,7 @@ tokenwise run -c 'cargo test'
 <summary><strong>配置与隐私</strong></summary>
 <br>
 
-不需要任何配置。想调整时写 `~/.tokenwise/config.json`；`TOKENWISE_DISABLE=1` 可以在一次运行里关掉全部功能。
+不需要任何配置。想调整时写 `~/.tokenwise/config.json`；`TOKENWISE_DISABLE=1` 可以在一次运行里关掉全部功能。每个 `TOKENWISE_*` 设置也可以写成 `TW_*`（`TW_HOME`、`TW_DISABLE`）：Codex 和 DSH 会从它们运行的 shell 里去掉名字带 TOKEN 的变量。
 
 所有内容都留在你的电脑上：原文只有你能读，14 天后自动删除。唯一会离开你电脑的，是你自己发起的学习：学习者就是你自己的 agent，它读到的记录会发给该 agent 的模型服务商，和这个 agent 当初运行命令时一样。设置 `"evidence": false` 就什么都不记录。
 

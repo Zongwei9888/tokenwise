@@ -14,7 +14,7 @@ mechanisms    @tokenwise/mechanisms — compact-output engine, compaction, evolu
 protocol      @tokenwise/protocol — capabilities, host profiles, negotiation, journal schema
 core          @tokenwise/core — filters, learned-rule sandbox, source maps, admission, normalization (pure)
 store         @tokenwise/store — journal, original store, adopted rules, configuration (local files)
-cli           @tokenwise/cli — tokenwise run / hook / report / doctor / filters / show / gc / evolve / rules
+cli           @tokenwise/cli — tokenwise run / hook / report / doctor / filters / show / gc / evolve / rules / checkup / teach / preview
 ```
 
 `core` has no host dependency and no I/O. The same input produces the same
@@ -194,6 +194,24 @@ the agent keeps recalling.
   commands the candidate improved on the cases the learner saw, it also saves
   more on the cases of those commands held back from it (at least 30% of each
   command's cases are held back).
+- **Teach.** `tokenwise teach "<command>"` writes the same kind of workspace
+  for the person's own agent (through the `tokenwise` skill), showing only
+  that command's cases and holding back 30% of them as usual. It lives in a
+  private directory under `$TMPDIR`, which agents' sandboxes (Codex, DSH,
+  Claude Code's) let their commands write, so only `teach keep` writes to
+  `~/.tokenwise`; the teach commands also look for it under `/tmp` and this
+  user's folders there, since a sandbox may set a TMPDIR of its own that its
+  escalated commands do not get. The directory must be this user's own (not a
+  link, not another user's). `teach preview` shows a recorded output before and
+  after, and `teach keep` verifies exactly as above and adopts, recording
+  `taught: { command, rules }` in the adoption; nothing is kept without it.
+  Preview and keep rebuild the checker's state (all recorded output, the
+  settings, the rules in use, the held-back cases) from the data directory
+  rather than reading the workspace's `checker.json`, which the teaching agent
+  can edit.
+  Commands that look something up (`grep`, `ls`, `find`, `git diff`, `curl`,
+  ...) are treated like file reads: their output is the answer the agent asked
+  for, so they are not evidence and no learned rule shortens them.
 - **Adopt.** Accepted directories are installed read-only under
   `~/.tokenwise/rules/<sha256>` and named in `rules/active.json` with their
   parent; engines reload the set whenever `active.json` changes (so running
@@ -262,5 +280,5 @@ uncovered commands — the list of filters worth writing next.
 |---|---|
 | 0.1 | Compact output on pi, DeepSeek Harness 0.2.x, Codex and `tokenwise run` |
 | 0.2 | Recoverable compaction on pi and DeepSeek Harness; self-evolving filters (`tokenwise evolve`, learned rules on every host) |
-| 0.3 | Eight hosts (adds OpenCode, Hermes Agent, Claude Code, CodeBuddy, Grok Build); `tokenwise setup`; learning started from inside every host; every built-in filter written as TokenWise code |
+| 0.3 | Eight hosts (adds OpenCode, Hermes Agent, Claude Code, CodeBuddy, Grok Build); `tokenwise setup`; learning started from inside every host; the `tokenwise` skill (a checkup, and teaching a command with the person watching); every built-in filter written as TokenWise code |
 | next | More hosts (GitHub Copilot CLI, Gemini CLI, Cursor); a cross-host usage ledger |

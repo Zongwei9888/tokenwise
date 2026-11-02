@@ -1,6 +1,6 @@
 import { MessageChannel, receiveMessageOnPort, Worker } from 'node:worker_threads'
 import type { MessagePort } from 'node:worker_threads'
-import { literalCommand, readsFileContent } from './command.ts'
+import { literalCommand, looksUp, readsFileContent } from './command.ts'
 import { sha256 } from './hash.ts'
 import { sourceLines } from './projection-map.ts'
 import type { MappedProjection, SourceMap } from './projection-map.ts'
@@ -375,8 +375,8 @@ export function compileLearnedRules(files: readonly RuleFile[], options: { timeo
   const project = (input: FilterInput): LearnedCandidate | undefined => {
     const raw = input.stdout
     if (stops >= 3 || raw.length === 0 || raw.length > MAX_INPUT_CHARS || /\0/u.test(raw)) return undefined
-    // File contents are what the agent asked to see: no learned rule shortens them.
-    if (readsFileContent(input.command)) return undefined
+    // File contents and what the agent looked up (a search, a listing, a diff) are what it asked to see: no learned rule shortens them.
+    if (readsFileContent(input.command) || looksUp(input.command)) return undefined
     const payload: LearnedRuleInput = { kind: 'shell', command: input.command, argv: literalCommand(input.command) ?? null, raw, exitCode: input.exitCode, stream: 'stdout' }
     let json: string
     try { json = JSON.stringify(payload) } catch { return undefined }

@@ -6,12 +6,13 @@ import { cliContext } from './context.ts'
 import { doctor, VERSION } from './doctor.ts'
 import { evolve, evolveCheck, evolveTry, rules } from './evolve.ts'
 import { hook } from './hook.ts'
-import { learnCancel, learnStart, learnStatus } from './learn.ts'
+import { learnCancel, learnStart, learnStatus, NOTICE_HOSTS, startupNotice } from './learn.ts'
 import { mcp } from './mcp.ts'
 import { report } from './report.ts'
 import { run } from './run.ts'
 import { recall, shadow } from './shadow.ts'
 import { AGENTS, setup } from './setup.ts'
+import { checkupCommand, previewCommand, teachCommand } from './teach.ts'
 
 const HELP = `tokenwise — TokenWise ${VERSION}
 
@@ -25,6 +26,8 @@ Usage:
   tokenwise run [--host H] [--session S] [--call C] -- <program> [args...]
   tokenwise hook codex|claude|codebuddy|grok|hermes
                                    hook handler for that host (reads hook JSON on stdin)
+  tokenwise notice opencode|hermes [--peek|--told]
+                                   the startup notice that agent's plugin shows, if any (--peek: leave it untold; --told: mark it told)
   tokenwise report [--host H] [--session S] [--json]
   tokenwise filters [--json]              list output filters and what each preserves
   tokenwise show <sha256>                 print a saved original output
@@ -35,6 +38,11 @@ Usage:
   tokenwise learn --learner pi|dsh|claude|codex|codebuddy|grok
                                    the same, in the background; agents' /tokenwise:learn runs this
   tokenwise learn status|cancel           follow or stop a learning run
+  tokenwise checkup [--json]              what TokenWise shortens, its learned rules, and the commands worth teaching it
+  tokenwise teach "<command>"             teach it about one command in your own agent: writes a workspace for the rule
+  tokenwise teach check|preview|keep|drop|status
+                                   check the rule, show the before and after, keep it (verified like a learning run) or discard it
+  tokenwise preview "<command>" [--json]  a recorded output of that command: the original and what the model reads now
   tokenwise rules [list|show|path|off|on|rollback] [--json]
                                    learned rules: what is adopted, switch off, go back
   tokenwise recall <observation_id> [--query Q | --line N] [--original] [--session S]
@@ -45,7 +53,17 @@ Usage:
   tokenwise --version
 
 Data: $TOKENWISE_HOME or ~/.tokenwise.  Disable: TOKENWISE_DISABLE=1 or TOKENWISE_OUTPUT=off.
+Every TOKENWISE_* setting can also be written TW_* (TW_HOME, TW_DISABLE): Codex and DSH drop
+variables whose names contain TOKEN from the shells they run, and TW_* gets through.
 `
+
+/** TW_HOME and the like, for shells that drop TOKEN-named variables; a TOKENWISE_* one set as well wins. */
+export function applyShortNames(env: NodeJS.ProcessEnv): void {
+  for (const [name, value] of Object.entries(env)) {
+    const full = `TOKENWISE_${name.slice(3)}`
+    if (name.startsWith('TW_') && name.length > 3 && env[full] === undefined) env[full] = value
+  }
+}
 
 function runArgs(argv: string[]) {
   const split = argv.indexOf('--')
@@ -95,6 +113,16 @@ async function dispatch(command: string | undefined, rest: string[]): Promise<nu
       return run(options)
     }
     case 'hook': return hook(rest[0])
+    case 'notice': {
+      // The OpenCode and Hermes plugins show this at a session's start; it never fails them. --peek prints it and leaves
+      // it to be told; --told then marks it told without printing, once the plugin has shown it.
+      try {
+        const host = rest.find(arg => !arg.startsWith('-'))
+        const text = host && NOTICE_HOSTS.has(host) ? startupNotice(host, process.env, { peek: rest.includes('--peek') }) : undefined
+        if (text && !rest.includes('--told')) process.stdout.write(text + '\n')
+      } catch { /* Nothing to say. */ }
+      return 0
+    }
     case 'report': {
       const { values } = parseArgs({ args: rest, options: { host: { type: 'string' }, session: { type: 'string' }, json: { type: 'boolean' } } })
       return report({ ...values.host === undefined ? {} : { host: values.host }, ...values.session === undefined ? {} : { session: values.session }, json: values.json === true })
@@ -146,6 +174,12 @@ async function dispatch(command: string | undefined, rest: string[]): Promise<nu
       return learnStart(values.learner)
     }
     case 'rules': return rules(rest.find(arg => !arg.startsWith('-')), rest.includes('--json'))
+    case 'checkup': return checkupCommand(rest.includes('--json'))
+    case 'preview': return previewCommand(rest.filter(arg => arg !== '--json').join(' ').trim() || undefined, rest.includes('--json'))
+    case 'teach': {
+      const args = rest.filter(arg => arg !== '--json')
+      return teachCommand(args[0], args.slice(1), rest.includes('--json'))
+    }
     case 'recall': {
       const { values, positionals } = parseArgs({ args: rest, allowPositionals: true, options: {
         query: { type: 'string' }, line: { type: 'string' }, original: { type: 'boolean' }, host: { type: 'string' }, session: { type: 'string' }, call: { type: 'string' },
@@ -175,5 +209,21 @@ async function dispatch(command: string | undefined, rest: string[]): Promise<nu
   }
 }
 
-const code = await main(process.argv.slice(2))
+applyShortNames(process.env)
+let code: number
+try {
+  code = await main(process.argv.slice(2))
+} catch (error) {
+  const failure = error as NodeJS.ErrnoException & { tokenwiseMessage?: string }
+  if (failure.tokenwiseMessage) {
+    process.stderr.write(`tokenwise: ${failure.tokenwiseMessage}\n`)
+  } else if (failure.code === 'EPERM' || failure.code === 'EACCES' || failure.code === 'EROFS') {
+    // Codex and DSH run an agent's commands in a sandbox that may not write outside the project.
+    process.stderr.write(`tokenwise: could not write ${failure.path ?? 'its data'} (${failure.code}). This agent seems to run commands in a sandbox: `
+      + 'run the same tokenwise command again with escalated permissions (outside the sandbox), so it can write there.\n')
+  } else {
+    throw error
+  }
+  code = 1
+}
 process.exitCode = code
