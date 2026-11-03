@@ -1,13 +1,16 @@
 /**
  * Learning from inside an agent: `tokenwise learn` starts a run in the
- * background (the plugins' /tokenwise:learn commands and the Codex skill call
+ * background (the plugins' /tokenwise:learn commands and the tokenwise skill call
  * it), `tokenwise learn status` and `cancel` follow it, and the startup notice
  * tells the user when recorded output is worth learning from or a run has
  * finished. The run is the same `runEvolution` that `tokenwise evolve` runs in
  * the foreground.
  */
+import { existsSync, rmSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { cancelEvolution, formatTokens, LEARNER_INSTRUCTION, LEARNERS, outcomeSentence, readEvolveStatus, refreshScan, startEvolution,
+import { cancelEvolution, formatTokens, LEARNER_INSTRUCTION, LEARNERS, outcomeRules, outcomeSentence, readEvolveStatus, refreshScan, startEvolution,
   takeAnnouncement, takeReadyNotice } from '@tokenwise/mechanisms'
 import type { BackgroundOptions } from '@tokenwise/mechanisms'
 import { cliContext } from './context.ts'
@@ -23,6 +26,34 @@ function runner(): BackgroundOptions {
 const LEARN_COMMAND: Readonly<Record<string, string>> = {
   claude: '/tokenwise:learn', codebuddy: '/tokenwise:learn', grok: '/tokenwise:learn', codex: '$tokenwise learn',
 }
+/** How each agent calls the tokenwise skill. */
+const SKILL_COMMAND: Readonly<Record<string, string>> = {
+  claude: '/tokenwise', codebuddy: '/tokenwise', grok: '/tokenwise', codex: '$tokenwise', hermes: '/tokenwise', opencode: '@tokenwise',
+}
+/** The agents that show `startupNotice`: through hooks, or (OpenCode, Hermes) their plugin calling `tokenwise notice`. */
+export const NOTICE_HOSTS: ReadonlySet<string> = new Set(Object.keys(SKILL_COMMAND))
+
+/** Where each learner keeps its own state. */
+function learnerHome(learner: string, env: NodeJS.ProcessEnv): string | undefined {
+  const home = homedir()
+  switch (learner) {
+    case 'dsh': return env.DSH_HOME || join(home, '.dsh')
+    case 'codex': return env.CODEX_HOME || join(home, '.codex')
+    case 'claude': return env.CLAUDE_CONFIG_DIR || join(home, '.claude')
+    case 'codebuddy': return join(home, '.codebuddy')
+    case 'grok': return join(home, '.grok')
+    case 'pi': return join(home, '.pi')
+    default: return undefined
+  }
+}
+
+/** Throws (EPERM, EACCES) when `dir` exists but cannot be written. */
+function checkWritable(dir: string | undefined): void {
+  if (dir === undefined || !existsSync(dir)) return
+  const probe = join(dir, `.tokenwise-write-check-${process.pid}`)
+  writeFileSync(probe, '')
+  rmSync(probe, { force: true })
+}
 
 export function learnStart(learner: string | undefined): number {
   const preset = learner === undefined ? undefined : LEARNERS[learner]
@@ -30,6 +61,9 @@ export function learnStart(learner: string | undefined): number {
     process.stderr.write(`tokenwise learn: choose the agent that learns with --learner ${Object.keys(LEARNERS).join('|')}\n`)
     return 2
   }
+  // Started from an agent's sandbox, the learner inherits it: check it can write its own state first (an
+  // error here asks, via main, for the command to be run again outside the sandbox).
+  checkWritable(learnerHome(learner, process.env))
   const { dataDir } = cliContext()
   const started = startEvolution(dataDir, { ...runner(), host: 'cli', learner: { argv: preset(LEARNER_INSTRUCTION, {}), shell: false, label: learner } })
   if ('error' in started) {
@@ -67,15 +101,27 @@ export function learnCancel(): number {
  * once when a learning run finished or when recorded output became worth
  * learning from. Undefined when there is nothing to say.
  */
-export function startupNotice(host: string, env: NodeJS.ProcessEnv = process.env): string | undefined {
+export function startupNotice(host: string, env: NodeJS.ProcessEnv = process.env, options: { peek?: boolean } = {}): string | undefined {
   // A learner's own session (and a disabled TokenWise) says nothing.
   if (env.TOKENWISE_DISABLE === '1') return undefined
   const { dataDir } = cliContext({ env })
   try { refreshScan(dataDir, { ...runner(), env }) } catch { /* The notice uses the last scan. */ }
-  const done = takeAnnouncement(dataDir, host)
+  const skill = SKILL_COMMAND[host] ?? 'the tokenwise skill'
+  // A peek leaves the notice to be told (a host that is not sure it can show it asks again once it has).
+  const peek = options.peek === true
+  const done = takeAnnouncement(dataDir, host, peek)
+  if (done?.outcome?.result === 'adopted') {
+    // The commands it now shortens better, as the checker found them; else the rules.
+    const commands = done.outcome.generalization?.commands ?? []
+    const what = commands.length ? `output from ${commands.slice(0, 3).join(', ')} is now shorter` : `${outcomeRules(done.outcome).join(', ')} now shorten output`
+    return `TokenWise learned something about your project: ${what} for every agent. See the before and after with ${skill}.`
+  }
   if (done?.outcome) return `TokenWise learning: ${outcomeSentence(done.outcome)}.`
-  const ready = takeReadyNotice(dataDir, host)
+  const ready = takeReadyNotice(dataDir, host, peek)
   if (!ready?.length) return undefined
   const names = ready.slice(0, 3).map(item => item.command).join(', ')
-  return `TokenWise: recorded output from ${names} is worth learning from. Run ${LEARN_COMMAND[host] ?? `tokenwise learn --learner ${host}`} to learn filters for it.`
+  // OpenCode and Hermes cannot be learners: the skill picks one when asked.
+  const learn = LEARN_COMMAND[host] ?? (Object.hasOwn(LEARNERS, host) ? `tokenwise learn --learner ${host}` : undefined)
+  return `TokenWise: output from ${names} keeps coming back long. Teach TokenWise about it with ${skill}`
+    + (learn ? `, or let it learn in the background with ${learn}.` : '.')
 }

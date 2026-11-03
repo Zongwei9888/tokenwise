@@ -59,6 +59,11 @@ CodeBuddy's own summary stays. (CodeBuddy 2.175 ignores messages a
 
 ## Learning
 
+`tokenwise setup` also installs the `tokenwise` skill: `/tokenwise` shows what
+TokenWise shortens and which commands are worth teaching it, and teaches it one
+with you (your agent writes the rule, shows you the before and after on your
+own output, and keeps it only when you say so).
+
 `/tokenwise:learn` starts a learning run in the background with this agent as
 the learner (`tokenwise learn --learner codebuddy`); `/tokenwise:learn status`
 and `/tokenwise:learn cancel` follow and stop it, and `/tokenwise:rules` lists

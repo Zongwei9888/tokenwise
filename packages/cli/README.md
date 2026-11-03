@@ -24,6 +24,10 @@ tokenwise evolve --learner pi|dsh|claude|codex|"<command>" [--since 7d] [--max-c
                                 with no output saving less, and every preservation requirement holds
 tokenwise rules [list|show|path|off|rollback] [--json]
                                 the adopted rules; new sessions on every host use the active set
+tokenwise checkup [--json]             what it shortens, its learned rules, and the commands worth teaching it
+tokenwise teach "<command>"            teach it one command from your own agent (the tokenwise skill runs this);
+                                then teach check | preview | keep | drop
+tokenwise preview "<command>"          a recorded output of that command: the original and what the model reads
 ```
 
 Requires Node.js 22 or newer. The package is a single self-contained file

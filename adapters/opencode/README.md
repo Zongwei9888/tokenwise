@@ -35,6 +35,20 @@ hook catches everything: an uncaught error would abort OpenCode's
 compaction. In a real run with two automatic compactions in one turn, the
 model answered from one recall.
 
+## The tokenwise skill and the startup notice
+
+`tokenwise setup opencode` also copies the tokenwise skill into
+`~/.config/opencode/skills`. Ask for it with `@tokenwise`: it shows what
+TokenWise shortens and which commands are worth teaching it, and teaches it
+one with you (your agent writes the rule, shows you the before and after on
+your own output, and keeps it only when you say so).
+
+When a session starts, a toast says once when a learning run has finished
+or when a command keeps coming back long (the text comes from `tokenwise
+notice opencode`, so it needs the `tokenwise` command; without it there is
+no toast). OpenCode cannot be the learner of a background run; the skill
+uses another installed agent for that.
+
 ## Install
 
 Build the bundle from a checkout (`pnpm install && pnpm build`), then copy it

@@ -31,7 +31,7 @@ export function toEvolveContext(context: CliContext): EvolveContext {
 }
 
 /** The command prefix the workspace's ./check and ./try run: this same tokenwise, with node, whatever the learner's PATH holds. */
-function checkerPrefix(): string[] {
+export function checkerPrefix(): string[] {
   return [process.execPath, ...process.execArgv, resolve(process.argv[1] ?? 'tokenwise'), 'evolve']
 }
 

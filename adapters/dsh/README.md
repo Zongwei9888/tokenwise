@@ -74,7 +74,8 @@ be written in the profile's `cordis.patch.yml`:
 
 TokenWise's own configuration (`~/.tokenwise/config.json`, a project's
 `.tokenwise/config.json`, `TOKENWISE_OUTPUT`, `TOKENWISE_COMPACTION`,
-`TOKENWISE_DISABLE=1`) can lower
+`TOKENWISE_DISABLE=1`; DSH leaves variables with TOKEN in their name out of
+the shells it runs, so there write them `TW_HOME`, `TW_DISABLE`) can lower
 this setting further but never raise it; see the
 [main README](https://github.com/HKUDS/TokenWise#for-agents-and-the-curious).
 

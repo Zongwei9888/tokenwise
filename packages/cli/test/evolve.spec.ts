@@ -55,6 +55,12 @@ echo "${name}: see evidence" > rules-work/CHANGELOG.md
   return `sh ${script}`
 }
 
+/** A stand-in for cargo: dependency progress the built-in cargo filter removes, then a finished line. */
+function cargo(dir: string) {
+  writeFileSync(join(dir, 'cargo'), '#!/bin/sh\ni=1; while [ "$i" -le 60 ]; do echo "   Compiling crate_$i v0.1.$i"; i=$((i + 1)); done\necho "    Finished dev [unoptimized] target(s) in 3.2s"\n')
+  chmodSync(join(dir, 'cargo'), 0o755)
+}
+
 const PROGRESS_RULE = "return tw.keepLines(input.raw, line => !/^\\[\\s*\\d+\\/\\d+\\] Compiling /.test(line.text), n => '[' + n + ' compile progress lines omitted]\\n')"
 
 describe('tokenwise evolve', () => {
@@ -102,7 +108,10 @@ describe('tokenwise evolve', () => {
     const home = temp(), cwd = project(), work = temp()
     tokenwise(['run', '-c', './build.sh'], { cwd, home })
     tokenwise(['run', '-c', 'cat module.py'], { cwd, home })
-    expect(tokenwise(['run', '-c', 'grep -rn value src'], { cwd, home }).out).toContain('omitted')
+    cargo(cwd)
+    expect(tokenwise(['run', '-c', './cargo build'], { cwd, home }).out).toContain('Cargo dependency progress rows omitted')
+    // What the agent looked up is not evidence either.
+    tokenwise(['run', '-c', 'grep -rn value src'], { cwd, home })
 
     // Squeezing blank lines would hit literal data in a source dump, but learned rules never see file contents:
     // the cat output is not evidence, and the source-dump requirements hold.
@@ -110,10 +119,10 @@ describe('tokenwise evolve', () => {
       "input.argv !== null"), '--json'], { cwd, home })
     expect(JSON.parse(blanks.out)).toMatchObject({ accepted: false, adopted: null, cases: 2, requirementFailures: [], reasons: ['no-incremental-token-gain'] })
 
-    // A rule that keeps nearly all of a grep the built-in filter shortens far more saves less there.
-    const greedy = tokenwise(['evolve', '--learner', learner(work, 'grep-lite', 'return tw.keepLines(input.raw, (line, i) => i >= 8)', "input.argv && input.argv[0] === 'grep'"), '--json'], { cwd, home })
+    // A rule that keeps nearly all of a build the built-in filter shortens far more saves less there.
+    const greedy = tokenwise(['evolve', '--learner', learner(work, 'cargo-lite', 'return tw.keepLines(input.raw, (line, i) => i >= 8)', "input.argv && input.argv[0] === './cargo'"), '--json'], { cwd, home })
     expect(JSON.parse(greedy.out)).toMatchObject({ accepted: false, adopted: null, reasons: ['no-incremental-token-gain', 'replay-token-regression'],
-      regressions: [{ command: 'grep -rn value src' }] })
+      regressions: [{ command: './cargo build' }] })
 
     // A rule that throws is a rule error.
     const broken = tokenwise(['evolve', '--learner', learner(work, 'broken', "throw new Error('boom')"), '--json'], { cwd, home })
@@ -144,10 +153,11 @@ describe('tokenwise evolve', () => {
   it('verifies against its own record of the evidence, and stops whatever the learner left running', () => {
     const home = temp(), cwd = project(), work = temp()
     tokenwise(['run', '-c', './build.sh'], { cwd, home })
-    expect(tokenwise(['run', '-c', 'grep -rn value src'], { cwd, home }).out).toContain('omitted')
-    // A learner that shadows the built-in grep filter (a regression there) and hides that observation from the checker file.
+    cargo(cwd)
+    expect(tokenwise(['run', '-c', './cargo build'], { cwd, home }).out).toContain('omitted')
+    // A learner that shadows the built-in cargo filter (a regression there) and hides that observation from the checker file.
     const script = join(work, 'tamper.sh')
-    writeFileSync(script, `${readFileSync(learner(work, 'grep-lite', 'return tw.keepLines(input.raw, (line, i) => i >= 8)', "input.argv && (input.argv[0] === 'grep' || input.argv[0] === './build.sh')").slice(3), 'utf8')}
+    writeFileSync(script, `${readFileSync(learner(work, 'cargo-lite', 'return tw.keepLines(input.raw, (line, i) => i >= 8)', "input.argv && (input.argv[0] === './cargo' || input.argv[0] === './build.sh')").slice(3), 'utf8')}
 node -e "const f='../checker.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.caseIds=s.caseIds.slice(0,1);require('fs').writeFileSync(f,JSON.stringify(s))"
 (sleep 30; echo late > rules-work/late.txt) &
 `)

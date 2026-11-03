@@ -17,7 +17,7 @@ import {
 } from '@tokenwise/mechanisms'
 import type { ShadowMessage, ShadowStore } from '@tokenwise/mechanisms'
 import type { ArtifactPort } from '@tokenwise/protocol'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { ensurePrivateDir, pathSegment } from '@tokenwise/store'
 import { cliContext } from './context.ts'
@@ -77,6 +77,13 @@ export function keepPending(host: string, sessionId: string, text: string): void
   const path = pendingPath(writable.dataDir, host, sessionId)
   ensurePrivateDir(dirname(path))
   writeFileSync(path, text, { mode: 0o600 })
+  // A session that ended before its next chance leaves its file: those go after a week.
+  try {
+    for (const name of readdirSync(dirname(path))) {
+      const file = join(dirname(path), name)
+      if (Date.now() - statSync(file).mtimeMs > 7 * 86_400_000) rmSync(file, { force: true })
+    }
+  } catch { /* Housekeeping only. */ }
 }
 
 /** The waiting catalog, removed as it is read, so it is delivered once. */

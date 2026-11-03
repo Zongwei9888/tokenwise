@@ -7,7 +7,9 @@ const json = (path: string) => JSON.parse(readFileSync(new URL(path, root), 'utf
 describe('Codex plugin layout', () => {
   it('declares the Bash PreToolUse hook, the SessionStart hooks (startup check, compact) and the recall MCP server', () => {
     const manifest = json('.codex-plugin/plugin.json')
-    expect(manifest).toMatchObject({ name: 'tokenwise', hooks: './hooks/hooks.json', skills: './skills/', mcpServers: './.mcp.json' })
+    expect(manifest).toMatchObject({ name: 'tokenwise', hooks: './hooks/hooks.json', mcpServers: './.mcp.json' })
+    // The skill comes from tokenwise setup (~/.agents/skills), as for every agent; a second copy here would show twice.
+    expect(manifest.skills).toBeUndefined()
     const hooks = json('hooks/hooks.json')
     expect(Object.keys(hooks).sort()).toEqual(['description', 'hooks'])
     expect(hooks.hooks).toEqual({
@@ -20,12 +22,5 @@ describe('Codex plugin layout', () => {
     })
     // The model sees the tool as mcp__<server>__<tool>; the catalog names it so.
     expect(json('.mcp.json').mcpServers).toEqual({ tokenwise: { command: 'tokenwise', args: ['mcp', '--host', 'codex'] } })
-  })
-
-  it('has a tokenwise skill that learns with Codex outside the sandbox', () => {
-    const skill = readFileSync(new URL('skills/tokenwise/SKILL.md', root), 'utf8')
-    expect(skill).toMatch(/^---\nname: tokenwise\ndescription: .+\n---\n/u)
-    for (const command of ['tokenwise learn --learner codex', 'tokenwise learn status', 'tokenwise learn cancel', 'tokenwise rules rollback']) expect(skill).toContain(`\`${command}\``)
-    expect(skill).toContain('request\nescalated permissions')
   })
 })

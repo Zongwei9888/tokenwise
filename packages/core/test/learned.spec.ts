@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compileLearnedRules, createPolicy, decideShellProjection, parseRuleIndex, readsFileContent, ruleDirectoryHash, RuleDirectoryError } from '../src/index.ts'
+import { compileLearnedRules, createPolicy, decideShellProjection, looksUp, parseRuleIndex, readsFileContent, ruleDirectoryHash, RuleDirectoryError } from '../src/index.ts'
 import type { RuleFile } from '../src/index.ts'
 
 const index = (rules: { id: string; file?: string; transformation?: string }[]) =>
@@ -123,11 +123,25 @@ describe('learned rules', () => {
 describe('file contents', () => {
   it('recognizes commands that print the files they read, but not a pipe trimming other output', () => {
     for (const command of ['cat data.txt', 'head -50 src/a.ts', 'sed -n 10,40p f.py', 'LC_ALL=C tail -n 20 log.txt', '/bin/cat x', 'cd app && cat README.md',
-      'find . -name "*.md" -exec cat {} \;', 'xargs cat < list', 'echo $(cat VERSION)', 'cat a | grep b', 'jq . package.json', 'bat src/main.rs']) {
+      'find . -name "*.md" -exec cat {} \;', 'xargs cat < list', 'echo $(cat VERSION)', 'cat a | grep b', 'jq . package.json', 'bat src/main.rs',
+      'for L in 10 20; do sed -n "${L},+5p" notes.md; done', 'if true; then head -5 a.txt; fi']) {
       expect(readsFileContent(command), command).toBe(true)
     }
-    for (const command of ['pytest -q', 'git log | head -20', 'pytest 2>&1 | tail -50', 'grep -rn cat src', 'npm run build | sed s/a/b/', 'concat.sh', 'ls -la', 'echo cat']) {
+    for (const command of ['pytest -q', 'git log | head -20', 'pytest 2>&1 | tail -50', 'grep -rn cat src', 'npm run build | sed s/a/b/', 'concat.sh', 'ls -la', 'echo cat',
+      'git commit -m "fix; cat notes"', "echo 'a && head b'"]) {
       expect(readsFileContent(command), command).toBe(false)
+    }
+  })
+
+  it('recognizes commands that look something up, but not a pipe filtering a build or a git command that changes things', () => {
+    for (const command of ['grep -rn foo src', 'rg TODO', '/usr/bin/grep x y', 'ls -la', 'sudo ls /', 'FOO=1 rg x', 'find . -name "*.ts"', 'git diff HEAD~1',
+      'git -C repo log --oneline', 'cd app && git status', 'git show abc123', './build.sh && ls', 'curl -sL https://example.com', 'for f in a b; do grep x $f; done', 'tmux send-keys -t a Enter; sleep 2; tmux capture-pane -p -t a',
+      'nice -n 10 grep -r x .', 'timeout 5 rg TODO', 'env -i ls']) {
+      expect(looksUp(command), command).toBe(true)
+    }
+    for (const command of ['./build.sh 100', 'make test | grep FAIL', 'npm test', 'cargo build', 'python3 -m pytest', 'git push', 'git commit -m "fix diff"',
+      'git fetch', 'echo diff', 'make e2e', 'echo "a; ls b"', "make test && echo 'done | grep'", 'git commit -m "x\\" && ls"']) {
+      expect(looksUp(command), command).toBe(false)
     }
   })
 

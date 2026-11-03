@@ -126,6 +126,38 @@ export function isPackageTestCommand(argv: readonly string[]): boolean {
 const FILE_READERS = new Set(['cat', 'tac', 'nl', 'head', 'tail', 'less', 'more', 'bat', 'batcat', 'sed', 'xxd', 'od', 'hexdump', 'strings', 'jq', 'yq'])
 /** Words that run the program after them. */
 const WRAPPERS = new Set(['sudo', 'env', 'command', 'time', 'nice', 'nohup', 'xargs', 'exec', '-exec', '-execdir'])
+/** Shell words a command can follow in a loop, a condition or a group (`for f in *; do cat "$f"; done`). */
+const KEYWORDS = new Set(['do', 'then', 'else', 'elif', '{', '(', '!'])
+
+/**
+ * The steps of a shell command: split at `|`, `||`, `&&`, `;`, newlines, `$(`
+ * and backticks outside quotes (`echo "a; ls b"` is one step). `afterPipe`:
+ * the step reads the previous one's output.
+ */
+export function commandSteps(command: string): { text: string; afterPipe: boolean }[] {
+  const steps: { text: string; afterPipe: boolean }[] = []
+  let text = '', quote: string | undefined, afterPipe = false
+  const end = (pipe: boolean) => { steps.push({ text, afterPipe }); text = ''; afterPipe = pipe }
+  for (let i = 0; i < command.length; i++) {
+    const char = command[i]!
+    if (quote) {
+      if (char === '\\' && quote === '"' && i + 1 < command.length) { text += char + command[++i]; continue }
+      if (char === quote) quote = undefined
+      text += char
+      continue
+    }
+    if (char === '\\' && i + 1 < command.length) { text += char + command[++i]; continue }
+    if (char === '"' || char === "'") { quote = char; text += char; continue }
+    const two = command.slice(i, i + 2)
+    if (two === '||' || two === '&&') { end(false); i++; continue }
+    if (two === '$(') { end(false); i++; continue }
+    if (char === '|') { end(true); continue }
+    if (char === ';' || char === '\n' || char === '`') { end(false); continue }
+    text += char
+  }
+  steps.push({ text, afterPipe })
+  return steps
+}
 
 /**
  * Whether any program in the command prints file contents (`cat`, `head`,
@@ -134,15 +166,44 @@ const WRAPPERS = new Set(['sudo', 'env', 'command', 'time', 'nice', 'nohup', 'xa
  */
 export function readsFileContent(command: string): boolean {
   const program = (word: string) => word.replace(/^["']|["']$/gu, '').replace(/^.*\//u, '')
-  const parts = command.split(/(\|\|?|&&|;|\$\(|`|\n)/u)
-  for (let p = 0; p < parts.length; p += 2) {
+  for (const { text, afterPipe } of commandSteps(command)) {
     // After a pipe, head, tail or sed trim another command's output; they read no file.
-    if (parts[p - 1] === '|') continue
-    const words = parts[p]!.trim().split(/\s+/u)
+    if (afterPipe) continue
+    const words = text.trim().split(/\s+/u)
     // Skip VAR=value assignments; the first other word runs, and so does any word after a wrapper.
     let first = 0
-    while (first < words.length - 1 && /^[A-Za-z_]\w*=/u.test(words[first]!)) first++
+    while (first < words.length - 1 && (/^[A-Za-z_]\w*=/u.test(words[first]!) || KEYWORDS.has(words[first]!))) first++
     if (words.some((word, i) => (i === first || i > 0 && WRAPPERS.has(words[i - 1]!)) && FILE_READERS.has(program(word)))) return true
+  }
+  return false
+}
+
+/** Programs whose output is what the agent asked to see (search results, listings, diffs, history, a fetched page): any line can be the answer. */
+const LOOKUPS = new Set(['grep', 'egrep', 'fgrep', 'rg', 'ag', 'ack', 'ls', 'tree', 'find', 'fd', 'locate', 'awk', 'gawk', 'cut', 'sort', 'uniq', 'wc',
+  'diff', 'cmp', 'comm', 'du', 'df', 'stat', 'file', 'which', 'whereis', 'env', 'printenv', 'ps', 'lsof', 'curl', 'wget', 'http', 'https', 'xh'])
+/** git with an option or two, then a subcommand that shows history, changes or state. */
+const GIT_LOOKUP = /^git(?:\s+-\S+(?:\s+[^-\s]\S*)?)*\s+(?:diff|show|log|blame|grep|ls-files|ls-tree|cat-file|reflog|shortlog|status|branch|tag|remote|config)(?:\s|$)/u
+
+/**
+ * Whether any program in the command looks something up for the agent (`grep`, `ls`, `find`, `git diff`, ...),
+ * not counting one that reads a pipe (`make test | grep FAIL` filters a build's output). Like file contents,
+ * its output is the answer the agent asked for, so learned rules leave it alone; built-in filters are unaffected.
+ */
+export function looksUp(command: string): boolean {
+  for (const { text, afterPipe } of commandSteps(command)) {
+    if (afterPipe) continue
+    const words = text.trim().split(/\s+/u).map(word => word.replace(/^["']|["']$/gu, ''))
+    let first = 0, wrapped = false
+    // Past assignments, keywords and wrappers, with a wrapper's options and numbers (`nice -n 10`, `timeout 5`).
+    while (first < words.length - 1) {
+      const word = words[first]!
+      if (WRAPPERS.has(word) || word === 'timeout') wrapped = true
+      else if (!(/^[A-Za-z_]\w*=/u.test(word) || KEYWORDS.has(word) || wrapped && /^(?:-|\d)/u.test(word))) break
+      first++
+    }
+    const program = (words[first] ?? '').replace(/^.*\//u, '')
+    if (LOOKUPS.has(program) || program === 'git' && GIT_LOOKUP.test(['git', ...words.slice(first + 1)].join(' '))
+      || program === 'tmux' && words.includes('capture-pane')) return true
   }
   return false
 }

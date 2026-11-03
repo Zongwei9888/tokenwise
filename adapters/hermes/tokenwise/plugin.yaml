@@ -5,3 +5,4 @@ author: "TokenWise (https://github.com/HKUDS/TokenWise)"
 provides_hooks:
   - pre_tool_call
   - transform_terminal_output
+  - on_session_start

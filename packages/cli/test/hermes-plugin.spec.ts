@@ -60,12 +60,56 @@ print(json.dumps({"hooks": hooks, "out": tokenwise._transform(command="pytest", 
     expect(run(`command="pytest", output=${JSON.stringify(output)}, returncode=0`, { TOKENWISE_BIN: stub('not json').script })).toBe('null')
   }, 30_000) // Seven Python processes: past the default 5 s on a loaded machine.
 
+  it('posts the startup notice into the session that started, when Hermes can post', () => {
+    const tokenwise = stub('TokenWise: output from make keeps coming back long.')
+    const result = plugin(`ARGV_PATH = ${JSON.stringify(join(tokenwise.script, '..', 'argv'))}
+import threading, time
+hooks, posted, done = {}, [], threading.Event()
+class Handle:
+    ok = True
+class Ctx:
+    def register_hook(self, name, fn): hooks[name] = fn
+    def post_message(self, text): posted.append(text); return Handle()
+tokenwise.register(Ctx())
+hooks["on_session_start"](session_id="s1", model="m", platform="cli")
+for _ in range(100):
+    if posted and __import__("os").path.exists(ARGV_PATH) and open(ARGV_PATH).read().strip() == "notice hermes --told": break
+    time.sleep(0.1)
+class Old:
+    def register_hook(self, name, fn): hooks.setdefault("old", []).append(name)
+tokenwise.register(Old())
+print(json.dumps({"hooks": sorted(k for k in hooks if k != "old"), "old": hooks["old"], "posted": posted}))`, { TOKENWISE_BIN: tokenwise.script })
+    // A Hermes without post_message gets no session hook.
+    expect(JSON.parse(result)).toEqual({ hooks: ['on_session_start', 'pre_tool_call', 'transform_terminal_output'], old: ['pre_tool_call', 'transform_terminal_output'],
+      posted: ['TokenWise: output from make keeps coming back long.'] })
+    // Told only once posted.
+    expect(tokenwise.argv()).toBe('notice hermes --told')
+    const refused = stub('TokenWise: hello')
+    plugin(`
+class Handle:
+    ok = False
+class Ctx:
+    def register_hook(self, name, fn):
+        if name == "on_session_start": self.start = fn
+    def post_message(self, text): return Handle()
+ctx = Ctx()
+tokenwise.register(ctx)
+import threading
+ctx.start(session_id="s2")
+for t in threading.enumerate():
+    if t.name == "tokenwise-notice": t.join(10)`, { TOKENWISE_BIN: refused.script })
+    expect(refused.argv()).toBe('notice hermes --peek')
+    // Nothing to say, or no tokenwise: nothing is posted.
+    expect(plugin('print(tokenwise._notice())', { TOKENWISE_BIN: stub('').script })).toBe('None')
+    expect(plugin('print(tokenwise._notice())', { TOKENWISE_BIN: join(temp(), 'missing') })).toBe('None')
+  })
+
   it('declares its hooks in the manifest Hermes reads', () => {
     const manifest = readFileSync(join(adapter, 'tokenwise', 'plugin.yaml'), 'utf8')
     const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version as string
     expect(manifest).toContain('name: tokenwise\n')
     expect(manifest).toContain(`version: "${version}"\n`)
-    expect(manifest).toContain('provides_hooks:\n  - pre_tool_call\n  - transform_terminal_output\n')
+    expect(manifest).toContain('provides_hooks:\n  - pre_tool_call\n  - transform_terminal_output\n  - on_session_start\n')
   })
 })
 

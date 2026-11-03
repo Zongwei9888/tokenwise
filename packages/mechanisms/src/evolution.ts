@@ -1,4 +1,4 @@
-import { createPolicy, decideShellProjection, estimateTokens as defaultEstimate, readsFileContent, sha256 } from '@tokenwise/core'
+import { createPolicy, decideShellProjection, estimateTokens as defaultEstimate, looksUp, readsFileContent, sha256 } from '@tokenwise/core'
 import type { EconomyPolicy, LearnedRuleSet, ShellResult, TokenEstimator } from '@tokenwise/core'
 import type { ArtifactPort, EconomyRecord, JournalRecord } from '@tokenwise/protocol'
 
@@ -38,10 +38,36 @@ function shellWords(command: string): string[] {
   return words
 }
 
-const SETUP = new Set(['cd', 'pushd', 'popd', 'export', 'source', '.', 'set', 'unset', 'env', 'true', 'clear', 'echo'])
+const SETUP = new Set(['cd', 'pushd', 'popd', 'export', 'source', '.', 'set', 'unset', 'true', 'clear', 'echo',
+  'sleep', 'wait', 'mkdir', 'touch', 'chmod', 'rm', 'cp', 'mv', 'ln', 'kill', 'pkill', '[', '[[', 'test', 'continue', 'break', 'return', ':'])
 /** Shell syntax, not programs: a stage that opens or closes a loop or a condition names none, and these lead into one that does. */
 const SYNTAX = new Set(['for', 'while', 'until', 'if', 'elif', 'case', 'select', 'function', 'done', 'fi', 'esac', '}', ')'])
 const LEADERS = new Set(['do', 'then', 'else', '{', '(', '!'])
+/**
+ * Programs that run the command after them, with their own options first (and `timeout`'s duration): for each,
+ * the options followed by a value (`nice -n 10`, `sudo -u pg`, `timeout -s KILL`, `env -u NAME`, `time -o file`).
+ */
+const WRAPPERS: ReadonlyMap<string, ReadonlySet<string>> = new Map(Object.entries({
+  time: ['-o', '-f', '--output', '--format'], sudo: ['-u', '-g', '-p', '-C', '-h', '-U', '--user', '--group', '--prompt'], nice: ['-n', '--adjustment'],
+  nohup: [], command: [], exec: ['-a'], env: ['-u', '-C', '-S', '--unset', '--chdir'], timeout: ['-s', '-k', '--signal', '--kill-after'],
+}).map(([name, values]) => [name, new Set(values)]))
+
+/** Where the program of a pipeline stage starts: past leading syntax, assignments and wrappers with their options. */
+function programStart(stage: readonly string[]): number {
+  let at = 0
+  while (at < stage.length) {
+    const word = stage[at]!
+    if (LEADERS.has(word) || /^[A-Za-z_][A-Za-z0-9_]*=/u.test(word)) { at++; continue }
+    const values = WRAPPERS.get(word)
+    if (!values || at + 1 >= stage.length) break
+    // `command -v x` looks a name up: nothing of its own to group.
+    if (word === 'command' && /^-[vV]$/u.test(stage[at + 1]!)) return stage.length
+    at++
+    while (at < stage.length && stage[at]!.startsWith('-')) at += values.has(stage[at]!) ? 2 : 1
+    if (word === 'timeout' && /^\d/u.test(stage[at] ?? '')) at++
+  }
+  return at
+}
 
 /**
  * The tool a command runs, for grouping observations: the program that
@@ -61,15 +87,34 @@ export function commandHead(command: string): string {
   const stages = segments.map(segment => {
     const pipe = segment.indexOf('|')
     const first = pipe < 0 ? segment : segment.slice(0, pipe)
-    let at = 0
-    while (at < first.length && (LEADERS.has(first[at]!) || /^[A-Za-z_][A-Za-z0-9_]*=/u.test(first[at]!))) at++
+    const at = programStart(first)
     return SYNTAX.has(first[at] ?? '') ? [] : first.slice(at)
   }).filter(stage => stage.length > 0)
   const stage = stages.find(item => !SETUP.has(item[0]!)) ?? stages.at(-1) ?? []
   let [program = '', next, third] = stage
   if (program === 'npx' || program === 'bunx' || program === 'uvx') { program = next ?? program; next = third }
-  if (/^python[0-9.]*$/u.test(program) && next === '-m' && third) return `${program} -m ${third}`
+  // One tool whichever interpreter runs it: ~/venv/bin/python -m pytest is python -m pytest.
+  const interpreter = program.replace(/^.*\//u, '')
+  if (/^python[0-9.]*$/u.test(interpreter) && next === '-m' && third) return `${interpreter} -m ${third}`
+  // A script with a subcommand is a tool of its own (`python manage.py test`); `node --test` is Node's test runner.
+  if (INTERPRETERS.test(interpreter) && next && /^[\w./-]+\.(?:py|js|mjs|cjs|ts|rb|pl|php)$/u.test(next) && third && /^[a-z][a-z0-9:-]*$/u.test(third)) {
+    return `${interpreter} ${next} ${third}`
+  }
+  if (interpreter === 'node' && next === '--test') return 'node --test'
   return next !== undefined && /^[a-z][a-z0-9-]*$/u.test(next) ? `${program} ${next}` : program
+}
+
+const INTERPRETERS = /^(?:python[0-9.]*|node|ruby|perl|php|deno|bun)$/u
+
+/**
+ * An interpreter or wrapper run on its own (`python3 script.py`, `node -e …`, `bash -c …`): its output is
+ * whatever the script prints, with no format to learn. With a subcommand or module (`python3 -m pytest`) it is a tool.
+ */
+const GENERIC = /^(?:python[0-9.]*|node|bash|sh|zsh|fish|ruby|perl|php|deno|bun|lua|osascript|eval|exec|xargs|sudo|time|timeout|env|nohup|watch)$/u
+
+/** Whether a command head is an interpreter or wrapper run on its own: whatever its script prints, with no format to learn. */
+export function scriptRun(head: string): boolean {
+  return GENERIC.test(head.replace(/^.*\//u, ''))
 }
 
 export interface EvidenceCase {
@@ -98,8 +143,10 @@ export function collectEvidence(records: Iterable<JournalRecord>, artifacts: Art
     const record = item as EconomyRecord
     if (!record.raw?.stored || !record.layout || record.layout.truncated || record.layout.interrupted || record.exitCode === null) continue
     if (since && record.time < since) continue
-    // Learned rules never touch file contents, so there is nothing to learn from them.
-    if (readsFileContent(record.command)) continue
+    // Learned rules never touch file contents or what the agent looked up, so there is nothing to learn from them.
+    if (readsFileContent(record.command) || looksUp(record.command)) continue
+    // TokenWise's own output (checkups, previews, a rule being taught) is not something to learn from.
+    if (/^(?:\S*\/)?(?:tokenwise|tw)(?: |$)/u.test(commandHead(record.command))) continue
     const id = `${record.raw.sha256.slice(0, 16)}-${sha256(record.command).slice(0, 8)}`
     const known = byId.get(id)
     if (known) { known.occurrences++; continue }
