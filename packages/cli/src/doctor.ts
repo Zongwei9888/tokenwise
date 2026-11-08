@@ -1,6 +1,7 @@
 import { economyCoverage, ECONOMY_RUNTIME_VERSION } from '@tokenwise/core'
 import { HOST_PROFILES, V0_2_SPECS, negotiate } from '@tokenwise/protocol'
 import { cliContext, onPath } from './context.ts'
+import { checkAgents, describeAgents } from './check.ts'
 
 export const VERSION = '0.3.0'
 
@@ -17,7 +18,8 @@ export function doctor(options: { json?: boolean } = {}): number {
   const result = {
     version: VERSION, runtimeVersion: ECONOMY_RUNTIME_VERSION, node: process.version, dataDir: context.dataDir,
     dataDirs: context.dataDirs, writableDataDir: writable?.dataDir ?? null, lcOnPath: onPath('tokenwise') ?? null,
-    config: { ...config, sources, problems }, filters: economyCoverage().filters.length, hosts,
+    config: { ...config, sources, problems }, filters: economyCoverage().filters.length,
+    agents: checkAgents(context.dataDirs), hosts,
   }
   if (options.json) { process.stdout.write(JSON.stringify(result, null, 2) + '\n'); return problems.length ? 1 : 0 }
   const lines = [
@@ -31,6 +33,8 @@ export function doctor(options: { json?: boolean } = {}): number {
     `  evolution   evidence=${config.economy.evidence ? 'kept (every complete shell output, except credential-looking ones)' : 'off'} learnedRules=${config.economy.learnedRules ? 'on' : 'off'}`,
   ]
   for (const problem of problems) lines.push(`  ! ${problem} (output filtering and compaction are off until this is fixed)`)
+  const agents = describeAgents(result.agents)
+  if (agents.length) lines.push('', 'Your agents (tokenwise doctor --probe asks each one to run a command, to be sure)', ...agents)
   for (const host of hosts) {
     lines.push('', `${host.name} [${host.integration}]`)
     for (const item of host.mechanisms) lines.push(`  ${item.mechanism.padEnd(22)} ${item.mode.padEnd(8)} ${item.reason}`)

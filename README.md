@@ -43,8 +43,9 @@ agent uses it. If an agent keeps having to look past a rule, the rule switches
 itself off, and any adoption can be undone.
 On tasks it has never seen, the learned rules save another 12–27% of tokens.
 
-**Teach it yourself.** Type `/tokenwise` in your agent (`$tokenwise` in Codex)
-and it shows which of your commands still print long output. Pick one: your
+**Teach it yourself.** Type `/tokenwise` in your agent (`$tokenwise` in Codex,
+`@tokenwise` in OpenCode and DeepSeek Harness, `/skill:tokenwise` in pi) and it
+shows which of your commands still print long output. Pick one: your
 agent writes the rule, shows you what the model would read before and after on
 your own recorded output, and keeps it only when you say so. Your agents also
 tell you when a command keeps coming back long.
@@ -89,7 +90,7 @@ allows, so the depth varies a little; the details are under [How each agent is c
 
 Give your agent this repository and ask:
 
-> Install TokenWise for every agent on this machine.
+> Install TokenWise for every agent on this machine, and check each one uses it.
 
 Or do it yourself (Node.js 22 and pnpm; TokenWise is not on npm yet):
 
@@ -98,12 +99,15 @@ git clone https://github.com/HKUDS/TokenWise.git
 cd TokenWise && pnpm install && pnpm build
 npm install -g ./packages/cli
 tokenwise setup        # finds your agents and adds TokenWise to each
+tokenwise doctor --probe   # asks each agent to run one command and checks TokenWise saw it
 ```
 
 There is nothing to configure: it works from the next command. To see what it
 does for you, or to teach it one of your commands, type `/tokenwise` in your
-agent (`$tokenwise` in Codex).
-`tokenwise report` shows what was saved; `tokenwise uninstall` takes it out again.
+agent (`$tokenwise` in Codex, `@tokenwise` in OpenCode and DeepSeek Harness,
+`/skill:tokenwise` in pi).
+`tokenwise doctor` shows, for each agent, whether TokenWise is on and when it last
+saw a command; `tokenwise report` shows what was saved; `tokenwise uninstall` takes it out again.
 
 ## ✨ Technical highlights
 
@@ -186,7 +190,7 @@ tokenwise run -c 'cargo test'
 | Any agent or shell | `tokenwise run`, recall over MCP | `tokenwise learn` |
 
 Every agent also gets the `tokenwise` skill: `/tokenwise`, `$tokenwise` in Codex,
-`/skill:tokenwise` in pi. Each agent's folder under [`adapters/`](adapters) has the details;
+`@tokenwise` in OpenCode and DeepSeek Harness, `/skill:tokenwise` in pi. Each agent's folder under [`adapters/`](adapters) has the details;
 [docs/adapters.md](docs/adapters.md) shows how to connect another agent.
 
 </details>
@@ -207,7 +211,7 @@ Every agent also gets the `tokenwise` skill: `/tokenwise`, `$tokenwise` in Codex
 | `tokenwise filters` | every built-in rule and what it guarantees to keep |
 | `tokenwise recall <id>` | read a set-aside original back |
 | `tokenwise run -c '<command>'` | run any command through TokenWise |
-| `tokenwise doctor` | configuration, and what each agent supports |
+| `tokenwise doctor [--probe]` | whether TokenWise works in each of your agents (`--probe`: each runs one command to prove it), configuration, what each agent supports |
 
 `tw` works in place of `tokenwise` everywhere.
 

@@ -162,6 +162,13 @@ describe('CodeBuddy hook', () => {
     expect(codebuddyHook(event('pytest', { hook_event_name: 'PostToolUse' }), env)).toBeUndefined()
     expect(codebuddyHook(event("tokenwise run -c 'pytest'"), env)).toBeUndefined()
   })
+
+  it('wraps the command tokenwise doctor --probe asks for, and only that one of its own', () => {
+    const env = withLc(temp())
+    expect(JSON.parse(codebuddyHook(event('tokenwise probe tw0123abcd'), env)!).hookSpecificOutput.updatedInput.command)
+      .toBe("tokenwise run --host codebuddy --session cb-session --call call_00_x -c 'tokenwise probe tw0123abcd'")
+    for (const command of ['tokenwise probe tw0123abcd; rm -rf x', 'tokenwise probe', 'tokenwise rules']) expect(codebuddyHook(event(command), env), command).toBeUndefined()
+  })
 })
 
 describe('Grok hook', () => {

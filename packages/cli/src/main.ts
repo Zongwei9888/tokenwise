@@ -4,6 +4,7 @@ import type { EconomyFilterName } from '@tokenwise/core'
 import { FileArtifactStore } from '@tokenwise/store'
 import { cliContext } from './context.ts'
 import { doctor, VERSION } from './doctor.ts'
+import { checkAgents, knownAgent, probeAgents, probeTargets } from './check.ts'
 import { evolve, evolveCheck, evolveTry, rules } from './evolve.ts'
 import { hook } from './hook.ts'
 import { learnCancel, learnStart, learnStatus, NOTICE_HOSTS, startupNotice } from './learn.ts'
@@ -32,7 +33,8 @@ Usage:
   tokenwise filters [--json]              list output filters and what each preserves
   tokenwise show <sha256>                 print a saved original output
   tokenwise gc [--days N]                 delete saved originals older than N days
-  tokenwise doctor [--json]               configuration and per-host capability negotiation
+  tokenwise doctor [--json]               configuration, whether each of your agents works, per-host capabilities
+  tokenwise doctor --probe [agent...]     ask each agent to run one command and check TokenWise saw it (uses a little of each agent's model)
   tokenwise evolve --learner pi|dsh|claude|codex|codebuddy|grok|"<command>" [--since 7d] [--max-cases N] [--timeout 30m] [--dry-run] [--json]
                                    learn output rules from recorded evidence; adopt them only if verified
   tokenwise learn --learner pi|dsh|claude|codex|codebuddy|grok
@@ -150,7 +152,25 @@ async function dispatch(command: string | undefined, rest: string[]): Promise<nu
       process.stdout.write(`removed ${removed} saved originals older than ${days} days\n`)
       return 0
     }
-    case 'doctor': return doctor({ json: rest.includes('--json') })
+    case 'doctor': {
+      if (!rest.includes('--probe')) return doctor({ json: rest.includes('--json') })
+      const named = rest.filter(arg => !arg.startsWith('-'))
+      const unknown = named.filter(id => !knownAgent(id))
+      if (unknown.length) { process.stderr.write(`tokenwise doctor: unknown agent ${unknown.join(', ')} (one of ${AGENTS.map(agent => agent.id).join(', ')})\n`); return 2 }
+      const context = cliContext()
+      const ids = probeTargets(named, checkAgents(context.dataDirs))
+      if (!ids.length) { process.stdout.write('No agent is set up yet: tokenwise setup\n'); return 1 }
+      process.stdout.write(`Asking ${ids.length === 1 ? 'one agent' : `${ids.length} agents`} to run one command; this takes up to a few minutes...\n`)
+      const results = await probeAgents(ids, { dataDirs: context.dataDirs })
+      for (const result of results) process.stdout.write(`  ${result.ok === undefined ? '·' : result.ok ? '✓' : '✗'}  ${result.name}: ${result.detail}\n`)
+      return results.some(result => result.ok === false) ? 1 : 0
+    }
+    case 'probe':
+      // What `tokenwise doctor --probe` asks an agent to run: proof that TokenWise saw the agent's command.
+      // Long enough that every agent's plugin looks at it (Hermes's skips output under 256 characters).
+      process.stdout.write(`TokenWise probe ${rest[0] ?? ''}: this agent's commands go through TokenWise.\n`
+        + Array.from({ length: 12 }, (_, i) => `  probe line ${i + 1} of 12, for tokenwise doctor --probe\n`).join(''))
+      return 0
     case 'evolve': {
       if (rest[0] === 'check' || rest[0] === 'try') {
         const { values, positionals } = parseArgs({ args: rest.slice(1), allowPositionals: true, options: { workspace: { type: 'string' }, json: { type: 'boolean' } } })
