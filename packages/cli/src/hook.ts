@@ -58,6 +58,8 @@ export function eventHost(input: HookInput, env: NodeJS.ProcessEnv = process.env
  * leave it alone: empty or huge scripts, scripts already wrapped, patches, a
  * script no filter could shorten, no `tokenwise` on PATH, or Economy off.
  */
+const PROBE = /^\s*(?:\S*\/)?tokenwise probe tw[0-9a-f]{8}\s*$/u
+
 function wrapScript(host: HookHost, input: HookInput, env: NodeJS.ProcessEnv, options: { normalize: boolean; tool: string }): string | undefined {
   const script = input.tool_input?.command
   if (typeof script !== 'string' || script.trim() === '' || script.length > 65_536) return undefined
@@ -65,7 +67,8 @@ function wrapScript(host: HookHost, input: HookInput, env: NodeJS.ProcessEnv, op
   if (input.tool_input?.run_in_background === true) return undefined
   const trimmed = script.trimStart()
   if (trimmed.startsWith(`${WRAPPER} `) || /\bapply_?patch\b/.test(script)) return undefined
-  if (!mayProject(script)) return undefined
+  // `tokenwise doctor --probe` asks the agent to run `tokenwise probe <mark>`, and looks for it in the records: wrap it too.
+  if (!mayProject(script) && !PROBE.test(script)) return undefined
   // A rewrite to an unresolvable `tokenwise` would turn every wrapped command into "command not found".
   if (!onPath('tokenwise', env)) return undefined
   const cwd = typeof input.cwd === 'string' ? input.cwd : undefined

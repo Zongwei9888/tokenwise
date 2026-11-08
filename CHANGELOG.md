@@ -6,6 +6,14 @@ First open-source release line: compact tool output on eight hosts and any shell
 recoverable compaction on every host whose plugin interface
 allows it (in full on five, assisted on three), and self-evolving filters. (0.1.0 and 0.2.0 were never published; their contents are part of this release.)
 
+- `tokenwise doctor` starts with your agents: for each, whether TokenWise's
+  plugin is on in that agent's own settings, whether its `tokenwise` skill is
+  current, and when TokenWise last saw one of its commands. `tokenwise doctor
+  --probe` goes further: it asks each agent, without a terminal and allowed only
+  that command, to run `tokenwise probe <mark>`, and passes it only when the
+  agent's own TokenWise records hold that command. `tokenwise setup` ends by
+  suggesting it. DeepSeek Harness runs prompts in its own app only and is
+  skipped.
 - OpenCode and Hermes show the startup notice too (a learning run finished,
   a command keeps coming back long): a toast in OpenCode, a line posted into
   the conversation in Hermes, both from the new `tokenwise notice <agent>`.

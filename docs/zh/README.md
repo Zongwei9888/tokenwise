@@ -37,7 +37,7 @@
 
 一条规则必须在**每一次**历史记录上都更省、一条报错都不丢，在没见过的记录上也成立，TokenWise 才会采用。从下一条命令起，所有 agent 都用上它。如果某个 agent 总要绕开一条规则去看原文，这条规则会自己关掉；任何一次采用都可以撤回。学到的规则在从没见过的任务上，还能再省 12–27% 的 token。
 
-**亲手教它。** 在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`），它会告诉你哪些命令的输出还很长。挑一个，agent 当场写好规则，拿你自己的真实输出给你看模型读到的前后对比，你同意了才生效。某条命令的输出一直很长时，agent 也会主动提醒你。
+**亲手教它。** 在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`，OpenCode 和 DeepSeek Harness 里是 `@tokenwise`，pi 里是 `/skill:tokenwise`），它会告诉你哪些命令的输出还很长。挑一个，agent 当场写好规则，拿你自己的真实输出给你看模型读到的前后对比，你同意了才生效。某条命令的输出一直很长时，agent 也会主动提醒你。
 
 也可以让它在后台自己学：Claude Code、CodeBuddy 和 Grok 里用 `/tokenwise:learn`，Codex 里用 `$tokenwise learn`，pi 和 DeepSeek Harness 里用 TokenWise 面板，任何终端里都可以运行 `tokenwise learn`。
 
@@ -72,7 +72,7 @@
 
 把这个仓库交给你的 agent，说：
 
-> 帮我给这台电脑上所有的 agent 装上 TokenWise。
+> 帮我给这台电脑上所有的 agent 装上 TokenWise，并确认每个都在用它。
 
 也可以自己装（需要 Node.js 22 和 pnpm；TokenWise 还没发布到 npm）：
 
@@ -81,9 +81,10 @@ git clone https://github.com/HKUDS/TokenWise.git
 cd TokenWise && pnpm install && pnpm build
 npm install -g ./packages/cli
 tokenwise setup        # 自动找到本机的 agent，逐个装好
+tokenwise doctor --probe   # 让每个 agent 跑一条命令，确认 TokenWise 看到了
 ```
 
-不用任何配置，下一条命令就生效。想看它为你做了什么，或者教它处理你的某条命令，在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`）。`tokenwise report` 查看省了多少，`tokenwise uninstall` 可以卸载。
+不用任何配置，下一条命令就生效。想看它为你做了什么，或者教它处理你的某条命令，在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`，OpenCode 和 DeepSeek Harness 里是 `@tokenwise`，pi 里是 `/skill:tokenwise`）。`tokenwise doctor` 列出每个 agent 里 TokenWise 是否开着、最近一次看到它跑命令是什么时候；`tokenwise report` 查看省了多少，`tokenwise uninstall` 可以卸载。
 
 ## ✨ 技术要点
 
@@ -159,7 +160,7 @@ cp -R skills/tokenwise ~/.agents/skills/            # Codex、pi 和 DeepSeek Ha
 | Grok Build 1.0+ | hook；目录跟在 Grok 自己的摘要后面 | `/tokenwise:learn` |
 | 任何 agent 或 shell | `tokenwise run`，通过 MCP 取回原文 | `tokenwise learn` |
 
-每个 agent 还会装上 `tokenwise` skill：`/tokenwise`，Codex 里是 `$tokenwise`，pi 里是 `/skill:tokenwise`。各 agent 的细节见 [`adapters/`](../../adapters) 下对应的目录；[docs/adapters.md](../adapters.md) 介绍如何接入新的 agent。
+每个 agent 还会装上 `tokenwise` skill：`/tokenwise`，Codex 里是 `$tokenwise`，OpenCode 和 DeepSeek Harness 里是 `@tokenwise`，pi 里是 `/skill:tokenwise`。各 agent 的细节见 [`adapters/`](../../adapters) 下对应的目录；[docs/adapters.md](../adapters.md) 介绍如何接入新的 agent。
 
 </details>
 
@@ -179,7 +180,7 @@ cp -R skills/tokenwise ~/.agents/skills/            # Codex、pi 和 DeepSeek Ha
 | `tokenwise filters` | 所有内置规则，以及各自保证保留什么 |
 | `tokenwise recall <id>` | 取回暂放的原文 |
 | `tokenwise run -c '<命令>'` | 让任何命令经过 TokenWise |
-| `tokenwise doctor` | 配置，以及每个 agent 支持哪些功能 |
+| `tokenwise doctor [--probe]` | 每个 agent 里 TokenWise 是否在工作（`--probe`：让每个 agent 跑一条命令来证明），配置，以及每个 agent 支持哪些功能 |
 
 所有地方都可以用 `tw` 代替 `tokenwise`。
 

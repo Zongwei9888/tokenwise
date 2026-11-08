@@ -23,6 +23,13 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
+      # pi's grep and find tools need rg and fd; without them pi downloads them from GitHub, which fails now and then.
+      # Ubuntu names fd `fdfind`.
+      - if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q ripgrep fd-find
+          command -v fd || sudo ln -s "$(command -v fdfind)" /usr/local/bin/fd
+          rg --version | head -1 && fd --version
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test

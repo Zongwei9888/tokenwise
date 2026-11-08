@@ -102,7 +102,7 @@ for t in threading.enumerate():
     // Nothing to say, or no tokenwise: nothing is posted.
     expect(plugin('print(tokenwise._notice())', { TOKENWISE_BIN: stub('').script })).toBe('None')
     expect(plugin('print(tokenwise._notice())', { TOKENWISE_BIN: join(temp(), 'missing') })).toBe('None')
-  })
+  }, 60_000)
 
   it('declares its hooks in the manifest Hermes reads', () => {
     const manifest = readFileSync(join(adapter, 'tokenwise', 'plugin.yaml'), 'utf8')

@@ -1,6 +1,6 @@
 ---
 name: tokenwise
-description: TokenWise shortens the shell output your agent reads and learns your project's noisy commands. Use when the person types @tokenwise, /tokenwise or $tokenwise, or asks what TokenWise does for them, which output is noisy, to teach it about a command, to see what it learned, or to learn, undo or switch off its rules.
+description: TokenWise shortens the shell output your agent reads and learns your project's noisy commands. Use when the person types @tokenwise, /tokenwise or $tokenwise, or asks what TokenWise does for them, whether it works in their agents, which output is noisy, to teach it about a command, to see what it learned, or to learn, undo or switch off its rules.
 ---
 
 # TokenWise
@@ -39,6 +39,7 @@ How to talk about it:
 | to teach it about a command, to tidy a command's output, "this output is too long" | **Teach** below |
 | what it learned, to see a rule's effect | `tokenwise checkup`, then `tokenwise preview "<command>"` for the command they pick; show it as in step 3 of Teach |
 | to learn in the background | `tokenwise learn --learner <this agent>`: claude, codex, codebuddy, grok, pi or dsh; do not ask which. Only in OpenCode or Hermes, which cannot be learners, use one of those six that is installed (`command -v`), asking the person which if there are several. Do not wait for it |
+| whether TokenWise works in their agents, after installing it | `tokenwise doctor`; show its "Your agents" lines in your own words. For proof, `tokenwise doctor --probe` (each agent runs one command, using a little of its model; up to a few minutes), and say plainly which failed and the fix it names |
 | how learning is going, to stop it | `tokenwise learn status`, `tokenwise learn cancel` |
 | to undo the last rule, switch rules off or on | `tokenwise rules rollback`, `tokenwise rules off`, `tokenwise rules on` |
 

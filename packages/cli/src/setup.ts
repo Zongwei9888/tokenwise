@@ -191,6 +191,9 @@ export function setup(args: SetupArgs): number {
   const done = chosen.map(agent => agent.name).filter(name => !failed.includes(name))
   if (done.length) process.stdout.write(`\n${args.action === 'setup' ? 'TokenWise is set up for' : 'TokenWise was removed from'} ${done.join(', ')}.\n`)
   for (const line of next) process.stdout.write(`${line}\n`)
+  if (args.action === 'setup' && done.length) {
+    process.stdout.write(`To be sure each one uses it: tokenwise doctor --probe (asks each agent to run one command, using a little of its model).\n`)
+  }
   if (failed.length) process.stderr.write(`Did not finish: ${failed.join(', ')} (see the output above).\n`)
   return failed.length ? 1 : 0
 }
