@@ -70,6 +70,11 @@ describe('the startup notice', () => {
       + 'Teach TokenWise about it with /tokenwise, or let it learn in the background with /tokenwise:learn.' })
     expect(startup(home)).toBe('')
     expect(JSON.parse(startup(home, 'codex')).systemMessage).toContain('with $tokenwise, or let it learn in the background with $tokenwise learn.')
+    // Copilot CLI shows a hook's progress line; its sessionStart has no event name, and `new` is a start in `copilot -p`.
+    const copilot = (source: string) => tokenwise(['hook', 'copilot'], home, JSON.stringify({ sessionId: 'c', timestamp: 1, cwd: '/w', source })).out
+    expect(copilot('resume')).toBe('')
+    expect(JSON.parse(copilot('new'))).toEqual({ type: 'progress', message: 'TokenWise: output from ./deploy.sh, make keeps coming back long. Teach TokenWise about it with /tokenwise.' })
+    expect(copilot('startup')).toBe('')
     // A learner's own session says nothing.
     expect(startup(home, 'grok', { TOKENWISE_DISABLE: '1' })).toBe('')
     // Grok calls a new session's start `new` (seen from Grok 1.0.70), and a resumed one is not a start. It shows a

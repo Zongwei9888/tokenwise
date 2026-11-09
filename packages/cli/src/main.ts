@@ -3,8 +3,10 @@ import { economyCoverage, economyRuleDisplayName } from '@tokenwise/core'
 import type { EconomyFilterName } from '@tokenwise/core'
 import { FileArtifactStore } from '@tokenwise/store'
 import { cliContext } from './context.ts'
+import { dashboard } from './dashboard.ts'
 import { doctor, VERSION } from './doctor.ts'
 import { checkAgents, knownAgent, probeAgents, probeTargets } from './check.ts'
+import { saved } from './saved.ts'
 import { evolve, evolveCheck, evolveTry, rules } from './evolve.ts'
 import { hook } from './hook.ts'
 import { learnCancel, learnStart, learnStatus, NOTICE_HOSTS, startupNotice } from './learn.ts'
@@ -25,11 +27,16 @@ Usage:
                                    agents: ${AGENTS.map(agent => agent.id).join(' ')}
   tokenwise run [--host H] [--session S] [--call C] -c <script>   run a shell script, print filtered output
   tokenwise run [--host H] [--session S] [--call C] -- <program> [args...]
-  tokenwise hook codex|claude|codebuddy|grok|hermes
+  tokenwise hook codex|claude|codebuddy|grok|hermes|copilot
                                    hook handler for that host (reads hook JSON on stdin)
   tokenwise notice opencode|hermes [--peek|--told]
                                    the startup notice that agent's plugin shows, if any (--peek: leave it untold; --told: mark it told)
+  tokenwise saved [--month|--all] [--static] [--lang en|zh] [--json]
+                                   what TokenWise saved you, in the terminal
+  tokenwise dashboard [--port N] [--no-open]
+                                   the same, as a page in your browser that updates as it saves
   tokenwise report [--host H] [--session S] [--json]
+                                   the detailed numbers behind saved, per session or agent
   tokenwise filters [--json]              list output filters and what each preserves
   tokenwise show <sha256>                 print a saved original output
   tokenwise gc [--days N]                 delete saved originals older than N days
@@ -125,6 +132,12 @@ async function dispatch(command: string | undefined, rest: string[]): Promise<nu
       } catch { /* Nothing to say. */ }
       return 0
     }
+    case 'dashboard': {
+      const { values } = parseArgs({ args: rest, options: { port: { type: 'string' }, 'no-open': { type: 'boolean' } } })
+      const port = values.port === undefined ? undefined : Number(values.port)
+      if (port !== undefined && (!Number.isSafeInteger(port) || port < 1 || port > 65_535)) { process.stderr.write('tokenwise dashboard: --port must be 1 to 65535\n'); return 2 }
+      return dashboard({ ...port === undefined ? {} : { port }, open: values['no-open'] !== true })
+    }
     case 'report': {
       const { values } = parseArgs({ args: rest, options: { host: { type: 'string' }, session: { type: 'string' }, json: { type: 'boolean' } } })
       return report({ ...values.host === undefined ? {} : { host: values.host }, ...values.session === undefined ? {} : { session: values.session }, json: values.json === true })
@@ -164,6 +177,12 @@ async function dispatch(command: string | undefined, rest: string[]): Promise<nu
       const results = await probeAgents(ids, { dataDirs: context.dataDirs })
       for (const result of results) process.stdout.write(`  ${result.ok === undefined ? '·' : result.ok ? '✓' : '✗'}  ${result.name}: ${result.detail}\n`)
       return results.some(result => result.ok === false) ? 1 : 0
+    }
+    case 'saved': {
+      const { values } = parseArgs({ args: rest, options: { month: { type: 'boolean' }, all: { type: 'boolean' }, lang: { type: 'string' }, static: { type: 'boolean' }, json: { type: 'boolean' } } })
+      if (values.lang !== undefined && values.lang !== 'en' && values.lang !== 'zh') { process.stderr.write('tokenwise saved: --lang is en or zh\n'); return 2 }
+      return saved({ period: values.all ? 'all' : values.month ? 'month' : 'week', ...values.lang ? { language: values.lang as 'en' | 'zh' } : {},
+        ...values.static ? { animate: false } : {}, json: values.json === true })
     }
     case 'probe':
       // What `tokenwise doctor --probe` asks an agent to run: proof that TokenWise saw the agent's command.

@@ -7,7 +7,7 @@
 
 <p>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-0F766E?style=flat-square&labelColor=0E2A26"></a>
-  <img alt="Agents: 8 and any shell" src="https://img.shields.io/badge/agents-8_%2B_any_shell-0F766E?style=flat-square&labelColor=0E2A26">
+  <img alt="Agents: 9 and any shell" src="https://img.shields.io/badge/agents-9_%2B_any_shell-0F766E?style=flat-square&labelColor=0E2A26">
   <img alt="Runtime dependencies: 0" src="https://img.shields.io/badge/runtime_deps-0-0F766E?style=flat-square&labelColor=0E2A26">
 </p>
 
@@ -68,18 +68,19 @@ again to see one line.
 
 <table width="100%">
   <tr>
-    <td align="center" width="20%"><img src="media/agents/claude-code.svg" width="48" height="48" alt=""><br><strong>Claude Code</strong></td>
-    <td align="center" width="20%"><img src="media/agents/codex.svg" width="48" height="48" alt=""><br><strong>Codex</strong></td>
-    <td align="center" width="20%"><img src="media/agents/hermes.svg" width="48" height="48" alt=""><br><strong>Hermes Agent</strong></td>
-    <td align="center" width="20%"><img src="media/agents/opencode.svg" width="48" height="48" alt=""><br><strong>OpenCode</strong></td>
-    <td align="center" width="20%"><img src="media/agents/codebuddy.svg" width="48" height="48" alt=""><br><strong>CodeBuddy</strong></td>
+    <td align="center" width="16%"><img src="media/agents/claude-code.svg" width="48" height="48" alt=""><br><strong>Claude Code</strong></td>
+    <td align="center" width="16%"><img src="media/agents/codex.svg" width="48" height="48" alt=""><br><strong>Codex</strong></td>
+    <td align="center" width="16%"><img src="media/agents/copilot.svg" width="48" height="48" alt=""><br><strong>GitHub Copilot CLI</strong></td>
+    <td align="center" width="16%"><img src="media/agents/hermes.svg" width="48" height="48" alt=""><br><strong>Hermes Agent</strong></td>
+    <td align="center" width="16%"><img src="media/agents/opencode.svg" width="48" height="48" alt=""><br><strong>OpenCode</strong></td>
+    <td align="center" width="16%"><img src="media/agents/codebuddy.svg" width="48" height="48" alt=""><br><strong>CodeBuddy</strong></td>
   </tr>
   <tr>
-    <td align="center" width="20%"><img src="media/agents/grok.svg" width="48" height="48" alt=""><br><strong>Grok Build</strong></td>
-    <td align="center" width="20%"><img src="media/agents/dsh.svg" width="48" height="48" alt=""><br><strong>DeepSeek Harness</strong></td>
-    <td align="center" width="20%"><img src="media/agents/pi.svg" width="48" height="48" alt=""><br><strong>pi</strong></td>
-    <td align="center" width="20%"><img src="media/images/icons/agent-shell.png" width="48" height="48" alt=""><br><strong>Any shell</strong></td>
-    <td align="center" width="20%"><a href="#whats-next"><img src="media/images/icons/agent-more.png" width="48" height="48" alt=""><br><strong>More coming</strong></a></td>
+    <td align="center" width="16%"><img src="media/agents/grok.svg" width="48" height="48" alt=""><br><strong>Grok Build</strong></td>
+    <td align="center" width="16%"><img src="media/agents/dsh.svg" width="48" height="48" alt=""><br><strong>DeepSeek Harness</strong></td>
+    <td align="center" width="16%"><img src="media/agents/pi.svg" width="48" height="48" alt=""><br><strong>pi</strong></td>
+    <td align="center" width="16%"><img src="media/images/icons/agent-shell.png" width="48" height="48" alt=""><br><strong>Any shell</strong></td>
+    <td align="center" width="16%"><a href="#whats-next"><img src="media/images/icons/agent-more.png" width="48" height="48" alt=""><br><strong>More coming</strong></a></td>
   </tr>
 </table>
 
@@ -106,8 +107,10 @@ There is nothing to configure: it works from the next command. To see what it
 does for you, or to teach it one of your commands, type `/tokenwise` in your
 agent (`$tokenwise` in Codex, `@tokenwise` in OpenCode and DeepSeek Harness,
 `/skill:tokenwise` in pi).
+`tokenwise saved` shows what it saved you, as a jar filling with coins in your terminal;
+`tokenwise dashboard` shows the same jar in your browser, and drops a coin in as it saves more.
 `tokenwise doctor` shows, for each agent, whether TokenWise is on and when it last
-saw a command; `tokenwise report` shows what was saved; `tokenwise uninstall` takes it out again.
+saw a command; `tokenwise uninstall` takes it out again.
 
 ## ✨ Technical highlights
 
@@ -121,7 +124,7 @@ saw a command; `tokenwise report` shows what was saved; `tokenwise uninstall` ta
 - **Local.** Originals stay on your machine, readable only by you. TokenWise makes
   no network requests of its own.
 - **Tested on real agents.** Unit tests, a byte-for-byte conformance corpus of
-  real tool outputs, and rounds with real models on all eight agents.
+  real tool outputs, and rounds with real models on all nine agents.
 - **MIT, zero runtime dependencies.**
 
 ## 📰 News
@@ -131,7 +134,7 @@ saw a command; `tokenwise report` shows what was saved; `tokenwise uninstall` ta
 
 ## What's next
 
-- More agents: GitHub Copilot CLI, Gemini CLI, Cursor and others.
+- More agents: Cursor, Gemini CLI, Kimi Code and others.
 - More built-in rules for common tools, each one checked on real output.
 - The paper behind TokenWise, with a full evaluation.
 
@@ -150,6 +153,7 @@ claude plugin marketplace add "$PWD" && claude plugin install tokenwise@tokenwis
 codex plugin marketplace add "$PWD" && codex plugin add tokenwise@tokenwise    # then trust its hooks in /hooks
 codebuddy plugin marketplace add "$PWD" && codebuddy plugin install tokenwise@tokenwise
 grok plugin marketplace add "$PWD" && grok plugin install tokenwise@tokenwise --trust
+copilot plugin marketplace add "$PWD" && copilot plugin install tokenwise@tokenwise
 
 # OpenCode
 mkdir -p ~/.config/opencode/plugins
@@ -162,7 +166,7 @@ hermes plugins enable tokenwise && hermes config set context.engine tokenwise
 
 # The tokenwise skill, where each agent reads skills
 cp -R skills/tokenwise ~/.claude/skills/            # Claude Code; likewise ~/.codebuddy/skills, ~/.grok/skills,
-                                                    # ~/.config/opencode/skills and ~/.hermes/skills
+                                                    # ~/.config/opencode/skills, ~/.hermes/skills and ~/.copilot/skills
 cp -R skills/tokenwise ~/.agents/skills/            # Codex, pi and DeepSeek Harness
 
 # Anything else: wrap the command
@@ -187,6 +191,7 @@ tokenwise run -c 'cargo test'
 | Codex 0.162+ | hooks; the catalog follows Codex's own summary | `$tokenwise learn` |
 | CodeBuddy 2.175+ | hooks and a mod that rewrites the stored summary | `/tokenwise:learn` |
 | Grok Build 1.0+ | hooks; the catalog follows Grok's own summary | `/tokenwise:learn` |
+| GitHub Copilot CLI 1.0+ | hooks; shell output only (Copilot compacts with its own summary) | `tokenwise learn` |
 | Any agent or shell | `tokenwise run`, recall over MCP | `tokenwise learn` |
 
 Every agent also gets the `tokenwise` skill: `/tokenwise`, `$tokenwise` in Codex,
@@ -202,7 +207,9 @@ Every agent also gets the `tokenwise` skill: `/tokenwise`, `$tokenwise` in Codex
 | Command | What it does |
 |---|---|
 | `tokenwise setup [agent...]`, `uninstall [--purge]` | add TokenWise to your agents, or take it out |
-| `tokenwise report [--host H] [--session S]` | what was saved, per session or agent |
+| `tokenwise saved [--month\|--all]` | what TokenWise saved you, as a pixel jar in the terminal (`--json` for the numbers) |
+| `tokenwise dashboard [--port N] [--no-open]` | the same jar as a page in your browser, filling as it saves |
+| `tokenwise report [--host H] [--session S]` | the detailed numbers behind `saved`, per session or agent, for troubleshooting |
 | `tokenwise checkup` | what it shortens, its learned rules, and the commands worth teaching it |
 | `tokenwise teach "<command>"`, `teach check\|preview\|keep\|drop` | teach it one command from your own agent |
 | `tokenwise preview "<command>"` | a recorded output of that command: the original and what the model reads |

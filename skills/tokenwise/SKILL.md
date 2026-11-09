@@ -38,8 +38,9 @@ How to talk about it:
 | how TokenWise is doing, what is noisy, a checkup (or just `@tokenwise`) | **Checkup** below |
 | to teach it about a command, to tidy a command's output, "this output is too long" | **Teach** below |
 | what it learned, to see a rule's effect | `tokenwise checkup`, then `tokenwise preview "<command>"` for the command they pick; show it as in step 3 of Teach |
-| to learn in the background | `tokenwise learn --learner <this agent>`: claude, codex, codebuddy, grok, pi or dsh; do not ask which. Only in OpenCode or Hermes, which cannot be learners, use one of those six that is installed (`command -v`), asking the person which if there are several. Do not wait for it |
+| to learn in the background | `tokenwise learn --learner <this agent>`: claude, codex, codebuddy, grok, pi or dsh; do not ask which. Only in OpenCode, Hermes or GitHub Copilot CLI, which cannot be learners, use one of those six that is installed (`command -v`), asking the person which if there are several. Do not wait for it |
 | whether TokenWise works in their agents, after installing it | `tokenwise doctor`; show its "Your agents" lines in your own words. For proof, `tokenwise doctor --probe` (each agent runs one command, using a little of its model; up to a few minutes), and say plainly which failed and the fix it names |
+| how much TokenWise saved them | `tokenwise saved --json` (add `--month` or `--all` for longer); say the tokens and outputs in one sentence in their language. To see it, they can run `tokenwise saved` in a terminal or `tokenwise dashboard` for the page; do not print the jar yourself |
 | how learning is going, to stop it | `tokenwise learn status`, `tokenwise learn cancel` |
 | to undo the last rule, switch rules off or on | `tokenwise rules rollback`, `tokenwise rules off`, `tokenwise rules on` |
 

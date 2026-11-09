@@ -61,6 +61,7 @@ export function pluginState(id: string, env: NodeJS.ProcessEnv = process.env): '
       const dir = env.HERMES_HOME || join(home, '.hermes')
       return existsSync(join(dir, 'plugins', 'tokenwise')) && /^\s*enabled:\s*\n(?:\s*-\s*\S+\s*\n)*?\s*-\s*tokenwise\s*$/mu.test(read(join(dir, 'config.yaml')) ?? '') ? 'on' : 'off'
     }
+    case 'copilot': return enabledIn(join(env.COPILOT_HOME || join(home, '.copilot'), 'settings.json'))
     default: return undefined
   }
 }
@@ -118,6 +119,8 @@ export function probeCommand(id: string, prompt: string, command: string): strin
     case 'codex': return ['codex', 'exec', '--skip-git-repo-check', prompt]
     case 'opencode': return ['opencode', 'run', prompt]
     case 'hermes': return ['hermes', 'chat', '-q', prompt, '-Q']
+    // Copilot's rules cannot allow one tokenwise subcommand: TokenWise's own preToolUse hook allows the probe and denies the rest.
+    case 'copilot': return ['copilot', '-p', prompt]
     case 'pi': return ['pi', '-p', prompt]
     // DeepSeek Harness runs prompts in its web or terminal app only.
     default: return undefined
@@ -183,7 +186,7 @@ export async function probeAgents(ids: readonly string[], options: ProbeOptions)
     const cwd = mkdtempSync(join(tmpdir(), 'tokenwise-probe-'))
     const since = Date.now()
     try {
-      const { code, tail } = await run(argv, cwd, env, timeoutMs)
+      const { code, tail } = await run(argv, cwd, { ...env, TOKENWISE_PROBE: mark }, timeoutMs)
       if (sawProbe(options.dataDirs, id, mark, since)) return { id, name: agent.name, ok: true, detail: 'TokenWise saw the command it ran' }
       const last = tail.trim().split('\n').filter(Boolean).at(-1)?.slice(0, 160)
       const why = code === null ? `it did not finish within ${Math.round(timeoutMs / 1000)} s`

@@ -1,0 +1,10 @@
+{
+  "name": "tokenwise",
+  "version": "0.3.0",
+  "description": "TokenWise for GitHub Copilot CLI: the model's copy of a recognized bash result is replaced by a smaller projection, failed commands included; TokenWise keeps the original. At startup it says when the tokenwise command is missing, when a command keeps coming back long, and when a learning run finished.",
+  "keywords": ["context", "tokens", "output-filtering"],
+  "license": "MIT",
+  "homepage": "https://github.com/HKUDS/TokenWise#readme",
+  "repository": "https://github.com/HKUDS/TokenWise",
+  "hooks": "hooks.json"
+}

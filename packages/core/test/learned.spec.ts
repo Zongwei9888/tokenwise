@@ -136,7 +136,7 @@ describe('file contents', () => {
   it('recognizes commands that look something up, but not a pipe filtering a build or a git command that changes things', () => {
     for (const command of ['grep -rn foo src', 'rg TODO', '/usr/bin/grep x y', 'ls -la', 'sudo ls /', 'FOO=1 rg x', 'find . -name "*.ts"', 'git diff HEAD~1',
       'git -C repo log --oneline', 'cd app && git status', 'git show abc123', './build.sh && ls', 'curl -sL https://example.com', 'for f in a b; do grep x $f; done', 'tmux send-keys -t a Enter; sleep 2; tmux capture-pane -p -t a',
-      'nice -n 10 grep -r x .', 'timeout 5 rg TODO', 'env -i ls']) {
+      'nice -n 10 grep -r x .', 'timeout 5 rg TODO', 'env -i ls', 'q(){ curl -s "$1"; }; q https://x', 'f() { grep -rn x .; }; f']) {
       expect(looksUp(command), command).toBe(true)
     }
     for (const command of ['./build.sh 100', 'make test | grep FAIL', 'npm test', 'cargo build', 'python3 -m pytest', 'git push', 'git commit -m "fix diff"',

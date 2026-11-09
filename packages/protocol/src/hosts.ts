@@ -61,6 +61,15 @@ export const HOST_PROFILES: Readonly<Record<string, HostProfile>> = Object.freez
       'hooks run only in trusted folders; `grok -p` counts its folder as trusted',
     ],
   },
+  copilot: {
+    id: 'copilot', name: 'GitHub Copilot CLI (1.0+)', integration: 'hooks',
+    capabilities: [...local, 'toolResults', 'toolResultsPreserveRaw', 'models', 'sessions'],
+    notes: [
+      'postToolUse replaces the model\'s copy of a bash result (modifiedResult), failed commands included; Copilot\'s own status line is kept',
+      'output Copilot saved to a file because it was too large passes through',
+      'no compaction hook lets anything in, so Copilot compacts with its own summary',
+    ],
+  },
   hermes: {
     id: 'hermes', name: 'Hermes Agent (0.22+)', integration: 'hooks',
     // Hermes also offers argument rewrites (pre_tool_call); the adapter does not use them.

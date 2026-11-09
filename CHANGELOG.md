@@ -2,10 +2,25 @@
 
 ## 0.3.0 (unreleased)
 
-First open-source release line: compact tool output on eight hosts and any shell,
+First open-source release line: compact tool output on nine hosts and any shell,
 recoverable compaction on every host whose plugin interface
 allows it (in full on five, assisted on three), and self-evolving filters. (0.1.0 and 0.2.0 were never published; their contents are part of this release.)
 
+- `tokenwise saved` and `tokenwise dashboard` show what TokenWise saved you:
+  the tokens the model did not have to read, this week, in the last 30 days or
+  since you installed it, today, per day, and in which agents. In the terminal
+  a pixel jar fills with falling coins and the number appears in pixel digits
+  (plain text when piped; `--json` for the numbers). In the browser the same
+  jar fills as it saves more, a coin dropping in whenever today grows; English
+  and Chinese, light and dark. The page only reads, listens on 127.0.0.1 only,
+  answers only its own host name and the random token in the address it
+  prints, and ships inside the CLI.
+- GitHub Copilot CLI joins as the ninth agent (`tokenwise setup copilot`): a
+  `postToolUse` hook replaces the model's copy of a bash result, failed
+  commands included. Where Copilot shortened the output itself, TokenWise works
+  on the original Copilot kept and replaces Copilot's version only when its
+  own is shorter. The startup notice shows in Copilot's timeline, `/tokenwise`
+  opens the skill, and `tokenwise doctor --probe` covers Copilot too.
 - `tokenwise doctor` starts with your agents: for each, whether TokenWise's
   plugin is on in that agent's own settings, whether its `tokenwise` skill is
   current, and when TokenWise last saw one of its commands. `tokenwise doctor

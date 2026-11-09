@@ -21,6 +21,8 @@ export interface OutputRequest {
   readonly stderr?: string
   readonly cwd?: string
   readonly env?: NodeJS.ProcessEnv
+  /** A projection this long or longer passes instead (the host already delivers something as short). */
+  readonly maxProjectedChars?: number
 }
 
 /**
@@ -41,7 +43,7 @@ export function projectOutput(request: OutputRequest): { stdout: string; stderr?
   const rules = new RuleStore(context.dataDir)
   const engine = new EconomyEngine({ host: request.host, journal: store.journal, artifacts: store.artifacts,
     config: config.economy, mode: config.economy.mode, delivery: request.delivery, streams: separate ? 'separate' : 'merged',
-    learned: () => rules.load(),
+    learned: () => rules.load(), ...request.maxProjectedChars === undefined ? {} : { maxProjectedChars: request.maxProjectedChars },
     // `tokenwise` is on PATH here (it is running), so `tokenwise recall` reads the original; most hosts also offer the MCP tool.
     recallHint: config.lightshadow.mode !== 'off' })
   const base = { command: request.command, exitCode: request.exitCode, interrupted: request.interrupted, ...request.truncated ? { truncated: true } : {} }

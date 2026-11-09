@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { FileArtifactStore, RuleStore } from '@tokenwise/store'
-import { claudeHook, codebuddyHook, eventHost, grokHook, hermesHook } from '../src/hook.ts'
+import { claudeHook, codebuddyHook, copilotHook, eventHost, grokHook, hermesHook } from '../src/hook.ts'
 
 const dirs: string[] = []
 const temp = () => { const dir = mkdtempSync(join(tmpdir(), 'tokenwise-hooks-')); dirs.push(dir); return dir }
@@ -212,6 +212,75 @@ describe('Grok hook', () => {
     expect(grokHook({ ...base, isBackgrounded: true }, env)).toBeUndefined()
     expect(grokHook({ ...base, tool_name: 'read_file' }, env)).toBeUndefined()
     expect(records(home, 'grok')).toMatchObject([{ outcome: 'passed', reason: 'already-truncated' }])
+  })
+})
+
+describe('GitHub Copilot CLI hook', () => {
+  // postToolUse as Copilot CLI 1.0.103 sent it (captured from a real session).
+  const event = (command: string, text: string, extra: Record<string, unknown> = {}) => ({
+    sessionId: 'cp-session', timestamp: 1794143076473, cwd: '/w', toolName: 'bash', toolArgs: { command, description: 'Run tests' },
+    toolResult: { resultType: 'success', textResultForLlm: text }, ...extra,
+  })
+  const status = '\n<shellId: 0 completed with exit code 1>'
+
+  it('replaces the model\'s copy of a failed test run and keeps Copilot\'s status line', () => {
+    const home = temp()
+    const reply = JSON.parse(copilotHook(event('pytest -v', failingPytest.trimEnd() + status), withLc(home))!)
+    const text = reply.modifiedResult.textResultForLlm as string
+    expect(reply.modifiedResult.resultType).toBe('success')
+    expect(text.endsWith(status)).toBe(true)
+    expect(text).toContain("E       AssertionError: assert '1.10.0' > '1.9.0'")
+    expect(text.length).toBeLessThan(failingPytest.length / 3)
+    expect(records(home, 'copilot')).toMatchObject([{ type: 'economy/decision', outcome: 'projected', command: 'pytest -v', exitCode: 1, delivery: 'result-hook' }])
+  })
+
+  it('works on the original when Copilot shortened the output itself, and keeps Copilot\'s version when it is shorter', () => {
+    const home = temp()
+    const tmp = temp()
+    const original = join(tmp, 'original-output-1794143357943-cea17571da824486aaa4d2a3ebbfb51a.txt')
+    writeFileSync(original, failingPytest)
+    const env = { ...withLc(home), TMPDIR: tmp }
+    const header = `Shell output was automatically compacted. Compacted output below. Original at ${original}; only use if exact omitted lines are needed.\n\n`
+    const long = header + 'x\n'.repeat(2000)
+    const reply = JSON.parse(copilotHook(event('pytest -v', long + status), env)!)
+    expect(reply.modifiedResult.textResultForLlm).toContain("E       AssertionError: assert '1.10.0' > '1.9.0'")
+    expect(reply.modifiedResult.textResultForLlm).not.toContain('Shell output was automatically compacted')
+    // Copilot's own summary is already shorter than TokenWise's: it stays, and the original is kept as evidence.
+    expect(copilotHook(event('pytest -v', header + 'short' + status), env)).toBeUndefined()
+    expect(records(home, 'copilot').map(record => [record.outcome, record.reason, record.raw?.bytes]))
+      // Without its last newline, as Copilot's own results end before the status line.
+      .toEqual([['projected', undefined, failingPytest.length - 1], ['passed', 'over-host-inline-limit', failingPytest.length - 1]])
+  })
+
+  it('reads an original only from a file of Copilot\'s naming in the temporary folder', () => {
+    const home = temp()
+    const tmp = temp()
+    const secret = join(temp(), 'original-output-1-0123456789abcdef0123456789abcdef.txt')
+    writeFileSync(secret, failingPytest)
+    const named = join(tmp, 'notes.txt')
+    writeFileSync(named, failingPytest)
+    const env = { ...withLc(home), TMPDIR: tmp }
+    for (const path of [secret, named]) {
+      const text = `Shell output was automatically compacted. Compacted output below. Original at ${path}; only use if exact omitted lines are needed.\n\n${'x\n'.repeat(2000)}`
+      expect(copilotHook(event('cat x', text + status), env), path).toBeUndefined()
+    }
+  })
+
+  it('leaves output Copilot saved to a file, other tools and still-running shells alone', () => {
+    const env = withLc(temp())
+    expect(copilotHook(event('seq 1 200000', `Output too large to read at once (1.2 MB). Saved to: /tmp/x.txt\n${failingPytest}${status}`), env)).toBeUndefined()
+    expect(copilotHook(event('pytest -v', failingPytest + status, { toolName: 'view' }), env)).toBeUndefined()
+    expect(copilotHook(event('pytest -v', `${failingPytest}\n<shellId: 3 is still running>`), env)).toBeUndefined()
+  })
+
+  it('during tokenwise doctor --probe, lets the probe command alone run', () => {
+    const env = { ...withLc(temp()), TOKENWISE_PROBE: 'tw0123abcd' }
+    const pre = (command: string, toolName = 'bash') => JSON.parse(copilotHook({ sessionId: 's', cwd: '/w', toolName, toolArgs: { command } }, env)!)
+    expect(pre('tokenwise probe tw0123abcd')).toEqual({ permissionDecision: 'allow' })
+    for (const command of ['tokenwise rules off', 'tokenwise probe tw0123abcd; rm -rf ~', 'ls']) expect(pre(command).permissionDecision, command).toBe('deny')
+    expect(pre('tokenwise probe tw0123abcd', 'edit').permissionDecision).toBe('deny')
+    // Outside a probe the hook says nothing before a tool runs.
+    expect(copilotHook({ sessionId: 's', cwd: '/w', toolName: 'bash', toolArgs: { command: 'ls' } }, withLc(temp()))).toBeUndefined()
   })
 })
 
