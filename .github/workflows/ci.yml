@@ -30,6 +30,10 @@ jobs:
           sudo apt-get update -q && sudo apt-get install -y -q ripgrep fd-find
           command -v fd || sudo ln -s "$(command -v fdfind)" /usr/local/bin/fd
           rg --version | head -1 && fd --version
+      - if: runner.os == 'macOS'
+        run: |
+          brew install ripgrep fd
+          rg --version | head -1 && fd --version
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
