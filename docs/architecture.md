@@ -100,6 +100,7 @@ How the projection reaches the model differs by host:
 | Codex 0.162+ | hooks, before execution | catalog after Codex's own summary | `$tokenwise learn` |
 | CodeBuddy 2.175+ | hooks, before execution | a mod rewrites the stored summary | `/tokenwise:learn` |
 | Grok Build 1.0+ | hooks, after execution | catalog after Grok's own summary | `/tokenwise:learn` |
+| GitHub Copilot CLI 1.0+ | hooks, after execution (`modifiedResult`) | Copilot's own (no hook lets context in) | `tokenwise learn` |
 
 `tokenwise setup` installs each one; `tokenwise doctor` reports what the
 installed version supports.

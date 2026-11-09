@@ -29,6 +29,7 @@ const LEARN_COMMAND: Readonly<Record<string, string>> = {
 /** How each agent calls the tokenwise skill. */
 const SKILL_COMMAND: Readonly<Record<string, string>> = {
   claude: '/tokenwise', codebuddy: '/tokenwise', grok: '/tokenwise', codex: '$tokenwise', hermes: '/tokenwise', opencode: '@tokenwise',
+  copilot: '/tokenwise',
 }
 /** The agents that show `startupNotice`: through hooks, or (OpenCode, Hermes) their plugin calling `tokenwise notice`. */
 export const NOTICE_HOSTS: ReadonlySet<string> = new Set(Object.keys(SKILL_COMMAND))

@@ -76,9 +76,10 @@ const skillDirs: Readonly<Record<string, (env: NodeJS.ProcessEnv) => string>> = 
   grok: env => join(home(env), '.grok', 'skills', 'tokenwise'),
   opencode: env => join(env.XDG_CONFIG_HOME || join(home(env), '.config'), 'opencode', 'skills', 'tokenwise'),
   hermes: env => join(env.HERMES_HOME || join(home(env), '.hermes'), 'skills', 'tokenwise'),
+  copilot: env => join(env.COPILOT_HOME || join(home(env), '.copilot'), 'skills', 'tokenwise'),
 }
 
-/** Claude Code, Codex, CodeBuddy and Grok: a marketplace named tokenwise, then the plugin from it. Adding it again fails harmlessly. */
+/** Claude Code, Codex, CodeBuddy, Grok and Copilot: a marketplace named tokenwise, then the plugin from it. Adding it again fails harmlessly. */
 const marketplace = (bin: string, add: string[], remove: string[],
   extra: { before?: (o: Options) => Step[]; after?: (o: Options) => Step[] } = {}): Pick<Agent, 'install' | 'uninstall'> => ({
   install: (s, o) => [...extra.before?.(o) ?? [], { run: [bin, 'plugin', 'marketplace', 'add', s.marketplace], mayFail: true }, { run: [bin, 'plugin', ...add] }],
@@ -107,6 +108,9 @@ const AGENT_PLUGINS: readonly Omit<Agent, 'skillDir'>[] = [
       { run: ['hermes', 'config', 'set', 'context.engine', 'tokenwise'] }],
     uninstall: (_, o) => [{ run: ['hermes', 'config', 'set', 'context.engine', 'compressor'], mayFail: true },
       { run: ['hermes', 'plugins', 'disable', 'tokenwise'], mayFail: true }, { remove: hermesDir(o.env) }] },
+  // Copilot reads the marketplace in .github/plugin/. Installing over an installed copy fails: take it out first.
+  { id: 'copilot', name: 'GitHub Copilot CLI', bin: 'copilot', ...marketplace('copilot', ['install', 'tokenwise@tokenwise'], ['uninstall', 'tokenwise'], {
+    before: () => [{ run: ['copilot', 'plugin', 'uninstall', 'tokenwise'], mayFail: true }] }) },
 ]
 
 export const AGENTS: readonly Agent[] = AGENT_PLUGINS.map(agent => ({ ...agent, skillDir: skillDirs[agent.id]! }))

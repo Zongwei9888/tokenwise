@@ -187,7 +187,8 @@ export class EconomyEngine {
         const rest = head === text ? '' : tail
         const hinted = `${head}${head.endsWith('\n') || head === '' ? '' : '\n'}${recallHint(referenceId(raw.sha256))}\n${rest.startsWith('\n') ? rest.slice(1) : rest}`
         const hintedTokens = estimate(hinted), hintedBytes = Buffer.byteLength(hinted, 'utf8')
-        if (hintedBytes < decision.rawBytes && decision.rawTokens - hintedTokens >= Math.max(1, options.config.minimumSavedTokens)) {
+        if (hintedBytes < decision.rawBytes && decision.rawTokens - hintedTokens >= Math.max(1, options.config.minimumSavedTokens)
+          && (options.maxProjectedChars === undefined || hinted.length <= options.maxProjectedChars)) {
           text = hinted; projectedBytes = hintedBytes; projectedTokens = hintedTokens
         }
       }

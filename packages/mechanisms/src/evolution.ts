@@ -57,7 +57,8 @@ function programStart(stage: readonly string[]): number {
   let at = 0
   while (at < stage.length) {
     const word = stage[at]!
-    if (LEADERS.has(word) || /^[A-Za-z_][A-Za-z0-9_]*=/u.test(word)) { at++; continue }
+    // A function defined in place (`q(){ curl …; }; q x`) runs its body: the program is the body's.
+    if (LEADERS.has(word) || /^[A-Za-z_][A-Za-z0-9_]*=/u.test(word) || /^[A-Za-z_][\w-]*\(\)\{?$/u.test(word)) { at++; continue }
     const values = WRAPPERS.get(word)
     if (!values || at + 1 >= stage.length) break
     // `command -v x` looks a name up: nothing of its own to group.

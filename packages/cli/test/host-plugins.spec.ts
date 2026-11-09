@@ -11,6 +11,34 @@ const hook = (host: string) => [{ type: 'command', command: `tokenwise hook ${ho
 const check = (host: string) => [{ type: 'command', command: expect.stringContaining(`then tokenwise hook ${host}; else`), timeout: 10 }]
 const PLUGINS = ['adapters/claude-code', 'adapters/codex', 'adapters/codebuddy', 'adapters/grok']
 
+describe('GitHub Copilot CLI plugin layout', () => {
+  const copilot = (command: string) => [{ type: 'command', bash: command, timeoutSec: 10 }]
+  it('is listed in the marketplace Copilot reads first, and hooks the events it can use', () => {
+    // Copilot reads .github/plugin/marketplace.json before .claude-plugin/ (seen on 1.0.103), so it finds its own plugin.
+    expect(json('.github/plugin/marketplace.json')).toMatchObject({ name: 'tokenwise', plugins: [{ name: 'tokenwise', source: './adapters/copilot', version }] })
+    expect(json('adapters/copilot/plugin.json')).toMatchObject({ name: 'tokenwise', version, hooks: 'hooks.json' })
+    const hooks = json('adapters/copilot/hooks.json')
+    expect(hooks.version).toBe(1)
+    expect(hooks.hooks.postToolUse).toEqual(copilot('tokenwise hook copilot'))
+    // preToolUse starts tokenwise only during tokenwise doctor --probe.
+    expect(hooks.hooks.preToolUse).toEqual(copilot(expect.stringContaining('if [ -n "$TOKENWISE_PROBE" ]; then tokenwise hook copilot; else cat >/dev/null; fi')))
+  })
+
+  it('says at startup, as a timeline line, when the tokenwise command is missing', () => {
+    const bin = mkdtempSync(join(tmpdir(), 'tokenwise-path-'))
+    try {
+      writeFileSync(join(bin, 'tokenwise'), '#!/bin/sh\ncat >/dev/null\n')
+      chmodSync(join(bin, 'tokenwise'), 0o755)
+      const command = json('adapters/copilot/hooks.json').hooks.sessionStart[0].bash as string
+      const missing = spawnSync('/bin/sh', ['-c', command], { env: { PATH: '/usr/bin:/bin' }, input: '{}', encoding: 'utf8' })
+      expect(missing.status).toBe(0)
+      expect(JSON.parse(missing.stdout)).toEqual({ type: 'progress', message: expect.stringMatching(/^TokenWise: the tokenwise command is not on PATH.*#install$/u) })
+      const present = spawnSync('/bin/sh', ['-c', command], { env: { PATH: `${bin}:/usr/bin:/bin` }, input: '{}', encoding: 'utf8' })
+      expect(present).toMatchObject({ status: 0, stdout: '' })
+    } finally { rmSync(bin, { recursive: true, force: true }) }
+  })
+})
+
 describe('Claude Code, CodeBuddy and Grok plugin layouts', () => {
   it('lists one plugin per host in that host\'s marketplace file', () => {
     // CodeBuddy reads .codebuddy-plugin before .claude-plugin, and Grok .grok-plugin before it, so each finds its own.

@@ -107,6 +107,9 @@ describe('evolution', () => {
     expect(['nice -n 10 make test', 'sudo -u pg psql -c x', 'time -p cargo build', 'command -v x && make', 'env FOO=1 npm test', 'timeout 60 npm test',
       'timeout -s KILL 5m ./e2e.sh', 'env', 'python manage.py test', 'python3 app.py', 'node --test', 'node server.js'].map(commandHead))
       .toEqual(['make test', 'psql', 'cargo build', 'make', 'npm test', 'npm test', './e2e.sh', 'env', 'python manage.py test', 'python3', 'node --test', 'node'])
+    // A function defined in place runs its body: grouped by the body's program, not by `q(){`.
+    expect(['q(){ curl -s "$1"; }; q https://x', 'run() { echo start; make build; }; run', 'f(){ ./deploy.sh; }; f'].map(commandHead))
+      .toEqual(['curl', 'make build', './deploy.sh'])
   })
 
   it('leaves out of evidence what the agent looked up, as it does file contents', () => {

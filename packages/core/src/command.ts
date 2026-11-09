@@ -198,7 +198,8 @@ export function looksUp(command: string): boolean {
     while (first < words.length - 1) {
       const word = words[first]!
       if (WRAPPERS.has(word) || word === 'timeout') wrapped = true
-      else if (!(/^[A-Za-z_]\w*=/u.test(word) || KEYWORDS.has(word) || wrapped && /^(?:-|\d)/u.test(word))) break
+      // A function defined in place (`q(){ curl …; }`) runs its body.
+      else if (!(/^[A-Za-z_]\w*=/u.test(word) || KEYWORDS.has(word) || /^[A-Za-z_][\w-]*\(\)\{?$/u.test(word) || wrapped && /^(?:-|\d)/u.test(word))) break
       first++
     }
     const program = (words[first] ?? '').replace(/^.*\//u, '')

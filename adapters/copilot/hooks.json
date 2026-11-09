@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      { "type": "command", "bash": "if [ -n \"$TOKENWISE_PROBE\" ]; then tokenwise hook copilot; else cat >/dev/null; fi", "timeoutSec": 10 }
+    ],
+    "postToolUse": [
+      { "type": "command", "bash": "tokenwise hook copilot", "timeoutSec": 10 }
+    ],
+    "sessionStart": [
+      { "type": "command", "bash": "if command -v tokenwise >/dev/null 2>&1; then tokenwise hook copilot; else cat >/dev/null; echo '{\"type\":\"progress\",\"message\":\"TokenWise: the tokenwise command is not on PATH, so the plugin does nothing yet. Install it: https://github.com/HKUDS/TokenWise#install\"}'; fi", "timeoutSec": 10 }
+    ]
+  }
+}

@@ -7,7 +7,7 @@
 
 <p>
   <a href="../../LICENSE"><img alt="许可证：MIT" src="https://img.shields.io/badge/license-MIT-0F766E?style=flat-square&labelColor=0E2A26"></a>
-  <img alt="支持 8 个 agent 和任意 shell" src="https://img.shields.io/badge/agents-8_%2B_any_shell-0F766E?style=flat-square&labelColor=0E2A26">
+  <img alt="支持 9 个 agent 和任意 shell" src="https://img.shields.io/badge/agents-9_%2B_any_shell-0F766E?style=flat-square&labelColor=0E2A26">
   <img alt="零运行时依赖" src="https://img.shields.io/badge/runtime_deps-0-0F766E?style=flat-square&labelColor=0E2A26">
 </p>
 
@@ -51,18 +51,19 @@
 
 <table width="100%">
   <tr>
-    <td align="center" width="20%"><img src="../../media/agents/claude-code.svg" width="48" height="48" alt=""><br><strong>Claude Code</strong></td>
-    <td align="center" width="20%"><img src="../../media/agents/codex.svg" width="48" height="48" alt=""><br><strong>Codex</strong></td>
-    <td align="center" width="20%"><img src="../../media/agents/hermes.svg" width="48" height="48" alt=""><br><strong>Hermes Agent</strong></td>
-    <td align="center" width="20%"><img src="../../media/agents/opencode.svg" width="48" height="48" alt=""><br><strong>OpenCode</strong></td>
-    <td align="center" width="20%"><img src="../../media/agents/codebuddy.svg" width="48" height="48" alt=""><br><strong>CodeBuddy</strong></td>
+    <td align="center" width="16%"><img src="../../media/agents/claude-code.svg" width="48" height="48" alt=""><br><strong>Claude Code</strong></td>
+    <td align="center" width="16%"><img src="../../media/agents/codex.svg" width="48" height="48" alt=""><br><strong>Codex</strong></td>
+    <td align="center" width="16%"><img src="../../media/agents/copilot.svg" width="48" height="48" alt=""><br><strong>GitHub Copilot CLI</strong></td>
+    <td align="center" width="16%"><img src="../../media/agents/hermes.svg" width="48" height="48" alt=""><br><strong>Hermes Agent</strong></td>
+    <td align="center" width="16%"><img src="../../media/agents/opencode.svg" width="48" height="48" alt=""><br><strong>OpenCode</strong></td>
+    <td align="center" width="16%"><img src="../../media/agents/codebuddy.svg" width="48" height="48" alt=""><br><strong>CodeBuddy</strong></td>
   </tr>
   <tr>
-    <td align="center" width="20%"><img src="../../media/agents/grok.svg" width="48" height="48" alt=""><br><strong>Grok Build</strong></td>
-    <td align="center" width="20%"><img src="../../media/agents/dsh.svg" width="48" height="48" alt=""><br><strong>DeepSeek Harness</strong></td>
-    <td align="center" width="20%"><img src="../../media/agents/pi.svg" width="48" height="48" alt=""><br><strong>pi</strong></td>
-    <td align="center" width="20%"><img src="../../media/images/icons/agent-shell.png" width="48" height="48" alt=""><br><strong>任何 shell</strong></td>
-    <td align="center" width="20%"><a href="#接下来"><img src="../../media/images/icons/agent-more.png" width="48" height="48" alt=""><br><strong>更多接入中</strong></a></td>
+    <td align="center" width="16%"><img src="../../media/agents/grok.svg" width="48" height="48" alt=""><br><strong>Grok Build</strong></td>
+    <td align="center" width="16%"><img src="../../media/agents/dsh.svg" width="48" height="48" alt=""><br><strong>DeepSeek Harness</strong></td>
+    <td align="center" width="16%"><img src="../../media/agents/pi.svg" width="48" height="48" alt=""><br><strong>pi</strong></td>
+    <td align="center" width="16%"><img src="../../media/images/icons/agent-shell.png" width="48" height="48" alt=""><br><strong>任何 shell</strong></td>
+    <td align="center" width="16%"><a href="#接下来"><img src="../../media/images/icons/agent-more.png" width="48" height="48" alt=""><br><strong>更多接入中</strong></a></td>
   </tr>
 </table>
 
@@ -84,7 +85,7 @@ tokenwise setup        # 自动找到本机的 agent，逐个装好
 tokenwise doctor --probe   # 让每个 agent 跑一条命令，确认 TokenWise 看到了
 ```
 
-不用任何配置，下一条命令就生效。想看它为你做了什么，或者教它处理你的某条命令，在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`，OpenCode 和 DeepSeek Harness 里是 `@tokenwise`，pi 里是 `/skill:tokenwise`）。`tokenwise doctor` 列出每个 agent 里 TokenWise 是否开着、最近一次看到它跑命令是什么时候；`tokenwise report` 查看省了多少，`tokenwise uninstall` 可以卸载。
+不用任何配置，下一条命令就生效。想看它为你做了什么，或者教它处理你的某条命令，在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`，OpenCode 和 DeepSeek Harness 里是 `@tokenwise`，pi 里是 `/skill:tokenwise`）。`tokenwise saved` 在终端里用一个装满硬币的存钱罐，告诉你它帮你省了多少；`tokenwise dashboard` 在浏览器里显示同一个罐子，每省下一笔就落进一枚硬币；`tokenwise doctor` 列出每个 agent 里 TokenWise 是否开着、最近一次看到它跑命令是什么时候；`tokenwise uninstall` 可以卸载。
 
 ## ✨ 技术要点
 
@@ -93,7 +94,7 @@ tokenwise doctor --probe   # 让每个 agent 跑一条命令，确认 TokenWise 
 - **结果确定**：同样的输出永远得到同样的结果，prompt cache 照常命中。
 - **出错就给原文**：任何环节出错，模型拿到的都是原始内容。
 - **只在本机**：原文只存在你的电脑上，只有你能读；TokenWise 自己不发任何网络请求。
-- **在真实 agent 上测试**：单元测试、由真实工具输出组成的逐字节一致性语料，以及在全部 8 个 agent 上用真实模型跑的测试。
+- **在真实 agent 上测试**：单元测试、由真实工具输出组成的逐字节一致性语料，以及在全部 9 个 agent 上用真实模型跑的测试。
 - **MIT 许可，零运行时依赖。**
 
 ## 📰 动态
@@ -102,7 +103,7 @@ tokenwise doctor --probe   # 让每个 agent 跑一条命令，确认 TokenWise 
 
 ## 接下来
 
-- 接入更多 agent：GitHub Copilot CLI、Gemini CLI、Cursor 等。
+- 接入更多 agent：Cursor、Gemini CLI、Kimi Code 等。
 - 为常用工具补充更多内置规则，每一条都在真实输出上验证。
 - 发布 TokenWise 背后的论文和完整评估。
 
@@ -121,6 +122,7 @@ claude plugin marketplace add "$PWD" && claude plugin install tokenwise@tokenwis
 codex plugin marketplace add "$PWD" && codex plugin add tokenwise@tokenwise    # 然后在 /hooks 里信任它的钩子
 codebuddy plugin marketplace add "$PWD" && codebuddy plugin install tokenwise@tokenwise
 grok plugin marketplace add "$PWD" && grok plugin install tokenwise@tokenwise --trust
+copilot plugin marketplace add "$PWD" && copilot plugin install tokenwise@tokenwise
 
 # OpenCode
 mkdir -p ~/.config/opencode/plugins
@@ -136,7 +138,7 @@ tokenwise run -c 'cargo test'
 
 # tokenwise skill：复制到各个 agent 读取 skill 的目录
 cp -R skills/tokenwise ~/.claude/skills/            # Claude Code；~/.codebuddy/skills、~/.grok/skills、
-                                                    # ~/.config/opencode/skills、~/.hermes/skills 同理
+                                                    # ~/.config/opencode/skills、~/.hermes/skills、~/.copilot/skills 同理
 cp -R skills/tokenwise ~/.agents/skills/            # Codex、pi 和 DeepSeek Harness
 ```
 
@@ -158,6 +160,7 @@ cp -R skills/tokenwise ~/.agents/skills/            # Codex、pi 和 DeepSeek Ha
 | Codex 0.162+ | hook；目录跟在 Codex 自己的摘要后面 | `$tokenwise learn` |
 | CodeBuddy 2.175+ | hook，以及改写已存摘要的 mod | `/tokenwise:learn` |
 | Grok Build 1.0+ | hook；目录跟在 Grok 自己的摘要后面 | `/tokenwise:learn` |
+| GitHub Copilot CLI 1.0+ | hook；只处理命令输出（对话压缩用 Copilot 自己的摘要） | `tokenwise learn` |
 | 任何 agent 或 shell | `tokenwise run`，通过 MCP 取回原文 | `tokenwise learn` |
 
 每个 agent 还会装上 `tokenwise` skill：`/tokenwise`，Codex 里是 `$tokenwise`，OpenCode 和 DeepSeek Harness 里是 `@tokenwise`，pi 里是 `/skill:tokenwise`。各 agent 的细节见 [`adapters/`](../../adapters) 下对应的目录；[docs/adapters.md](../adapters.md) 介绍如何接入新的 agent。
@@ -171,7 +174,9 @@ cp -R skills/tokenwise ~/.agents/skills/            # Codex、pi 和 DeepSeek Ha
 | 命令 | 作用 |
 |---|---|
 | `tokenwise setup [agent...]`、`uninstall [--purge]` | 装进你的 agent，或卸载 |
-| `tokenwise report [--host H] [--session S]` | 按会话或 agent 查看省了多少 |
+| `tokenwise saved [--month\|--all]` | 在终端里用像素存钱罐显示 TokenWise 帮你省了多少（`--json` 输出数字） |
+| `tokenwise dashboard [--port N] [--no-open]` | 在浏览器里显示同一个存钱罐，省下的越多装得越满 |
+| `tokenwise report [--host H] [--session S]` | `saved` 背后的详细数据，按会话或 agent 列出，用于排查问题 |
 | `tokenwise checkup` | 它精简了什么、学到的规则、还值得教它的命令 |
 | `tokenwise teach "<命令>"`、`teach check\|preview\|keep\|drop` | 在你自己的 agent 里教它处理一条命令 |
 | `tokenwise preview "<命令>"` | 这条命令的一次真实输出：原文和模型实际读到的内容 |

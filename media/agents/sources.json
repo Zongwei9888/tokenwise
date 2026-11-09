@@ -30,5 +30,9 @@
   "pi.svg": {
     "source": "https://pi.dev/logo.svg",
     "note": "The pi logo (pi.dev, MIT) on the shared badge background"
+  },
+  "copilot.svg": {
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/master/packages/static-svg/icons/githubcopilot.svg",
+    "note": "Original product/brand artwork; SVG badge background added for light/dark readability"
   }
 }

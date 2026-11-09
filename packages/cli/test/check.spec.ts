@@ -83,18 +83,19 @@ describe('tokenwise doctor: your agents', () => {
   it('reads whether each agent has TokenWise\'s plugin on, from that agent\'s own settings', () => {
     const home = temp()
     const env = { HOME: home }
-    for (const id of ['claude', 'codebuddy', 'codex', 'grok', 'opencode', 'hermes']) expect(pluginState(id, env), id).toBe('off')
+    for (const id of ['claude', 'codebuddy', 'codex', 'grok', 'opencode', 'hermes', 'copilot']) expect(pluginState(id, env), id).toBe('off')
     expect(pluginState('pi', env)).toBeUndefined()
     const write = (path: string, text: string) => { mkdirSync(join(home, path, '..'), { recursive: true }); writeFileSync(join(home, path), text) }
     write('.claude/settings.json', JSON.stringify({ enabledPlugins: { 'tokenwise@tokenwise': false } }))
     write('.codebuddy/settings.json', JSON.stringify({ enabledPlugins: { 'tokenwise@tokenwise': true } }))
+    write('.copilot/settings.json', JSON.stringify({ enabledPlugins: { 'tokenwise@tokenwise': true } }))
     // Codex as it was after the plugin was taken out: hooks still trusted, the plugin gone.
     write('.codex/config.toml', '[hooks.state."tokenwise@tokenwise:hooks/hooks.json:pre_tool_use:0:0"]\ntrusted_hash = "sha256:x"\n\n[plugins."slack@openai-curated"]\nenabled = true\n')
     write('.grok/config.toml', '[[marketplace.sources]]\nname = "tokenwise"\n\n[plugins]\nenabled = [\n    "other",\n    "tokenwise",\n]\n')
     write('.config/opencode/plugins/tokenwise.js', '')
     write('.hermes/plugins/tokenwise/__init__.py', '')
     write('.hermes/config.yaml', 'plugins:\n  enabled:\n    - other\n    - tokenwise\n  disabled: []\n')
-    expect(['claude', 'codebuddy', 'codex', 'grok', 'opencode', 'hermes'].map(id => pluginState(id, env))).toEqual(['off', 'on', 'off', 'on', 'on', 'on'])
+    expect(['claude', 'codebuddy', 'codex', 'grok', 'opencode', 'hermes', 'copilot'].map(id => pluginState(id, env))).toEqual(['off', 'on', 'off', 'on', 'on', 'on', 'on'])
     write('.codex/config.toml', '[plugins."tokenwise@tokenwise"]\nenabled = true\n')
     write('.hermes/config.yaml', 'plugins:\n  enabled: []\n  disabled:\n    - tokenwise\n')
     expect([pluginState('codex', env), pluginState('hermes', env)]).toEqual(['on', 'off'])
@@ -117,7 +118,9 @@ describe('tokenwise doctor --probe', () => {
     expect(probeCommand('claude', 'p', command)).toEqual(['claude', '-p', 'p', '--allowedTools', `Bash(${command})`])
     expect(probeCommand('codebuddy', 'p', command)).toEqual(['codebuddy', '-p', 'p', '--allowedTools', `Bash(${command})`])
     expect(probeCommand('grok', 'p', command)).toEqual(['grok', '-p', 'p', '--allow', `Bash(${command})`])
-    for (const argv of ['claude', 'codex', 'codebuddy', 'grok', 'opencode', 'hermes', 'pi'].map(id => probeCommand(id, 'p', command)!)) {
+    // Copilot's rules cannot allow one tokenwise subcommand; its TokenWise hook does, during the probe (see the hook tests).
+    expect(probeCommand('copilot', 'p', command)).toEqual(['copilot', '-p', 'p'])
+    for (const argv of ['claude', 'codex', 'codebuddy', 'grok', 'opencode', 'hermes', 'pi', 'copilot'].map(id => probeCommand(id, 'p', command)!)) {
       expect(argv.join(' ')).not.toMatch(/dangerously|yolo|bypass|--auto|always-approve/u)
     }
     expect(probeCommand('dsh', 'p', command)).toBeUndefined()
@@ -129,9 +132,11 @@ describe('tokenwise doctor --probe', () => {
     const { env } = machine([], {})
     const results = await probeAgents(['claude', 'codex', 'grok', 'hermes', 'dsh'], {
       dataDirs: [data], timeoutMs: 1000, env,
-      run: async (argv, cwd) => {
+      run: async (argv, cwd, childEnv) => {
         asked.push([...argv])
         expect(cwd).toContain('tokenwise-probe-')
+        // The agent is told the mark, for Copilot's hook to let that command alone run.
+        expect(argv.join(' ')).toContain(`tokenwise probe ${childEnv.TOKENWISE_PROBE}`)
         const command = /tokenwise probe tw[0-9a-f]{8}/u.exec(argv.join(' '))![0]
         if (argv[0] === 'claude') { record(data, 'claude', command); return { code: 0, tail: 'done' } }
         // Another agent's record of the same command does not count.

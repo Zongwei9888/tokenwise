@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { lstatSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { basename, dirname, resolve } from 'node:path'
 import { mayProject } from '@tokenwise/core'
 import { normalizeShellCommand } from '@tokenwise/mechanisms'
 import { claudeAfterCompact, claudeAllowRecall, claudePreCompact } from './claude-shadow.ts'
@@ -36,7 +38,7 @@ const MAX_INPUT = 4 * 1024 * 1024
 export const WRAPPER = 'tokenwise run'
 
 /** Hosts `tokenwise hook` serves. */
-export const HOOK_HOSTS = ['codex', 'claude', 'codebuddy', 'grok', 'hermes'] as const
+export const HOOK_HOSTS = ['codex', 'claude', 'codebuddy', 'grok', 'hermes', 'copilot'] as const
 export type HookHost = typeof HOOK_HOSTS[number]
 
 const text = (value: unknown) => typeof value === 'string' && value !== '' ? value : null
@@ -211,6 +213,64 @@ export function grokHook(input: HookInput, env: NodeJS.ProcessEnv = process.env)
   return JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', updatedToolOutput: status + projected.stdout } })
 }
 
+/** Copilot CLI ends a bash result with its own status line (seen on 1.0.103). */
+const COPILOT_STATUS = /\n?<shellId: [^>\n]* completed with exit code (-?\d+)>\s*$/u
+/** Copilot saves output too large for the model to a file and shows a preview instead. */
+const COPILOT_SAVED = 'Output too large to read at once'
+/** Copilot 1.0.103 shortens some output itself, and keeps the original in a file it names. */
+const COPILOT_COMPACTED = /^Shell output was automatically compacted\. Compacted output below\. Original at ([^\n;]+); only use if exact omitted lines are needed\.\n/u
+const COPILOT_ORIGINAL = /^original-output-\d+-[0-9a-f]{32}\.txt$/u
+
+/**
+ * The original Copilot kept, read only from a file of Copilot's naming in this
+ * user's temporary folder (a command could print that header itself).
+ */
+function copilotOriginal(path: string, env: NodeJS.ProcessEnv): string | undefined {
+  try {
+    const folders = new Set([resolve(tmpdir()), ...env.TMPDIR ? [resolve(env.TMPDIR)] : []])
+    if (!COPILOT_ORIGINAL.test(basename(path)) || !folders.has(resolve(dirname(path)))) return undefined
+    const stat = lstatSync(path)
+    if (!stat.isFile() || (process.getuid && stat.uid !== process.getuid()) || stat.size > 32 * 1024 * 1024) return undefined
+    return readFileSync(path, 'utf8').replace(/\n$/u, '')
+  } catch { return undefined }
+}
+
+/**
+ * GitHub Copilot CLI: postToolUse of its bash tool. Its camelCase events carry
+ * no event name: a tool result has `toolResult`. The reply's `modifiedResult`
+ * replaces what the model reads, failed commands included (they are results of
+ * type success with a non-zero exit code in the status line, which stays).
+ */
+export function copilotHook(input: HookInput, env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const args = input.toolArgs as { command?: unknown } | null | undefined
+  // preToolUse, during `tokenwise doctor --probe` only: Copilot's rules cannot allow one tokenwise subcommand, so this does.
+  if (input.toolResult === undefined && typeof env.TOKENWISE_PROBE === 'string' && /^tw[0-9a-f]{8}$/u.test(env.TOKENWISE_PROBE)) {
+    const probe = input.toolName === 'bash' && typeof args?.command === 'string' && args.command.trim() === `tokenwise probe ${env.TOKENWISE_PROBE}`
+    return JSON.stringify(probe ? { permissionDecision: 'allow' }
+      : { permissionDecision: 'deny', permissionDecisionReason: 'TokenWise probe: only the probe command may run.' })
+  }
+  const result = input.toolResult as { resultType?: unknown; textResultForLlm?: unknown } | null | undefined
+  if (input.toolName !== 'bash' || !result || result.resultType !== 'success' || typeof result.textResultForLlm !== 'string') return undefined
+  const command = args?.command
+  const output = result.textResultForLlm
+  if (typeof command !== 'string' || output.startsWith(COPILOT_SAVED)) return undefined
+  const status = COPILOT_STATUS.exec(output)
+  // Detached and still-running shells end differently: left alone.
+  if (!status) return undefined
+  let stdout = output.slice(0, status.index)
+  // Output Copilot shortened itself: TokenWise works on the original, and its projection replaces Copilot's only when shorter.
+  const compacted = COPILOT_COMPACTED.exec(stdout)
+  const original = compacted ? copilotOriginal(compacted[1]!.trim(), env) : undefined
+  if (compacted && original === undefined) return undefined
+  const limit = compacted ? stdout.length : undefined
+  if (original !== undefined) stdout = original
+  const projected = projectOutput({ host: 'copilot', delivery: 'result-hook', tool: 'bash', sessionId: text(input.sessionId), callId: null,
+    command, exitCode: Number(status[1]), interrupted: false, truncated: false, stdout,
+    ...limit === undefined ? {} : { maxProjectedChars: limit - 1 }, ...typeof input.cwd === 'string' ? { cwd: input.cwd } : {}, env })
+  if (!projected) return undefined
+  return JSON.stringify({ modifiedResult: { resultType: 'success', textResultForLlm: projected.stdout + output.slice(status.index) } })
+}
+
 /** Hermes's notes for a command it stopped (`tools/environments/base.py`). */
 const HERMES_STOPPED = /\[Command (?:interrupted|timed out after [^\]\n]*)\]\s*$/u
 /** Hermes's head-and-tail cut of a capture over its window (`tools/tool_output_truncate.py`). */
@@ -274,6 +334,7 @@ export async function readStdin(limit = MAX_INPUT): Promise<string> {
 
 const HANDLERS: Record<HookHost, (input: HookInput) => string | undefined> = {
   codex: input => codexAfterCompact(input) ?? codexPreToolUse(input), claude: claudeHook, codebuddy: codebuddyHook, grok: grokEntry, hermes: hermesHook,
+  copilot: copilotHook,
 }
 
 /**
@@ -288,16 +349,22 @@ function holdGrokNotice(input: HookInput): undefined {
   return undefined
 }
 
-/** A new session, not one resumed or continued after a compaction: `startup` (Claude Code, Codex, CodeBuddy), `new` (Grok). */
-const isStartup = (input: HookInput) => input.hook_event_name === 'SessionStart' && (input.source === 'startup' || input.source === 'new')
-const notice = (text: string | undefined) => text === undefined ? undefined : JSON.stringify({ systemMessage: text })
+/**
+ * A new session, not one resumed or continued after a compaction: `startup` (Claude Code, Codex, CodeBuddy), `new` (Grok).
+ * Copilot's sessionStart has no event name: it is the event with a `source` and no tool.
+ */
+const isStartup = (host: string, input: HookInput) => (input.hook_event_name === 'SessionStart' || (host === 'copilot' && typeof input.sessionId === 'string'
+  && input.toolName === undefined)) && (input.source === 'startup' || input.source === 'new')
+/** Copilot shows a hook's progress line in its timeline; the others show a `systemMessage`. */
+const notice = (host: string, text: string | undefined) => text === undefined ? undefined
+  : JSON.stringify(host === 'copilot' ? { type: 'progress', message: text } : { systemMessage: text })
 
 /** `tokenwise hook <host>`: never blocks a tool call, never exits non-zero. */
 export async function hook(host: string | undefined): Promise<number> {
   try {
     if (host === undefined || !Object.hasOwn(HANDLERS, host)) return 0
     const input = JSON.parse(await readStdin()) as HookInput
-    const output = !isStartup(input) ? HANDLERS[host as HookHost](input) : host === 'grok' ? holdGrokNotice(input) : notice(startupNotice(host))
+    const output = !isStartup(host, input) ? HANDLERS[host as HookHost](input) : host === 'grok' ? holdGrokNotice(input) : notice(host, startupNotice(host))
     if (output) process.stdout.write(output + '\n')
   } catch { /* Passthrough. */ }
   return 0

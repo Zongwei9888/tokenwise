@@ -50,6 +50,9 @@ describe('tokenwise setup', () => {
       `copy ${published.opencode} -> /home/u/.config/opencode/plugins/tokenwise.js`, skill('.config/opencode/skills'),
       `copy ${published.hermes} -> /home/u/.hermes/plugins/tokenwise`, 'hermes plugins enable tokenwise', 'hermes config set context.engine tokenwise',
       skill('.hermes/skills'),
+      // Copilot reads the marketplace in .github/plugin/, which lists adapters/copilot.
+      'copilot plugin uninstall tokenwise', 'copilot plugin marketplace add HKUDS/TokenWise', 'copilot plugin install tokenwise@tokenwise',
+      skill('.copilot/skills'),
     ])
   })
 
@@ -61,6 +64,8 @@ describe('tokenwise setup', () => {
       'hermes config set context.engine compressor', 'hermes plugins disable tokenwise', 'remove /home/u/.hermes/plugins/tokenwise',
       'remove /home/u/.hermes/skills/tokenwise',
     ])
+    expect(plan({ action: 'uninstall', agents: ['copilot'] }).steps).toEqual(['copilot plugin uninstall tokenwise',
+      'copilot plugin marketplace remove tokenwise', 'remove /home/u/.copilot/skills/tokenwise'])
     expect(plan({ action: 'uninstall', agents: ['codebuddy'] }).steps).toEqual(['codebuddy plugin uninstall tokenwise@tokenwise',
       'codebuddy plugin marketplace remove tokenwise', 'remove /home/u/.codebuddy/plugins/cache/tokenwise', 'remove /home/u/.codebuddy/skills/tokenwise'])
     expect(plan({ action: 'uninstall', agents: ['pi'], purge: '/home/u/.tokenwise' }).steps).toEqual(['pi remove npm:@tokenwise/pi',

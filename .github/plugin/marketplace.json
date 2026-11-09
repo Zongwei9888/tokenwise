@@ -1,0 +1,14 @@
+{
+  "name": "tokenwise",
+  "owner": {
+    "name": "HKUDS"
+  },
+  "plugins": [
+    {
+      "name": "tokenwise",
+      "source": "./adapters/copilot",
+      "description": "TokenWise for GitHub Copilot CLI",
+      "version": "0.3.0"
+    }
+  ]
+}
