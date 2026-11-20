@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { FileArtifactStore, RuleStore } from '@tokenwise/store'
+import { conversationNotice } from '../src/conversation.ts'
 import { claudeHook, codebuddyHook, copilotHook, eventHost, grokHook, hermesHook } from '../src/hook.ts'
 import { projectOutput } from '../src/project.ts'
 
@@ -399,6 +400,10 @@ describe('what a conversation saved, at the end of a turn', () => {
     expect(reply).toMatchObject({ type: 'progress', message: expect.stringMatching(/^ ▗▄▄▖\n▗▛[●░]{2}▜▖ TokenWise · saved [\d,]+ tokens in this conversation\n/u) })
     expect(reply.message).not.toContain('\x1b[')
     expect(copilotHook({ sessionId: 's1', stopReason: 'end_turn', cwd: '/w' }, env)).toBeUndefined()
+    // Grok prints escape codes as text and trims the message's leading whitespace: no colour, and a lid that keeps its place.
+    const grok = conversationNotice('grok', 's1', savedConversation('grok'))!
+    expect(grok).toMatch(/^\u2800▗▄▄▖\n▗▛[●░]{2}▜▖ TokenWise · saved [\d,]+ tokens in this conversation\n/u)
+    expect(grok).not.toContain('\x1b[')
   })
 
   it('speaks English whatever the locale, and says nothing for a conversation that saved nothing', () => {

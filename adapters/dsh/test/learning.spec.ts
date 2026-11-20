@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { sha256 } from '@tokenwise/core'
-import { contextOverheadTokens } from '@tokenwise/mechanisms'
 import { FileArtifactStore, FileJournal, RuleStore, removeTree } from '@tokenwise/store'
 import { apply, testing } from '../src/index.ts'
 import type { CommandRuntime, ConnectionRuntime, HostContext } from '../src/host.ts'
@@ -105,8 +104,7 @@ describe('what a DSH conversation saved', () => {
     expect(await saved('s2')).toBeNull()
     expect(await saved()).toBeNull()
     expect(await host.post(ROUTES.announcement)).toEqual({ run: null, ready: null })
-    // Net of what TokenWise's own text cost the conversation.
-    expect(await saved('s1')).toEqual({ savedTokens: 2700 - contextOverheadTokens('dsh'), seenTokens: 4000 })
+    expect(await saved('s1')).toEqual({ savedTokens: 2700, seenTokens: 4000 })
     expect(await saved('s1')).toBeNull()
     turnEnd('s1')
     expect(await saved('s1')).toBeNull()
@@ -114,7 +112,7 @@ describe('what a DSH conversation saved', () => {
     host = mount()
     turnEnd('s1'); turnEnd('s2')
     expect(await saved('s1')).toBeNull()
-    expect(await saved('s2')).toEqual({ savedTokens: 600 - contextOverheadTokens('dsh'), seenTokens: 800 })
+    expect(await saved('s2')).toEqual({ savedTokens: 600, seenTokens: 800 })
   })
 })
 

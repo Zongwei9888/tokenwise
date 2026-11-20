@@ -15,9 +15,11 @@ pytest log through the real filter (260 lines → 17, 19.0 KB → 852 bytes).
 | `images/story-how.png`, `-zh` | 2400 wide | the README's overview: one layer, context on demand, self-evolving |
 | `images/story-evolve.png`, `-zh` | 2400 wide | self-evolution in four steps (for posts and talks) |
 | `images/before-after.png`, `-zh` | 3200×1800 | the one-image demo: same run, 17 lines instead of 260 |
+| `images/cards.png`, `-zh` | 3120 wide | the README's card wall: real screenshots of the card at the end of an answer in all nine agents (one `pytest -v` run each; user name in paths replaced) |
 | `images/icons/agent-*.png` | 128 px | the README's agent-wall badges for any shell and more agents |
 | `video/tokenwise-en.mp4`, `-zh.mp4` | 1920×1080, 53 s | the explainer, in three chapters: context on demand, self-evolving, cross-platform |
 | `video/tokenwise-promo-en.mp4` | 1920×1080, 35 s | the promo: TokenWise in every agent, saving into one jar (`promo.html`; `node render.mjs video en promo`) |
+| `video/promo.gif` | 640 wide, 35 s | the promo, looping, at the top of the README; links to the video on YouTube (https://youtu.be/q5htL0LhzbY) |
 | `video/fold.gif`, `fold-zh.gif` | 960 wide, 8 s | the fold, looping: README and chat where video does not play |
 
 Images are rendered at 2× for sharp text on any screen.
@@ -52,6 +54,7 @@ The GIFs are cut from the videos:
 ```sh
 cd media/video
 ffmpeg -ss 6.9 -t 7.6 -i tokenwise-en.mp4 -vf "fps=15,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" -loop 0 fold.gif
+ffmpeg -i tokenwise-promo-en.mp4 -vf "fps=8,scale=640:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=80:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" -loop 0 promo.gif
 ```
 
 ## Look

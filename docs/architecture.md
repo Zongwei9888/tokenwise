@@ -139,22 +139,23 @@ saved like any shortened output), and the read right after a note is whole.
   **DeepSeek Harness** and **Codex** send every read whole.
 
 When an answer ends and the conversation saved more than when it was last
-said, each host shows one line: the tokens saved in the conversation (its
+said, each host shows a small card: the tokens saved in the conversation (its
 subagents included) and how much shorter that made all the tool output
-TokenWise saw. The tokens saved are net of what TokenWise itself put in front
-of the model (@tokenwise/mechanisms `overheadOf`): its text in every request
-(the recall tool's definition, and the skill's listing on OpenCode and Hermes,
-which cannot keep the skill for the person alone) once per conversation, what
-each recall returned, and what each compaction added (`addedTokens` in the
-checkpoint record). A shortened output carries no text of TokenWise's own.
-`tokenwise saved` and the dashboard use
-the same accounting. The number last said is kept on disk for each host and
+TokenWise saw. The tokens saved are what the shortened outputs saved: each
+original minus what the model read. `tokenwise saved` and the dashboard count
+the same way. `tokenwise report` also lists what TokenWise itself put in front
+of the model (@tokenwise/mechanisms `overheadOf`), and the net: its text in
+every request (the recall tool's definition, and the skill's listing on
+OpenCode and Hermes, which cannot keep the skill for the person alone) once per
+conversation, what each recall returned, and what each compaction added
+(`addedTokens` in the checkpoint record). A shortened output carries no text of
+TokenWise's own. The number last said is kept on disk for each host and
 conversation (`told/` in the data directory, @tokenwise/mechanisms
 `untoldSavings`), so a restart, a resumed conversation or a switch between
 conversations does not say it again. Claude Code, Codex and CodeBuddy show a
 `Stop` hook's `systemMessage`, Grok its `Stop` reply, Copilot an `agentStop`
-progress line, OpenCode a toast on `session.idle`, pi a notice at
-`agent_end`, DeepSeek Harness a toast on that conversation's page after
+progress line, OpenCode a toast on `session.idle`, pi a card above the
+editor at `agent_end`, DeepSeek Harness a toast on that conversation's page after
 `turn/end` (its `conversation.composer.dock` entry asks for its own
 `sessionId`), and Hermes a message posted at
 `post_llm_call`, while the turn is still open (its TUI shows it in the

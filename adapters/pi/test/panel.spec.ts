@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { visibleWidth } from '@earendil-works/pi-tui'
 import { sha256 } from '@tokenwise/core'
-import { contextOverheadTokens, savedCard } from '@tokenwise/mechanisms'
+import { savedCard } from '@tokenwise/mechanisms'
 import type { EvolveStatus } from '@tokenwise/mechanisms'
 import { FileArtifactStore, FileJournal, RuleStore, removeTree } from '@tokenwise/store'
 import { createTokenWiseExtension } from '../src/extension.ts'
@@ -178,10 +178,7 @@ describe('what a pi conversation saved', () => {
     try {
       await pi.handlers.get('agent_end')!({}, pi.ctx)
       await pi.handlers.get('agent_end')!({}, pi.ctx)
-      // Net of what TokenWise's own text cost the conversation: nothing here, since pi shows the recall tool only after a compaction.
-      const cost = contextOverheadTokens('pi', false)
-      expect(cost).toBe(0)
-      const card = (saved: number, seen: number, progress = 1) => savedCard({ savedTokens: saved - cost, seenTokens: seen }, { color: true, lines: true, progress })!.split('\n')
+      const card = (saved: number, seen: number, progress = 1) => savedCard({ savedTokens: saved, seenTokens: seen }, { color: true, lines: true, progress })!.split('\n')
       const cards = () => pi.widgets.filter(widget => widget.key === 'tokenwise-saved')
       // It starts empty, fills, and stays; the second agent_end, with nothing more saved, adds nothing.
       expect(cards()[0]!.lines).toEqual(card(2700, 3000, 0))

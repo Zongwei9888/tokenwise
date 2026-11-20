@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { contextOverheadTokens as own, recordCost } from '@tokenwise/mechanisms'
 import { removeTree } from '@tokenwise/store'
 import { startDashboard, type DashboardServer } from '../src/dashboard.ts'
 import { dashboardPage } from '../src/dashboard-page.ts'
@@ -72,18 +71,16 @@ const NOW = new Date(2026, 10, 11, 15, 0, 0).getTime()
 const at = (daysAgo: number, hour = 12) => new Date(2026, 10, 11 - daysAgo, hour).toISOString()
 
 describe('what TokenWise saved', () => {
-  it('counts shortened outputs (the original minus what the model read) net of TokenWise\'s own cost, per day, today and per agent', () => {
+  it('counts only shortened outputs: the original minus what the model read, per day, today and per agent', () => {
     const home = temp()
     journal(home, 'claude', [record('claude', at(0, 9), 4000, 400), record('claude', at(1), 3000, 300), record('claude', at(0, 10), 900, 900, 'passed')])
     journal(home, 'copilot', [record('copilot', at(6), 2000, 200), record('copilot', at(8), 50000, 1000)])
-    // Each conversation (journal file) pays for TokenWise's per-request text once, at its first decision.
-    const [claude, copilot] = [own('claude'), own('copilot')]
     const week = savingsOf([home], 'week', NOW)
-    expect(week).toMatchObject({ tokens: 3600 + 2700 + 1800 - claude - copilot, outputs: 3, today: 3600 - claude, agents: ['claude', 'copilot'] })
+    expect(week).toMatchObject({ tokens: 3600 + 2700 + 1800, outputs: 3, today: 3600, agents: ['claude', 'copilot'] })
     expect(week.buckets).toHaveLength(7)
-    expect(week.buckets.map(b => b.tokens)).toEqual([1800 - copilot, 0, 0, 0, 0, 2700, 3600 - claude])
+    expect(week.buckets.map(b => b.tokens)).toEqual([1800, 0, 0, 0, 0, 2700, 3600])
     // Eight days ago is outside the week but inside 30 days, where Copilot saved the most.
-    expect(savingsOf([home], 'month', NOW)).toMatchObject({ tokens: 3600 + 2700 + 1800 + 49000 - claude - copilot, agents: ['copilot', 'claude'] })
+    expect(savingsOf([home], 'month', NOW)).toMatchObject({ tokens: 3600 + 2700 + 1800 + 49000, agents: ['copilot', 'claude'] })
     expect(savingsOf([home], 'month', NOW).buckets).toHaveLength(30)
     const all = savingsOf([home], 'all', NOW)
     expect(all.buckets.length).toBeGreaterThanOrEqual(6)
@@ -91,27 +88,23 @@ describe('what TokenWise saved', () => {
     expect(summarize([], 'week', NOW)).toMatchObject({ tokens: 0, today: 0, since: null, agents: [] })
   })
 
-  it('takes recalls and what compactions added off, and never shows less than nothing', () => {
+  it('does not take recalls or what compactions added off what it saved', () => {
     const home = temp()
     const recall = { schemaVersion: 1, type: 'shadow/recall', time: at(0, 11), host: 'claude', sessionId: 's', callId: null, id: 'o-1', original: false, outcome: 'returned', bytes: 2000 }
     const catalog = { schemaVersion: 1, type: 'shadow/checkpoint', time: at(0, 12), host: 'claude', sessionId: 's', kind: 'assisted', references: [],
       userMessages: 0, segmentTokens: 9000, checkpointTokens: 300 }
     journal(home, 'claude', [record('claude', at(0, 9), 4000, 400), JSON.stringify(recall) + '\n', JSON.stringify(catalog) + '\n'])
-    expect(savingsOf([home], 'week', NOW)).toMatchObject({ tokens: 3600 - own('claude') - recordCost(recall as never) - 300, outputs: 1 })
-    // A conversation that has not paid for TokenWise's text yet: nothing saved, not a negative number, and no agent named.
-    const small = temp()
-    journal(small, 'claude', [record('claude', at(0, 9), 150, 100)])
-    expect(savingsOf([small], 'week', NOW)).toMatchObject({ tokens: 0, today: 0, outputs: 1, agents: [] })
+    expect(savingsOf([home], 'week', NOW)).toMatchObject({ tokens: 3600, today: 3600, outputs: 1, agents: ['claude'] })
   })
 
   it('reads every data location, and a journal file again only when it changed', () => {
     const a = temp(), b = temp()
     const file = journal(a, 'codex', [record('codex', at(0), 1000, 100)])
     journal(b, 'codex', [record('codex', at(0), 500, 100)])
-    expect(summarize(readSavings([a, b]), 'week', NOW).tokens).toBe(1300 - 2 * own('codex'))
+    expect(summarize(readSavings([a, b]), 'week', NOW).tokens).toBe(1300)
     appendFileSync(file, record('codex', at(0), 700, 200))
     utimesSync(file, new Date(), new Date(Date.now() + 2000))
-    expect(summarize(readSavings([a, b]), 'week', NOW).tokens).toBe(1800 - 2 * own('codex'))
+    expect(summarize(readSavings([a, b]), 'week', NOW).tokens).toBe(1800)
   })
 
   it('counts what tokenwise run really shortened', () => {
@@ -189,9 +182,9 @@ describe('tokenwise dashboard', () => {
     // English even for a Chinese browser.
     expect(page.body).toContain('<html lang="en">')
     const week = JSON.parse((await get(server, `/api/savings?t=${server.token}&period=week`)).body)
-    expect(week.savings).toMatchObject({ tokens: 3600 - own('claude'), today: 3600 - own('claude'), outputs: 1, agents: ['claude'] })
-    expect(week.all.tokens).toBe(3600 + 9000 - own('claude'))
-    expect(JSON.parse((await get(server, `/api/savings?t=${server.token}&period=month`)).body).savings.tokens).toBe(12600 - own('claude'))
+    expect(week.savings).toMatchObject({ tokens: 3600, today: 3600, outputs: 1, agents: ['claude'] })
+    expect(week.all.tokens).toBe(3600 + 9000)
+    expect(JSON.parse((await get(server, `/api/savings?t=${server.token}&period=month`)).body).savings.tokens).toBe(12600)
   })
 
   it('keeps data from breaking out of the page', () => {

@@ -26,6 +26,8 @@ export interface CardStyle {
   readonly breakFirst?: boolean
   /** Leave out "TokenWise": the agent shows it as the title. */
   readonly untitled?: boolean
+  /** The agent trims the message's leading whitespace (Grok): the lid's first column is a braille blank, which stays. */
+  readonly trimmed?: boolean
   /** One frame of the fill, 0 to 1; 1 (the default) is the card as it stays. */
   readonly progress?: number
 }
@@ -65,7 +67,7 @@ export function savedCard(summary: Pick<EconomySummary, 'savedTokens' | 'seenTok
   // Coins fill the jar from the bottom row, one per cell: four below, two in the shoulders; anything saved is at least one.
   const coins = Math.round(Math.max(1, Math.round(share / 100 * JAR_CELLS)) * ease(p))
   const cell = (index: number, empty: string) => index < coins ? paint(FILL[index % 2]!, '●') : paint(EMPTY, empty)
-  const lid = paint(FRAME, ' ▗▄▄▖')
+  const lid = paint(FRAME, `${style.trimmed ? '\u2800' : ' '}▗▄▄▖`)
   const top = paint(FRAME, '▗▛') + [4, 5].map(i => cell(i, '░')).join('') + paint(FRAME, '▜▖')
   const bottom = paint(FRAME, '▐') + [0, 1, 2, 3].map(i => cell(i, '·')).join('') + paint(FRAME, '▌')
   return [`${style.breakFirst ? '\n' : ''}${lid}`, `${top} ${title}${said}`, `${bottom} ${bar} ${shorter}`].join('\n')

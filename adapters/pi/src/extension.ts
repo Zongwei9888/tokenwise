@@ -16,7 +16,7 @@ import type { ExtensionAPI, ExtensionContext, ToolResultEvent, TurnEndEvent } fr
 import { sha256 } from '@tokenwise/core'
 import {
   cancelEvolution, collectSubagents, describeToolCall, formatTokens, isPrepared, EconomyEngine, LEARNER_INSTRUCTION, markSavingsTold, nodeBinary,
-  normalizeShellCommand, onPath, outcomeSentence, overheadOf, readEvolveStatus, recordSubagent, refreshScan, startEvolution, summarizeEconomy, summarizeShadow,
+  normalizeShellCommand, onPath, outcomeSentence, readEvolveStatus, recordSubagent, refreshScan, startEvolution, summarizeEconomy, summarizeShadow,
   repeatReadCandidate, savedCard, takeAnnouncement, untoldSavings,
 } from '@tokenwise/mechanisms'
 import type { BackgroundOptions, EvolveStatus, Prepared } from '@tokenwise/mechanisms'
@@ -100,10 +100,8 @@ interface SessionState {
   readonly pending: Map<string, Prepared>
   savedTokens: number
   projected: number
-  /** Saved in subagent sessions started from this one, net of what TokenWise cost them. */
+  /** Saved in subagent sessions started from this one. */
   subagentSavedTokens: number
-  /** What TokenWise put in front of the model in this session (`overheadOf`), as of the last turn with tool results. */
-  costTokens: number
 }
 
 export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
@@ -185,7 +183,7 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
       const stamp = sizes([sessionId, ...known])
       if (subagentCache?.root === sessionId && subagentCache.stamp === stamp) return subagentCache.saved
       const found = collectSubagents(read, sessionId)
-      const saved = summarizeEconomy(found.records).savedTokens - overheadOf(found.records)
+      const saved = summarizeEconomy(found.records).savedTokens
       // A newly found subagent changes the stamp's shape, so the next call reads once more.
       subagentCache = { root: sessionId, stamp, children: found.sessions, saved }
       return saved
@@ -206,8 +204,7 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
       const sessionId = ctx.sessionManager.getSessionId() || null
       const engine = mode === 'off' ? undefined : new EconomyEngine({ host: HOST, journal, artifacts, config: loaded.config.economy,
         mode, delivery: 'in-process', streams: 'merged', learned: () => ruleStore.load() })
-      const records = sessionId ? read(sessionId) : []
-      const previous = sessionId ? summarizeEconomy(records) : undefined
+      const previous = sessionId ? summarizeEconomy(read(sessionId)) : undefined
       try { collectDaily(dataDir, days => artifacts.prune(days), loaded.config.artifacts.retentionDays) } catch { /* Housekeeping only. */ }
       if (engine && sessionId) {
         if (inherited && inherited !== sessionId && !linked.has(sessionId)) {
@@ -221,7 +218,7 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
         normalize: negotiated.find(item => item.mechanism === 'command-normalization')!.mode === 'apply',
         shadow: negotiated.find(item => item.mechanism === 'lightshadow')!.mode,
         pending: new Map(), savedTokens: previous?.savedTokens ?? 0, projected: previous?.projected ?? 0,
-        subagentSavedTokens: engine ? subagentSaved(sessionId) : 0, costTokens: overheadOf(records),
+        subagentSavedTokens: engine ? subagentSaved(sessionId) : 0,
       }
     }
     const current = (ctx: ExtensionContext): SessionState => {
@@ -232,7 +229,7 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
     let lastEvolve: EvolveStatus | undefined
     const showStatus = (ctx: ExtensionContext, session: SessionState, evolve = lastEvolve) => {
       lastEvolve = evolve
-      const saved = session.savedTokens + session.subagentSavedTokens - session.costTokens
+      const saved = session.savedTokens + session.subagentSavedTokens
       if (!ctx.hasUI) return
       const badge = evolve ? evolveBadge(evolve, ctx.ui.theme, Date.now()) : ''
       // Nothing to show any more (a run ended, nothing saved yet): clear what was there.
@@ -359,14 +356,7 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
         try { session.subagentSavedTokens = subagentSaved(session.sessionId) } catch { /* Status only. */ }
         if (session.subagentSavedTokens !== before) showStatus(ctx, session)
       }
-      // Recalls and compactions are journaled as they happen, this turn's projections once committed below.
-      const refreshCost = (show: boolean) => {
-        if (event.toolResults.length === 0 || !session.sessionId) return
-        const before = session.costTokens
-        try { session.costTokens = overheadOf(read(session.sessionId)) } catch { /* Status only. */ }
-        if (show && session.costTokens !== before) showStatus(ctx, session)
-      }
-      if (session.pending.size === 0) { refreshCost(true); return }
+      if (session.pending.size === 0) return
       const drafts = []
       // Entry IDs are only trustworthy when pi resolved one for every tool result.
       const aligned = event.toolResultEntryIds.length === event.toolResults.length
@@ -382,7 +372,6 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
         session.projected++
         session.savedTokens += prepared.record.raw!.tokens - prepared.record.projected!.tokens
       }
-      refreshCost(drafts.length === 0)
       if (drafts.length === 0) return
       showStatus(ctx, session)
       // Keep entries other extensions added at this boundary.

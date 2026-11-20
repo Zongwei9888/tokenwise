@@ -19,12 +19,14 @@ describe('the card that says what a conversation saved', () => {
     ].join('\n'))
   })
 
-  it('fits each agent: colour, a title of its own, a label before the first line, or one line', () => {
+  it('fits each agent: colour, a title of its own, a label before the first line, a lid that survives trimming, or one line', () => {
     const coloured = savedCard(saved, { lines: true, color: true })!
     expect(coloured).toContain('\x1b[38;2;79;227;193m')
     expect(plain(coloured)).toBe(savedCard(saved, { lines: true }))
     expect(savedCard(saved, { lines: true, untitled: true })!.split('\n')[1]).toBe('▗▛●░▜▖ saved 2,402 tokens in this conversation')
     expect(savedCard(saved, { lines: true, breakFirst: true })!.startsWith('\n ▗▄▄▖\n')).toBe(true)
+    // Grok trims a message's leading whitespace: a braille blank keeps the lid over the jar.
+    expect(savedCard(saved, { lines: true, trimmed: true })!.trim().split('\n')[0]).toBe('\u2800▗▄▄▖')
     expect(savedCard(saved)).toBe('TokenWise · saved 2,402 tokens in this conversation ▰▰▰▰▰▰▰▰▱▱ tool output 78% shorter')
   })
 

@@ -10,15 +10,14 @@ import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync 
 import { dirname, join } from 'node:path'
 import type { JournalRecord } from '@tokenwise/protocol'
 import { ensurePrivateDir, pathSegment } from '@tokenwise/store'
-import { overheadOf } from './overhead.ts'
 import { summarizeEconomy } from './receipts.ts'
 import type { EconomySummary } from './receipts.ts'
 import { collectSubagents } from './subagents.ts'
 
 /**
- * A conversation's savings: the tokens the model did not read, net of what
- * TokenWise itself put in front of it (`overheadOf`), of every tool output
- * TokenWise saw.
+ * A conversation's savings: the tokens the model did not read (each shortened
+ * output's original minus what was delivered), of every tool output TokenWise
+ * saw.
  */
 export type ConversationSavings = Pick<EconomySummary, 'savedTokens' | 'seenTokens'>
 
@@ -57,7 +56,7 @@ export function untoldSavings(read: (sessionId: string) => readonly JournalRecor
   sessionId: string): ConversationSavings | undefined {
   const records = [...read(sessionId), ...collectSubagents(read, sessionId).records]
   const summary = summarizeEconomy(records)
-  const saved = summary.savedTokens - overheadOf(records)
+  const saved = summary.savedTokens
   if (!(saved > toldSavings(dirs, host, sessionId))) return undefined
   return { savedTokens: saved, seenTokens: summary.seenTokens }
 }

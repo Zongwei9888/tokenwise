@@ -1,25 +1,20 @@
 /**
  * What TokenWise saved: the tokens the model did not have to read because an
- * output was shortened (original minus what was delivered), net of what
- * TokenWise itself put in front of the model (its per-request text once per
- * conversation, recalls, what compactions added: `overheadOf`), over a period,
+ * output was shortened (original minus what was delivered), over a period,
  * today, and per day or month. Read from the journals of every data location;
  * each file is parsed again only when it changed.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { contextOverheadTokens, recordCost } from '@tokenwise/mechanisms'
-import type { JournalRecord } from '@tokenwise/protocol'
 
 export type Period = 'week' | 'month' | 'all'
 export const PERIODS: readonly Period[] = ['week', 'month', 'all']
 
-/** A shortened output (`output`, positive), or what TokenWise cost the model (negative). */
-interface Saving { readonly at: number; readonly host: string; readonly tokens: number; readonly output?: true }
+interface Saving { readonly at: number; readonly host: string; readonly tokens: number }
 export interface Bucket { readonly start: number; readonly tokens: number }
 export interface Savings {
   readonly period: Period
-  /** Tokens the model did not read in the period, net of what TokenWise cost it; never below 0. */
+  /** Tokens the model did not read in the period. */
   readonly tokens: number
   /** How many outputs were shortened in the period. */
   readonly outputs: number
@@ -35,11 +30,7 @@ export interface Savings {
 
 const cache = new Map<string, { stamp: string; savings: Saving[] }>()
 
-/**
- * One journal file (one conversation): each shortened output (a decision record
- * whose outcome is `projected`), each recall and compaction's cost, and the
- * per-request text once, at the conversation's first decision.
- */
+/** The shortened outputs in one journal file: a decision record whose outcome is `projected`. */
 function fileSavings(path: string): Saving[] {
   let stamp: string
   try { const s = statSync(path); stamp = `${s.mtimeMs}:${s.size}` } catch { return [] }
@@ -48,26 +39,13 @@ function fileSavings(path: string): Saving[] {
   const savings: Saving[] = []
   let text = ''
   try { text = readFileSync(path, 'utf8') } catch { /* Gone meanwhile. */ }
-  let counted = false
   for (const line of text.split('\n')) {
-    const first = !counted && line.includes('"type":"economy/decision"')
-    if (!first && !line.includes('"outcome":"projected"') && !line.includes('"type":"shadow/')) continue
+    if (!line.includes('"outcome":"projected"')) continue
     try {
-      const r = JSON.parse(line) as JournalRecord
-      const at = Date.parse(r.time ?? ''), host = r.host ?? 'shell'
-      if (!Number.isFinite(at)) continue
-      if (r.type === 'economy/decision') {
-        if (!counted && r.sessionId) {
-          counted = true
-          const cost = contextOverheadTokens(host)
-          if (cost > 0) savings.push({ at, host, tokens: -cost })
-        }
-        const tokens = r.outcome === 'projected' ? (r.raw?.tokens ?? 0) - (r.projected?.tokens ?? 0) : 0
-        if (tokens > 0) savings.push({ at, host, tokens, output: true })
-      } else {
-        const cost = recordCost(r)
-        if (cost > 0) savings.push({ at, host, tokens: -cost })
-      }
+      const r = JSON.parse(line) as { type?: string; time?: string; host?: string; raw?: { tokens?: number }; projected?: { tokens?: number } }
+      const tokens = (r.raw?.tokens ?? 0) - (r.projected?.tokens ?? 0)
+      const at = Date.parse(r.time ?? '')
+      if (r.type === 'economy/decision' && tokens > 0 && Number.isFinite(at)) savings.push({ at, host: r.host ?? 'shell', tokens })
     } catch { /* A torn last line. */ }
   }
   cache.set(path, { stamp, savings })
@@ -96,8 +74,7 @@ const addMonths = (t: number, n: number) => { const d = new Date(t); d.setMonth(
 
 export function summarize(all: readonly Saving[], period: Period, now = Date.now()): Savings {
   const today = day(now)
-  const outputs = all.filter(s => s.output)
-  const since = outputs.length ? Math.min(...outputs.map(s => s.at)) : null
+  const since = all.length ? Math.min(...all.map(s => s.at)) : null
   // Week: the last 7 days; month: the last 30 days, per day. All: per month since the first saving (at least 6).
   const starts: number[] = []
   if (period === 'all') {
@@ -117,13 +94,11 @@ export function summarize(all: readonly Saving[], period: Period, now = Date.now
     tokens[i]! += s.tokens
     byHost.set(s.host, (byHost.get(s.host) ?? 0) + s.tokens)
   }
-  // A day of recalls only, or a conversation that has not yet paid for its per-request text, saved nothing (not less).
-  const net = (n: number) => Math.max(0, n)
   return {
-    period, tokens: net(inPeriod.reduce((n, s) => n + s.tokens, 0)), outputs: inPeriod.filter(s => s.output).length,
-    today: net(all.filter(s => s.at >= today && s.at <= now).reduce((n, s) => n + s.tokens, 0)),
-    buckets: starts.map((start, i) => ({ start, tokens: net(tokens[i]!) })),
-    agents: [...byHost].filter(([, saved]) => saved > 0).sort((a, b) => b[1] - a[1]).map(([host]) => host),
+    period, tokens: inPeriod.reduce((n, s) => n + s.tokens, 0), outputs: inPeriod.length,
+    today: all.filter(s => s.at >= today && s.at <= now).reduce((n, s) => n + s.tokens, 0),
+    buckets: starts.map((start, i) => ({ start, tokens: tokens[i]! })),
+    agents: [...byHost].sort((a, b) => b[1] - a[1]).map(([host]) => host),
     since,
   }
 }

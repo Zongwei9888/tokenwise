@@ -59,15 +59,15 @@ allows it (in full on five, assisted on three), and self-evolving filters. (0.1.
   reads, web fetches and searches, subagent reports and MCP tools are
   journaled as they are, so the share in the end-of-answer line is of
   everything the model read.
-- What TokenWise says it saved (the end-of-answer line, pi's status bar,
-  `tokenwise saved`, the dashboard) is net of what TokenWise itself puts in
-  front of the model: its text in every request (the recall tool, on pi only
-  once a compaction showed it, and the skill's listing on OpenCode and
-  Hermes) once per conversation, each recall's answer, and what a
-  compaction added (the catalog, the part of a checkpoint beyond the host's
-  summary, the note at a cut). A conversation that has not yet saved more than
-  that says nothing. `tokenwise report` lists the cost and the net beside the
-  gross. Compaction records now keep what they added (`addedTokens`).
+- What TokenWise says it saved (the card at the end of an answer, pi's status
+  bar, `tokenwise saved`, the dashboard) is what the shortened outputs saved:
+  each original minus what the model read. `tokenwise report` lists beside it
+  what TokenWise itself puts in front of the model, and the net: its text in
+  every request (the recall tool, on pi only once a compaction showed it, and
+  the skill's listing on OpenCode and Hermes) once per conversation, each
+  recall's answer, and what a compaction added (the catalog, the part of a
+  checkpoint beyond the host's summary, the note at a cut). Compaction records
+  now keep what they added (`addedTokens`).
 - TokenWise's text in every request is a third of what it was (about 170
   tokens instead of 520 on Claude Code): a shorter recall tool description and
   parameters, no MCP server instructions (the catalog after a compaction says

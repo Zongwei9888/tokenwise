@@ -11,14 +11,14 @@ import { cliContext } from './context.ts'
 /**
  * How each agent shows the card (@tokenwise/mechanisms savedCard), as seen in each one's real terminal UI
  * (2026-11-19). All six keep the lines. Claude Code, Codex, CodeBuddy and Hermes show the colour; Copilot drops
- * it and Grok prints the escape codes as text, so those two get none. Claude Code ("Stop says:") and Codex
+ * it and Grok prints the escape codes as text, so those two get none; Grok also trims the card's leading space. Claude Code ("Stop says:") and Codex
  * ("↳ Hook ·") put a label before the first line, so the card starts below it.
  */
 export const CARD_STYLE: Readonly<Record<string, CardStyle>> = {
   claude: { lines: true, breakFirst: true, color: true },
   codex: { lines: true, breakFirst: true, color: true },
   codebuddy: { lines: true, color: true },
-  grok: { lines: true },
+  grok: { lines: true, trimmed: true },
   copilot: { lines: true },
   hermes: { lines: true, color: true },
 }

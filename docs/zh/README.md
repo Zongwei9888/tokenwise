@@ -19,6 +19,9 @@
 
 </div>
 
+<p align="center"><a href="https://youtu.be/q5htL0LhzbY"><img src="../../media/video/promo.gif" alt="TokenWise 在 9 个 agent 里：噪音变成硬币，每次回答结束都显示省了多少，一周下来越省越多" width="100%"></a></p>
+<p align="center"><sub>▶ <a href="https://youtu.be/q5htL0LhzbY">在 YouTube 上观看宣传视频</a> · 35 秒</sub></p>
+
 ## 为什么需要 TokenWise
 
 **agent 的 token 账单最多砍掉一半，用得越久省得越多，装一次所有 agent 都受益。**
@@ -43,9 +46,17 @@
 
 ## 💾 按需读取
 
-可以把它理解成 agent 上下文的"虚拟内存"：模型现在需要的留在上下文里，其余的暂放到你的电脑上。agent 压缩长对话时，被压掉的工具结果一次调用就能原样取回，所以 agent 不必为了看一行内容把测试再跑一遍。
+可以把它理解成 agent 上下文的"虚拟内存"：模型现在需要的留在上下文里，其余的暂放到你的电脑上。agent 压缩长对话时，被压掉的工具结果一次调用就能原样取回，所以 agent 不必为了看一行内容把测试再跑一遍。在大多数 agent 里，同一个文件原样再读一次、而上一次读到的内容还在上下文里时，只回一行，指向上一次读到的内容。
 
 <p align="center"><img src="../../media/video/fold-zh.gif" alt="260 行的 pytest 输出折叠成模型实际读到的 17 行，失败信息完整保留" width="100%"></p>
+
+## 🪙 看到省了多少
+
+每轮回答结束时，如果这次对话又省下了 token，agent 会显示一张小卡片：一个装着硬币的小罐子、TokenWise 省了多少 token，以及工具输出短了多少。pi 里会看着它装满。`tokenwise saved` 在终端里画出同一个存钱罐，`tokenwise dashboard` 在浏览器里显示它，agent 每省下一笔就落进一枚硬币。TokenWise 显示的文字一律是英文。
+
+<p align="center"><img src="../../media/images/cards-zh.png" alt="Claude Code、Codex、GitHub Copilot CLI、Hermes Agent、OpenCode、CodeBuddy、Grok Build、DeepSeek Harness 和 pi 里回答结束时的卡片" width="100%"></p>
+
+<sub>每个 agent 都在同一个小项目里跑了一次 `pytest -v`，数字只代表那一次运行。</sub>
 
 ## 🤖 支持的 agent
 
@@ -85,7 +96,7 @@ tokenwise setup        # 自动找到本机的 agent，逐个装好
 tokenwise doctor --probe   # 让每个 agent 跑一条命令，确认 TokenWise 看到了
 ```
 
-不用任何配置，下一条命令就生效。想看它为你做了什么，或者教它处理你的某条命令，在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`，OpenCode 和 DeepSeek Harness 里是 `@tokenwise`，pi 里是 `/skill:tokenwise`）。每轮回答结束时，如果这次对话又省下了 token，agent 会显示一行，是一张小卡片：一个装着硬币的小罐子、“TokenWise · saved 2,973 tokens in this conversation”，和一条“tool output 90% shorter”的进度条（pi 里会看着它装满；TokenWise 显示的文字一律是英文）。`tokenwise saved` 在终端里用一个装满硬币的存钱罐，告诉你它帮你省了多少；`tokenwise dashboard` 在浏览器里显示同一个罐子，每省下一笔就落进一枚硬币；`tokenwise doctor` 列出每个 agent 里 TokenWise 是否开着、最近一次看到它跑命令是什么时候；`tokenwise uninstall` 可以卸载。
+不用任何配置，下一条命令就生效。想看它为你做了什么，或者教它处理你的某条命令，在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`，OpenCode 和 DeepSeek Harness 里是 `@tokenwise`，pi 里是 `/skill:tokenwise`）。`tokenwise saved` 和 `tokenwise dashboard` 显示它为你省了多少；`tokenwise doctor` 列出每个 agent 里 TokenWise 是否开着、最近一次看到它跑命令是什么时候；`tokenwise uninstall` 可以卸载。
 
 ## ✨ 技术要点
 
@@ -93,12 +104,14 @@ tokenwise doctor --probe   # 让每个 agent 跑一条命令，确认 TokenWise 
 - **报错一行不丢**：失败、警告和总数一律保留；认不出的内容原样放过。
 - **结果确定**：同样的输出永远得到同样的结果，prompt cache 照常命中。
 - **出错就给原文**：任何环节出错，模型拿到的都是原始内容。
+- **所有工具都算**：shell 命令、agent 自带的搜索工具、放在后台跑的命令会被缩短；读文件、网页和 MCP 工具原样计数，所以你看到的比例是模型读到的全部内容里省掉的那部分。
 - **只在本机**：原文只存在你的电脑上，只有你能读；TokenWise 自己不发任何网络请求。
 - **在真实 agent 上测试**：单元测试、由真实工具输出组成的逐字节一致性语料，以及在全部 9 个 agent 上用真实模型跑的测试。
 - **MIT 许可，零运行时依赖。**
 
 ## 📰 动态
 
+- **2026-11** · 9 个 agent 每次回答结束都显示 TokenWise 省了多少；同一个文件再读一次只回一行；所有工具的输出都计入；新 logo，以及一段 35 秒的视频。
 - **2026-10** · TokenWise 开源：每个 agent 里都能发起自进化，一条命令完成安装，所有过滤规则都改为 TokenWise 自己的代码。
 
 ## 接下来
