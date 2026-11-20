@@ -19,8 +19,8 @@
 
 </div>
 
-<p align="center"><a href="https://youtu.be/q5htL0LhzbY"><img src="media/video/promo.gif" alt="TokenWise in nine agents: noise turns into coins, every answer ends with what was saved, and the savings grow through the week" width="100%"></a></p>
-<p align="center"><sub>▶ <a href="https://youtu.be/q5htL0LhzbY">Watch the video on YouTube</a> · 35 seconds</sub></p>
+<p align="center"><a href="https://youtu.be/9p36ZR2rNtE"><img src="media/video/promo.gif" alt="TokenWise in nine agents: noise turns into coins, every answer ends with what was saved, and the savings grow through the week" width="100%"></a></p>
+<p align="center"><sub>▶ <a href="https://youtu.be/9p36ZR2rNtE">Watch the video on YouTube</a> · 35 seconds</sub></p>
 
 ## Why TokenWise
 

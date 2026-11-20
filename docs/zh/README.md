@@ -19,8 +19,8 @@
 
 </div>
 
-<p align="center"><a href="https://youtu.be/q5htL0LhzbY"><img src="../../media/video/promo.gif" alt="TokenWise 在 9 个 agent 里：噪音变成硬币，每次回答结束都显示省了多少，一周下来越省越多" width="100%"></a></p>
-<p align="center"><sub>▶ <a href="https://youtu.be/q5htL0LhzbY">在 YouTube 上观看宣传视频</a> · 35 秒</sub></p>
+<p align="center"><a href="https://youtu.be/9p36ZR2rNtE"><img src="../../media/video/promo.gif" alt="TokenWise 在 9 个 agent 里：噪音变成硬币，每次回答结束都显示省了多少，一周下来越省越多" width="100%"></a></p>
+<p align="center"><sub>▶ <a href="https://youtu.be/9p36ZR2rNtE">在 YouTube 上观看宣传视频</a> · 35 秒</sub></p>
 
 ## 为什么需要 TokenWise
 

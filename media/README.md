@@ -18,8 +18,8 @@ pytest log through the real filter (260 lines → 17, 19.0 KB → 852 bytes).
 | `images/cards.png`, `-zh` | 3120 wide | the README's card wall: real screenshots of the card at the end of an answer in all nine agents (one `pytest -v` run each; user name in paths replaced) |
 | `images/icons/agent-*.png` | 128 px | the README's agent-wall badges for any shell and more agents |
 | `video/tokenwise-en.mp4`, `-zh.mp4` | 1920×1080, 53 s | the explainer, in three chapters: context on demand, self-evolving, cross-platform |
-| `video/tokenwise-promo-en.mp4` | 1920×1080, 35 s | the promo: TokenWise in every agent, saving into one jar (`promo.html`; `node render.mjs video en promo`) |
-| `video/promo.gif` | 640 wide, 35 s | the promo, looping, at the top of the README; links to the video on YouTube (https://youtu.be/q5htL0LhzbY) |
+| `video/tokenwise-promo-en.mp4` | 1920×1080, 35 s | the promo: TokenWise in every agent, saving into one jar, with a synthesized soundtrack cued to its scenes (`promo.html`, `music.mjs`; `node render.mjs video en promo`) |
+| `video/promo.gif` | 640 wide, 35 s | the promo, looping, at the top of the README; links to the video on YouTube (https://youtu.be/9p36ZR2rNtE) |
 | `video/fold.gif`, `fold-zh.gif` | 960 wide, 8 s | the fold, looping: README and chat where video does not play |
 
 Images are rendered at 2× for sharp text on any screen.

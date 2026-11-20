@@ -2,9 +2,10 @@
 //   node render.mjs stills            every still image into ../
 //   node render.mjs stills social     just the ones whose name contains "social"
 //   node render.mjs video en|zh       the explainer video (frames piped to ffmpeg)
-//   node render.mjs video en promo    the promo: TokenWise in every agent (promo.html)
+//   node render.mjs video en promo    the promo: TokenWise in every agent (promo.html), with its soundtrack (music.mjs)
 import { createServer } from 'node:http'
-import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { readFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, extname, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -81,7 +82,11 @@ try {
     const duration = await page.evaluate(() => window.DURATION)
     mkdirSync(join(out, 'video'), { recursive: true })
     const file = join(out, 'video', name === 'video' ? `tokenwise-${lang}.mp4` : `tokenwise-${name}-${lang}.mp4`)
+    // The promo has a soundtrack, synthesized by music.mjs to its cues.
+    const music = name === 'promo' ? join(tmpdir(), `tokenwise-promo-${process.pid}.wav`) : null
+    if (music) { const { promoMusic, wav } = await import('./music.mjs'); writeFileSync(music, wav(promoMusic())) }
     const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'png', '-i', '-',
+      ...music ? ['-i', music, '-c:a', 'aac', '-b:a', '192k', '-shortest'] : [],
       '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', file], { stdio: ['pipe', 'inherit', 'inherit'] })
     const frames = Math.round(duration * fps)
     for (let i = 0; i < frames; i++) {
@@ -92,6 +97,7 @@ try {
     }
     ff.stdin.end()
     await new Promise(r => ff.on('close', r))
+    if (music) rmSync(music, { force: true })
     console.log('wrote', file)
   } else if (mode === 'frames') {
     // Preview: node render.mjs frames en 3,9,12 [promo] -> frames written to $FRAMES_DIR (default ./.frames)
