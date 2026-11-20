@@ -1,0 +1,3 @@
+# Codex: only when the person calls it ($tokenwise); TokenWise puts no text of its own in the model's context.
+policy:
+  allow_implicit_invocation: false

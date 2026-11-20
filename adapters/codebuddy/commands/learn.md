@@ -1,5 +1,6 @@
 ---
-description: Learn TokenWise output filters from your recorded sessions, in the background
+description: Learn TokenWise filters from your sessions, in the background
+disable-model-invocation: true
 argument-hint: "[status | cancel]"
 allowed-tools: Bash(tokenwise learn:*)
 ---

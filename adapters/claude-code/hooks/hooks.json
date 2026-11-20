@@ -25,7 +25,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|Read|WebFetch|WebSearch|Agent|mcp__.*",
         "hooks": [
           {
             "type": "command",
@@ -64,6 +64,17 @@
             "type": "command",
             "command": "tokenwise hook claude",
             "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tokenwise hook claude",
+            "timeout": 10
           }
         ]
       }

@@ -83,10 +83,84 @@ How the projection reaches the model differs by host:
   permissions would allow the rewritten command: bypass mode, or an allow
   rule that matches the command as written.
 - **CodeBuddy** — like Codex: `PreToolUse` wraps the command in `tokenwise run`.
+  Its own `Grep` and `Glob` results (the array the model reads as one line of
+  JSON) are laid out through `PostToolUse`, only for the model's own calls:
+  a call from code in CodeBuddy's REPL hands its value to that program, and
+  CodeBuddy's transcript lists only the model's calls.
 - **Grok Build** — a `PostToolUse` hook replaces the shell result.
+- **GitHub Copilot CLI** — a `postToolUse` hook replaces the bash result
+  (`modifiedResult`), keeping Copilot's own status line.
 - **OpenCode, Hermes Agent** — in-process plugins replace the result after
-  execution (Hermes: `transform_terminal_output`).
+  execution (Hermes: `transform_terminal_output`). OpenCode's own `glob` and
+  `grep` results are laid out the same way.
 - **Any agent** — `tokenwise run` directly.
+
+A command the agent runs in the background is never wrapped (`tokenwise run`
+would hold its output back until it ends). Its output reaches the model
+later, through another tool, and is filtered there as the output of the
+command that started it, but only when that read holds the whole output of
+the finished command, as the host itself shows: Claude Code's task output
+file ending `[exited with code N]` (the command remembered when it started,
+`background/<host>/<session>/<task>.json`); CodeBuddy's `TaskOutput` read from
+`chars=0` with nothing omitted or still to come; Grok's
+`get_command_or_subagent_output` not cut and equal to the command's log;
+Copilot's `read_bash` ending with the shell's exit status (the command
+remembered from `bash`); DeepSeek Harness's `job_output` whose bytes are all
+the job wrote by its job registry's count; Hermes's `process_manage` wait of a
+process that exited, with nothing cut. Anything else (still running, killed,
+read in part or before, cut) passes.
+
+Every other tool's result passes through TokenWise as well: its text (a file
+read, a web page, a subagent's report, an MCP result) is journaled as it is,
+so the share TokenWise reports is of everything the model read. One case is
+changed: a read that repeats an earlier read of the same file and range with
+byte-identical text, while that earlier read is still in the model's context,
+becomes a note pointing back to it (filter `repeat-read`; the original is
+saved like any shortened output), and the read right after a note is whole.
+"Still in context" is decided where the host lets it be proven:
+
+- **OpenCode, pi** — anew for every request, on the list about to be sent
+  (`experimental.chat.messages.transform`, `context_with_system`): the
+  session keeps every read whole, so a compaction that drops the earlier read
+  brings the later one back whole, and the same list always gets the same
+  answer (the prompt cache stays stable).
+- **Claude Code, CodeBuddy** — when the read returns, from the transcript:
+  the earlier result is there as the model was given it, and no compaction
+  (`compact_boundary`; CodeBuddy's compact rows, prompt-too-long recovery) or
+  API clearing (`applied_edits`) came after it. A subagent's reads are whole.
+- **Grok** — from `chat_history.jsonl` (the model's copy): there, before the
+  call, and fewer than three of your prompts since (Grok trims older results
+  without a trace when its context fills); a compaction rewrites the history.
+- **Copilot** — from the session's `events.jsonl`: there, the conversation's
+  own agent's, less than five minutes old (Copilot can clear results when its
+  cache is cold, without an event), and no compaction, truncation or clear
+  since.
+- **Hermes** has the same thing built in (`read_file` answers "unchanged");
+  **DeepSeek Harness** and **Codex** send every read whole.
+
+When an answer ends and the conversation saved more than when it was last
+said, each host shows a small card: the tokens saved in the conversation (its
+subagents included) and how much shorter that made all the tool output
+TokenWise saw. The tokens saved are what the shortened outputs saved: each
+original minus what the model read. `tokenwise saved` and the dashboard count
+the same way. `tokenwise report` also lists what TokenWise itself put in front
+of the model (@tokenwise/mechanisms `overheadOf`), and the net: its text in
+every request (the recall tool's definition, and the skill's listing on
+OpenCode and Hermes, which cannot keep the skill for the person alone) once per
+conversation, what each recall returned, and what each compaction added
+(`addedTokens` in the checkpoint record). A shortened output carries no text of
+TokenWise's own. The number last said is kept on disk for each host and
+conversation (`told/` in the data directory, @tokenwise/mechanisms
+`untoldSavings`), so a restart, a resumed conversation or a switch between
+conversations does not say it again. Claude Code, Codex and CodeBuddy show a
+`Stop` hook's `systemMessage`, Grok its `Stop` reply, Copilot an `agentStop`
+progress line, OpenCode a toast on `session.idle`, pi a card above the
+editor at `agent_end`, DeepSeek Harness a toast on that conversation's page after
+`turn/end` (its `conversation.composer.dock` entry asks for its own
+`sessionId`), and Hermes a message posted at
+`post_llm_call`, while the turn is still open (its TUI shows it in the
+status line; its classic CLI reads notices only during a turn and prints
+them with the answer).
 
 ### Hosts at a glance
 

@@ -1,9 +1,10 @@
 /**
- * The startup notice in OpenCode: what Claude Code and Codex show from their
- * SessionStart hook (a learning run finished, or a command keeps coming back
- * long), as a toast when a session starts. The text comes from
- * `tokenwise notice opencode`, so every agent says the same thing once; with
- * no `tokenwise` command there is no notice.
+ * TokenWise's toasts in OpenCode. The startup notice is what Claude Code and
+ * Codex show from their SessionStart hook (a learning run finished, or a
+ * command keeps coming back long), shown when a session starts; its text comes
+ * from `tokenwise notice opencode`, so every agent says the same thing once,
+ * and with no `tokenwise` command there is no notice. The plugin also toasts
+ * what a conversation saved when an answer ends (./plugin.ts).
  */
 import { execFile } from 'node:child_process'
 import { accessSync, constants } from 'node:fs'
@@ -47,15 +48,15 @@ export function readNotice(env: NodeJS.ProcessEnv, flag: '--peek' | '--told' = '
   })
 }
 
-/** Shows the notice, if any, then marks it told; never throws. */
-export async function showNotice(client: ToastClient | undefined, read: () => Promise<string | undefined>, told: () => Promise<unknown>): Promise<void> {
+/** Shows a toast for `read`'s text, if any, for `duration` ms, then calls `told`; never throws. */
+export async function showNotice(client: ToastClient | undefined, read: () => Promise<string | undefined>, told: () => Promise<unknown>, duration = 15_000): Promise<void> {
   try {
     const tui = client?.tui
     if (typeof tui?.showToast !== 'function') return
     const message = await read()
     // Called on the client, not detached: the SDK's methods use `this`.
     if (!message) return
-    await tui.showToast({ body: { title: 'TokenWise', message, variant: 'info', duration: 15_000 } })
+    await tui.showToast({ body: { title: 'TokenWise', message, variant: 'info', duration } })
     await told()
   } catch { /* The notice is a courtesy. */ }
 }

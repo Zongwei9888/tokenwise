@@ -124,6 +124,13 @@ export interface ShadowCheckpointRecord extends JournalBase {
   readonly userMessages: number
   readonly segmentTokens: number
   readonly checkpointTokens: number
+  /**
+   * What TokenWise added to the model's context beyond what the host would have
+   * had: the catalog after the host's summary (assisted), the checkpoint beyond
+   * the host's summary (lightshadow), the note in place of the host's cut marker
+   * (cut). Absent in records written before it was kept.
+   */
+  readonly addedTokens?: number
   readonly reason?: 'checkpoint-not-smaller' | 'nothing-recallable' | 'observe' | 'error'
   /** With `reason: 'error'`: what failed, in at most 300 characters. */
   readonly error?: string

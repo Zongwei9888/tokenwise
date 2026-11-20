@@ -7,6 +7,13 @@ import type { EconomyFilter, FilterInput } from '../types.ts'
 const NON_PATCH = /^(?:--(?:stat|numstat|shortstat|dirstat|name-only|name-status|raw|summary|check|word-diff|no-patch|quiet|binary)(?:=|$)|-s$)/
 const METADATA = /^(?:index |--- |\+\+\+ |old mode |new mode |new file mode |deleted file mode |similarity index |dissimilarity index |rename from |rename to |copy from |copy to |Binary files )/
 
+/**
+ * Paths after `--` (`git diff -- a.ts`, `git show HEAD -- a.ts`): the agent
+ * chose the files itself, so their patch stays whole. This is also how it
+ * reads a long hunk a broader diff previewed.
+ */
+const limitedToPaths = (argv: readonly string[]) => { const at = argv.indexOf('--'); return at >= 0 && at < argv.length - 1 }
+
 /** Preserve headers and all file identities; only oversized, validated hunks are previewed. */
 function projectMapped(input: FilterInput): MappedProjection | undefined {
   const options = resolveFilterOptions(input.options)
@@ -14,7 +21,7 @@ function projectMapped(input: FilterInput): MappedProjection | undefined {
   const argv = toolArgv(input.command)
   if (argv === undefined || argv[0] !== 'git' || argv[1] !== 'diff'
     || argv.some(arg => NON_PATCH.test(arg)) || ![0, 1].includes(input.exitCode)
-    || /[\u001b\0]/.test(input.stdout)) return undefined
+    || /[\u001b\0]/.test(input.stdout) || limitedToPaths(argv)) return undefined
   const lines = sourceLines(input.stdout)
   if (!lines[0]?.text.startsWith('diff --git ')) return undefined
   return previewPatch(input.stdout, lines, options['git-diff'].maxHunkLines, false)
@@ -37,6 +44,8 @@ function projectCommitPatches(input: FilterInput): MappedProjection | undefined 
   if (argv === undefined || argv[0] !== 'git' || input.exitCode !== 0 || /[\u001b\0]/.test(input.stdout)) return undefined
   const patchLog = argv[1] === 'log' && argv.slice(2).some(arg => arg === '-p' || arg === '-u' || arg === '--patch')
   if (!(argv[1] === 'show' || patchLog) || argv.slice(2).some(arg => NON_PATCH.test(arg) || NON_DEFAULT_LOG.test(arg))) return undefined
+  // A file's whole history (`git log -p -- a.ts`) can be long: only `git show` keeps the paths it was given whole.
+  if (argv[1] === 'show' && limitedToPaths(argv)) return undefined
   const lines = sourceLines(input.stdout)
   if (!COMMIT.test(lines[0]?.text ?? '')) return undefined
   return previewPatch(input.stdout, lines, options['git-diff'].maxHunkLines, true)

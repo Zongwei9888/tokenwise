@@ -97,8 +97,6 @@ export const COMMAND_NORMALIZATION_SPEC: MechanismSpec = {
   modes: [{ mode: 'apply', anyOf: [['toolCalls']] }],
 }
 
-export const V0_1_SPECS: readonly MechanismSpec[] = [ECONOMY_SPEC, COMMAND_NORMALIZATION_SPEC]
-
 /**
  * LightShadow: recoverable compaction. Tool results in the compacted segment
  * become references the model can read again with `recall`; the user's

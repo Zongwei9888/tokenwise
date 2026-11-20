@@ -12,9 +12,6 @@ import { VERSION } from './doctor.ts'
 /** Newest first; a client asking for one of these gets it back, any other gets the newest. */
 const PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05']
 
-const INSTRUCTIONS = `${RECALL_TOOL_NAME} reads again a tool result that context compaction removed, by the observation_id `
-  + 'listed in the TokenWise observation catalog. Use it instead of re-running a command or re-reading a file whose output the catalog lists.'
-
 interface Request { jsonrpc?: unknown; id?: unknown; method?: unknown; params?: unknown }
 
 export interface McpOptions {
@@ -39,8 +36,8 @@ export function handleMcp(message: Request, options: McpOptions = {}): Record<st
       return ok({
         protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
+        // No instructions: the host puts them in every request, and the catalog after a compaction says when to recall.
         serverInfo: { name: 'tokenwise', version: VERSION },
-        instructions: INSTRUCTIONS,
       })
     }
     case 'ping': return ok({})
@@ -54,8 +51,10 @@ export function handleMcp(message: Request, options: McpOptions = {}): Record<st
         const context = cliContext()
         const writable = context.writable()
         const session = options.session || process.env.TOKENWISE_SESSION || null
+        // Claude Code tells its MCP servers the session they were started in.
+        const hint = process.env.CLAUDE_CODE_SESSION_ID
         const result = recallFromJournal(args, {
-          host: options.host ?? process.env.TOKENWISE_HOST ?? 'mcp', sessionId: session,
+          host: options.host ?? process.env.TOKENWISE_HOST ?? 'mcp', sessionId: session, ...hint ? { sessionHint: hint } : {},
           artifacts: { save: () => { throw new Error('read only') }, read: hash => context.readArtifact(hash) },
           read: sessionId => context.readJournal({ sessionId }),
           readAll: () => context.readJournal({}),

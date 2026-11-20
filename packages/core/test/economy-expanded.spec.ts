@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -44,27 +44,43 @@ describe('additional Git, Python diagnostics and Go test output contracts', () =
     expect(projectStaticFilter({ command: 'go test -json ./...', stdout: raw, exitCode: 0 })?.text).toBe(raw)
   })
 
-  it('filters real Git status hints while preserving every other byte, including tricky filenames', async () => {
+  it('turns real Git status file lists into the rows git status --short prints, state lines kept, hints gone', async () => {
     const root = await mkdtemp(join(tmpdir(), 'economy-git-status-'))
-    const git = (args: string[]) => execFileSync('git', ['-c', 'color.ui=false', '-c', 'advice.statusHints=true', ...args],
-      { cwd: root, encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', GIT_CONFIG_NOSYSTEM: '1' } })
+    const git = (args: string[], check = true) => {
+      try {
+        return execFileSync('git', ['-c', 'color.ui=false', '-c', 'advice.statusHints=true', '-c', 'user.name=t', '-c', 'user.email=t@t', ...args],
+          { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, LC_ALL: 'C', GIT_CONFIG_NOSYSTEM: '1', HOME: root } })
+      } catch (error) { if (check) throw error; return '' }
+    }
     try {
       git(['init', '-q', '--initial-branch=main'])
-      await writeFile(join(root, 'tracked.txt'), 'initial')
-      git(['add', 'tracked.txt'])
-      await writeFile(join(root, 'tracked.txt'), 'modified')
-      await writeFile(join(root, 'Line 25: strange name.txt'), 'untracked')
+      for (const name of ['a', 'b', 'c', 'd', 'conflict']) await writeFile(join(root, `${name}.txt`), '1\n')
+      git(['add', '.']); git(['commit', '-qm', 'init'])
+      git(['checkout', '-qb', 'other']); await writeFile(join(root, 'conflict.txt'), 'other\n'); git(['commit', '-qam', 'other'])
+      git(['checkout', '-q', 'main']); await writeFile(join(root, 'conflict.txt'), 'main\n'); git(['commit', '-qam', 'main'])
+      git(['merge', '-q', 'other'], false)
+      // Staged and changed again (MM), renamed and changed (RM), staged and unstaged deletions, a conflict, odd untracked names.
+      await writeFile(join(root, 'a.txt'), '2\n'); git(['add', 'a.txt']); await writeFile(join(root, 'a.txt'), '3\n')
+      git(['mv', 'b.txt', 'b2.txt']); await writeFile(join(root, 'b2.txt'), '1\n9\n')
+      git(['rm', '-q', 'c.txt']); await rm(join(root, 'd.txt'))
+      await writeFile(join(root, 'Line 25: strange name.txt'), 'untracked'); await mkdir(join(root, 'newdir')); await writeFile(join(root, 'newdir', 'f'), 'y')
       const raw = git(['status', '--long'])
-      const projection = projectStaticFilter({ command: 'git status --long', stdout: raw, exitCode: 0 })!
+      const projection = projectStaticFilter({ command: 'git status', stdout: raw, exitCode: 0 })!
       expect(projection.filter).toBe('git-status')
-      expect(projection.text).toContain('tracked.txt')
-      expect(projection.text).toContain('Line 25: strange name.txt')
-      expect(projection.text).toContain('Changes to be committed:')
-      expect(projection.text).toContain('Changes not staged for commit:')
-      const removed = raw.split('\n').filter(line => !projection.text.split('\n').includes(line))
-      expect(removed.length).toBeGreaterThan(0)
-      expect(removed.every(line => line.startsWith('  (use "git '))).toBe(true)
+      const lines = projection.text.trimEnd().split('\n')
+      expect(lines.slice(0, 3)).toEqual(['On branch main', 'You have unmerged paths.', '[short format: XY path, X = staged, Y = not staged, ?? untracked]'])
+      // Exactly git's own short rows.
+      expect(lines.slice(3).join('\n')).toBe(git(['status', '--short']).trimEnd())
+      expect(projection.text).not.toMatch(/\(use "git|\(fix conflicts/u)
       expect(projectStaticFilter({ command: 'git status --porcelain=v1', stdout: git(['status', '--porcelain=v1']), exitCode: 0 })).toBeUndefined()
+      // Two files: the legend would cost more than the rows save, so only the hints go.
+      git(['reset', '-q', '--hard']); git(['clean', '-qfd'])
+      await writeFile(join(root, 'a.txt'), '5\n'); await writeFile(join(root, 'new.txt'), 'n')
+      const small = git(['status', '--long'])
+      const kept = projectStaticFilter({ command: 'git status', stdout: small, exitCode: 0 })!.text
+      expect(kept).toContain('Changes not staged for commit:\n\tmodified:   a.txt\n')
+      expect(kept.split('\n').filter(line => !small.split('\n').includes(line))).toEqual(['no changes added to commit'])
+      expect(kept).not.toContain('(use "git')
     } finally { await rm(root, { recursive: true, force: true }) }
   })
 })

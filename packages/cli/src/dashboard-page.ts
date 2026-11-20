@@ -34,10 +34,11 @@ const STRINGS = {
 }
 
 const CSS = `
-:root{--bg:#F4F7F5;--ink:#15241F;--soft:#61736D;--mute:#9AA9A4;--glass:#D3E0DB;--teal:#0F7A6A;--c4:#8ED7C7;--c2:#169985;
---hi1:#3FA592;--c1:#0F7A6A;--lo1:#0A5A4E;--hi2:#4FC2AD;--cc2:#169985;--lo2:#0F7563;--hi3:#8EE0CF;--c3:#3DB8A2;--lo3:#2A9884;--hi4:#D4F4EC;--cc4:#8ED7C7;--lo4:#5FB9A6;--lid1:#E3ECE8;--lid2:#C9D8D2;--shine:.75}
-@media (prefers-color-scheme:dark){:root{--bg:#0E1513;--ink:#E7F0ED;--soft:#9BAEA8;--mute:#5F726C;--glass:#2B3A36;--teal:#3DB8A2;--c4:#9BE3D4;--c2:#2FB49D;
---hi1:#47BFA9;--c1:#1D9B86;--lo1:#11685A;--hi2:#62D3BD;--cc2:#2FB49D;--lo2:#1B8572;--hi3:#93E6D5;--c3:#58CDB7;--lo3:#36A08B;--hi4:#D5F6EE;--cc4:#9BE3D4;--lo4:#6BBDAB;--lid1:#33433F;--lid2:#25332F;--shine:.12}}
+/* TokenWise's colours (Cyber Mint): gold coins in a mint jar; mint accents, ink in the dark. */
+:root{--bg:#F1F4F3;--ink:#0B1A18;--soft:#5E6E6A;--mute:#9AA9A4;--glass:#BFE5DA;--teal:#0A7A69;--c4:#4FE3C1;--c2:#0FB894;
+--hi1:#FFE38A;--c1:#F5B400;--lo1:#A87300;--hi2:#FFEDA6;--cc2:#FFC93C;--lo2:#B98200;--hi3:#FFF2C2;--c3:#FFD456;--lo3:#C99200;--hi4:#FFF6D6;--cc4:#FFDF7A;--lo4:#D1A21E;--lid1:#DDF3EC;--lid2:#BFE3D8;--shine:.75}
+@media (prefers-color-scheme:dark){:root{--bg:#04110F;--ink:#E7F7F2;--soft:#9BB3AD;--mute:#5F726C;--glass:#1F4A42;--teal:#4FE3C1;--c4:#4FE3C1;--c2:#4FE3C1;
+--hi1:#FFE38A;--c1:#F5B400;--lo1:#A87300;--hi2:#FFEDA6;--cc2:#FFC93C;--lo2:#B98200;--hi3:#FFF2C2;--c3:#FFD456;--lo3:#C99200;--hi4:#FFF6D6;--cc4:#FFDF7A;--lo4:#D1A21E;--lid1:#1F3A35;--lid2:#17302B;--shine:.12}}
 *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"PingFang SC","Helvetica Neue","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;cursor:pointer}button:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
 .wrap{min-height:100%;max-width:980px;margin:0 auto;padding:28px 32px 36px;display:flex;flex-direction:column}

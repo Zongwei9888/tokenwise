@@ -1,6 +1,7 @@
 ---
 name: tokenwise
-description: TokenWise shortens the shell output your agent reads and learns your project's noisy commands. Use when the person types @tokenwise, /tokenwise or $tokenwise, or asks what TokenWise does for them, whether it works in their agents, which output is noisy, to teach it about a command, to see what it learned, or to learn, undo or switch off its rules.
+description: TokenWise shortens the tool output your agent reads. Use on /tokenwise or $tokenwise, to ask what it saved, whether it works, which output is noisy, to teach it a command, or to see, learn, undo or switch off its rules.
+disable-model-invocation: true
 ---
 
 # TokenWise
@@ -35,7 +36,7 @@ How to talk about it:
 
 | They ask | Do |
 |---|---|
-| how TokenWise is doing, what is noisy, a checkup (or just `@tokenwise`) | **Checkup** below |
+| how TokenWise is doing, what is noisy, a checkup (or just `/tokenwise`) | **Checkup** below |
 | to teach it about a command, to tidy a command's output, "this output is too long" | **Teach** below |
 | what it learned, to see a rule's effect | `tokenwise checkup`, then `tokenwise preview "<command>"` for the command they pick; show it as in step 3 of Teach |
 | to learn in the background | `tokenwise learn --learner <this agent>`: claude, codex, codebuddy, grok, pi or dsh; do not ask which. Only in OpenCode, Hermes or GitHub Copilot CLI, which cannot be learners, use one of those six that is installed (`command -v`), asking the person which if there are several. Do not wait for it |

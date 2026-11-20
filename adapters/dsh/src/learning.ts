@@ -9,7 +9,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { cancelEvolution, LEARNER_INSTRUCTION, nodeBinary, onPath, readEvolveStatus, refreshScan, startEvolution, takeAnnouncement, takeReadyNotice } from '@tokenwise/mechanisms'
-import type { BackgroundOptions, EvolveRunStatus, EvolveStatus } from '@tokenwise/mechanisms'
+import type { BackgroundOptions, ConversationSavings, EvolveRunStatus, EvolveStatus } from '@tokenwise/mechanisms'
 import { RuleStore, ensurePrivateDir, loadConfig } from '@tokenwise/store'
 
 export type Learner = { readonly argv: readonly string[]; readonly shell?: boolean; readonly label: string } | { readonly unavailable: string }
@@ -36,6 +36,8 @@ export interface DshLearningOptions {
   readonly installAnchor?: () => string | undefined
   /** `ctx.profileContext.patchPath`: this profile's own layer, where the user's providers are saved. */
   readonly patchPath?: () => string | undefined
+  /** What this conversation saved, after one of its turns, when that grew since it was last said; taking it marks it told (./index.ts). */
+  readonly conversation?: (sessionId: string) => ConversationSavings | undefined
 }
 
 /**
@@ -54,6 +56,7 @@ export const ROUTES = {
   cancel: '/api/tokenwise/cancel',
   rules: '/api/tokenwise/rules',
   announcement: '/api/tokenwise/announcement',
+  saved: '/api/tokenwise/saved',
 } as const
 
 const HOST = 'dsh'
@@ -176,6 +179,12 @@ export function createDshLearning(options: DshLearningOptions) {
     { path: ROUTES.rules, methods: ['POST'] as const, requestBody: 'buffered' as const, fetch: guard(async request => json(rules((await body(request)).action))) },
     { path: ROUTES.announcement, methods: ['POST'] as const, requestBody: 'buffered' as const,
       fetch: guard(() => json(announcement())) },
+    // Asked by a conversation's own page (client/saved.ts), so the toast always speaks of the conversation on screen.
+    { path: ROUTES.saved, methods: ['POST'] as const, requestBody: 'buffered' as const,
+      fetch: guard(async request => {
+        const { sessionId } = await body(request)
+        return json({ saved: typeof sessionId === 'string' && sessionId ? options.conversation?.(sessionId) ?? null : null })
+      }) },
   ]
 
   return { status, start, cancel: () => cancelEvolution(configDir), rules, routes, learner }

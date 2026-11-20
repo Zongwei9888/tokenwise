@@ -1,5 +1,6 @@
 ---
-description: Show the output filters TokenWise learned, switch them off or on, or roll back the last adoption
+description: Show, switch off or on, or roll back the filters TokenWise learned
+disable-model-invocation: true
 argument-hint: "[off | on | rollback]"
 allowed-tools: Bash(tokenwise rules:*)
 ---

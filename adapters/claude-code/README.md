@@ -28,11 +28,32 @@ Verified against Claude Code 2.1.310 in real `claude -p` sessions:
   rule would stop matching. The hook never returns a permission decision.
 - Claude Code's transcript keeps what the model read (the projection);
   `tokenwise show <sha256>` prints the original.
+- A command run in the background (`run_in_background`) is remembered when it
+  starts. Once it has exited, its output file (`…/tasks/<id>.output`, which
+  then ends `[exited with code N]`) is filtered as that command's output when
+  the model reads it whole with `Read` or `cat`; read while running, in part,
+  or after `[killed]`, it passes. Verified on Claude Code 2.1.325: a
+  background `pytest -v` read through its output file went from 3,299 to 326
+  tokens, and the model named the failing test and its assertion.
+- `PostToolUse` also sees `Read`, `WebFetch`, `WebSearch`, `Agent` and MCP
+  tools: their text is journaled as it is. A `Read` that repeats an earlier
+  one (same file and range, same text) whose result the transcript still
+  shows, with no compaction or clearing after it, comes back as a one-line
+  note pointing to it; read again right after, the file comes back whole. A
+  subagent's reads are always whole. Verified on Claude Code 2.1.325: a
+  122-line file read twice cost 2,896 tokens once, and the model answered
+  from the first read.
 - Grok and CodeBuddy also run Claude Code hooks. `tokenwise hook claude` recognizes
   their events and leaves them to their own TokenWise plugin, so nothing is
   filtered twice.
 - `tokenwise` must be on the `PATH` Claude Code runs hooks with
   (`npm install -g @tokenwise/cli`, then `tokenwise doctor`).
+
+## At the end of an answer
+
+When an answer ends and the conversation saved more than when it was last
+said, a `Stop` hook adds a small card: a jar with as many coins as the share it saved, *saved 2,973 tokens in this conversation*, and a bar for *tool output 90% shorter*. The share is of all the tool output TokenWise saw in
+the conversation, shortened or not; it is in English whatever your locale.
 
 ## Compaction (assisted)
 

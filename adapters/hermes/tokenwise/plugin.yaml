@@ -1,8 +1,10 @@
 name: tokenwise
 version: "0.3.0"
-description: "TokenWise: replaces the terminal tool's output with a smaller, deterministic projection when a TokenWise filter recognizes it (test runners, compilers, git status/diff, grep, find, ls, build tools). The original is kept under ~/.tokenwise. With context.engine set to tokenwise, LightShadow keeps compacted tool results recallable (tokenwise_recall). Needs the tokenwise command on PATH (npm install -g @tokenwise/cli)."
+description: "TokenWise: replaces the terminal tool's output (and a finished background process's) with a smaller, deterministic projection when a TokenWise filter recognizes it (test runners, compilers, git status/diff, grep, find, ls, build tools). The original is kept under ~/.tokenwise. With context.engine set to tokenwise, LightShadow keeps compacted tool results recallable (tokenwise_recall). Needs the tokenwise command on PATH (npm install -g @tokenwise/cli)."
 author: "TokenWise (https://github.com/HKUDS/TokenWise)"
 provides_hooks:
   - pre_tool_call
   - transform_terminal_output
+  - transform_tool_result
   - on_session_start
+  - post_llm_call

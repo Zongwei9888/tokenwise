@@ -231,3 +231,72 @@ describe('DSH Token Economy', () => {
     expect(economy.negotiated()[0]).toMatchObject({ mechanism: 'economy', mode: 'apply' })
   })
 })
+
+describe('DSH job_output: a background bash job read later', () => {
+  /** A `job_output` read as DSH 0.2.1 renders it (tool-jobs render.ts): stdout, `[stderr]` and stderr, then the status line. */
+  const jobRead = (out: string, err = '', status = 'completed', detail = 'exit code: 1', label = 'python -m pytest -v') => {
+    const separator = out.length > 0 && !out.endsWith('\n') ? '\n' : ''
+    const text = out + (err.length > 0 ? `${separator}[stderr]\n${err}` : '')
+    const value = { text, job: { id: 'bash-0123456789abcdef', kind: 'bash', label, status, detail, startedAt: 1, finishedAt: 2 } }
+    const body = text.length > 0 ? text : '(no new output)'
+    return { isError: false as const, value, content: [{ type: 'text' as const, text: `${body}${body.endsWith('\n') ? '' : '\n'}[status: ${status}, ${detail}]` }] }
+  }
+  const read: ToolExecution = { callId: 'call-9', name: 'job_output', arguments: { job_id: 'bash-0123456789abcdef' }, agent: { session: { id: 'session-1', header: { cwd: '/nowhere' } } } }
+  const setupJobs = (written: number | undefined) => {
+    const dataDir = temp()
+    const asked: unknown[] = []
+    const economy = createDshEconomy({ mode: () => 'apply', dataDir, env: {}, jobOutputTotal: (id, exec) => { asked.push([id, exec.agent?.session?.id]); return written } })
+    const journal = () => readdirSync(join(dataDir, 'journal', 'dsh')).flatMap(name => readFileSync(join(dataDir, 'journal', 'dsh', name), 'utf8').trim().split('\n').map(line => JSON.parse(line)))
+    return { economy, journal, asked }
+  }
+  const out = pytestOutput(40, 2)
+  const bytes = (value: string) => Buffer.byteLength(value)
+
+  it('filters the whole output of a finished job as the command that started it, status line and stderr kept', () => {
+    const { economy, journal, asked } = setupJobs(bytes(out))
+    const result = jobRead(out)
+    const projected = text(economy.postExecute(read, result, accept))!
+    expect(projected.length).toBeLessThan(result.content[0]!.text.length / 2)
+    expect(projected).toContain('FAILED tests/test_inventory.py::test_broken_1')
+    expect(projected.endsWith('\n[status: completed, exit code: 1]')).toBe(true)
+    expect(asked).toEqual([['bash-0123456789abcdef', 'session-1']])
+    expect(journal()).toMatchObject([{ tool: 'job_output', command: 'python -m pytest -v', exitCode: 1, callId: 'call-9', outcome: 'projected', filter: 'pytest' }])
+    // With stderr: both streams located, the stderr section kept byte for byte.
+    const withErr = setupJobs(bytes(out) + bytes('DeprecationWarning: x\n'))
+    const both = text(withErr.economy.postExecute(read, jobRead(out, 'DeprecationWarning: x\n'), accept))!
+    expect(both.endsWith('[stderr]\nDeprecationWarning: x\n[status: completed, exit code: 1]')).toBe(true)
+    expect(both.length).toBeLessThan(out.length / 2)
+  })
+
+  it('leaves alone a read that is not the whole output of a finished bash job', () => {
+    const whole = bytes(out)
+    const cases: [ReturnType<typeof setupJobs>, ReturnType<typeof jobRead>, PostToolDecision?][] = [
+      [setupJobs(whole + 500), jobRead(out)], // part of it was read before
+      [setupJobs(undefined), jobRead(out)], // the registry does not know the job
+      [setupJobs(whole), jobRead(out, '', 'running', 'exit code: 1')],
+      [setupJobs(whole), jobRead(out, '', 'killed', 'signal: SIGTERM')],
+      [setupJobs(whole), jobRead(out, '', 'completed', 'exit code: 1; [sandbox: denied network]')],
+      [setupJobs(whole), jobRead(`${out}[some output was dropped from memory; full output: /tmp/x.log]\n`)],
+      [setupJobs(whole), jobRead(out, '', 'completed', 'exit code: 1', '')],
+      [setupJobs(whole), jobRead(out), { kind: 'accept', content: [{ type: 'text', text: 'rewritten' }] }],
+    ]
+    for (const [{ economy }, result, decision = accept] of cases) expect(economy.postExecute(read, result, decision)).toBe(decision)
+    // Without a job registry at all.
+    const { economy } = setup()
+    expect(economy.postExecute(read, jobRead(out), accept)).toBe(accept)
+  })
+})
+
+describe('DSH: every other tool\'s text journaled', () => {
+  it('journals a read (or any text result) unchanged; errors, sub-calls and TokenWise\'s own recall are not', () => {
+    const { economy, journal } = setup()
+    const read = (extra: Partial<ToolExecution> = {}): ToolExecution => ({ callId: 'r1', name: 'read', arguments: { file_path: 'a.ts' },
+      agent: { session: { id: 'session-1', header: { cwd: '/nowhere' } } }, ...extra })
+    const result = { isError: false as const, value: {}, content: [{ type: 'text' as const, text: '<path>a.ts</path>\n1: x' }] }
+    expect(economy.postExecute(read(), result, accept)).toBe(accept)
+    expect(economy.postExecute(read({ parent: {} }), result, accept)).toBe(accept)
+    expect(economy.postExecute(read({ name: 'tokenwise_recall' }), result, accept)).toBe(accept)
+    expect(economy.postExecute(read(), { isError: true, content: [{ type: 'text', text: 'no such file' }] }, accept)).toBe(accept)
+    expect(journal().map(record => [record.tool, record.outcome, record.command])).toEqual([['read', 'passed', 'read {"file_path":"a.ts"}']])
+  })
+})

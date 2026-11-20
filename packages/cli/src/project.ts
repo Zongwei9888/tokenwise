@@ -1,7 +1,7 @@
 import { EconomyEngine } from '@tokenwise/mechanisms'
 import type { EconomyRecord } from '@tokenwise/protocol'
 import { RuleStore, collectDaily } from '@tokenwise/store'
-import type { ShellResult } from '@tokenwise/core'
+import type { NativeResult, ShellResult } from '@tokenwise/core'
 import { cliContext } from './context.ts'
 
 export interface OutputRequest {
@@ -43,9 +43,7 @@ export function projectOutput(request: OutputRequest): { stdout: string; stderr?
   const rules = new RuleStore(context.dataDir)
   const engine = new EconomyEngine({ host: request.host, journal: store.journal, artifacts: store.artifacts,
     config: config.economy, mode: config.economy.mode, delivery: request.delivery, streams: separate ? 'separate' : 'merged',
-    learned: () => rules.load(), ...request.maxProjectedChars === undefined ? {} : { maxProjectedChars: request.maxProjectedChars },
-    // `tokenwise` is on PATH here (it is running), so `tokenwise recall` reads the original; most hosts also offer the MCP tool.
-    recallHint: config.lightshadow.mode !== 'off' })
+    learned: () => rules.load(), ...request.maxProjectedChars === undefined ? {} : { maxProjectedChars: request.maxProjectedChars } })
   const base = { command: request.command, exitCode: request.exitCode, interrupted: request.interrupted, ...request.truncated ? { truncated: true } : {} }
   const process = (result: ShellResult) => engine.process({ sessionId: request.sessionId, callId: request.callId, tool: request.tool, result }).text
   const stdout = request.stdout === '' ? undefined : process({ ...base, rendered: request.stdout, stdout: { start: 0, text: request.stdout } })
@@ -54,4 +52,33 @@ export function projectOutput(request: OutputRequest): { stdout: string; stderr?
   try { collectDaily(store.dataDir, days => store.artifacts.prune(days), config.artifacts.retentionDays) } catch { /* Housekeeping only. */ }
   if (stdout === undefined && stderr === undefined) return undefined
   return { stdout: stdout ?? request.stdout, ...separate ? { stderr: stderr ?? request.stderr! } : {} }
+}
+
+export interface NativeOutputRequest {
+  readonly host: string
+  readonly tool: string
+  readonly sessionId: string | null
+  readonly callId: string | null
+  /** How the call reads in the journal, such as `Grep {"pattern":"x"}`. */
+  readonly command: string
+  /** The complete text the model would read, and its layout (from a `native*` function of @tokenwise/core). */
+  readonly native: NativeResult
+  readonly cwd?: string
+  readonly env?: NodeJS.ProcessEnv
+}
+
+/**
+ * Filter a host tool's own result (a search or a listing) through Economy:
+ * the text to deliver instead, or undefined when nothing changes. The
+ * original is saved and the decision journaled first.
+ */
+export function projectNative(request: NativeOutputRequest): string | undefined {
+  const context = cliContext({ ...request.cwd === undefined ? {} : { cwd: request.cwd }, ...request.env === undefined ? {} : { env: request.env } })
+  const { config } = context.loaded
+  if (config.economy.mode === 'off') return undefined
+  const store = context.writable()
+  if (!store) return undefined
+  const engine = new EconomyEngine({ host: request.host, journal: store.journal, artifacts: store.artifacts,
+    config: config.economy, mode: config.economy.mode, delivery: 'result-hook', streams: 'merged' })
+  return engine.process({ sessionId: request.sessionId, callId: request.callId, tool: request.tool, command: request.command, native: request.native }).text
 }

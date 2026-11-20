@@ -11,7 +11,7 @@ import { compact } from '@earendil-works/pi-coding-agent'
 import type { ExtensionAPI, ExtensionContext, SessionBeforeCompactEvent, SessionEntry } from '@earendil-works/pi-coding-agent'
 import type { TSchema } from '@earendil-works/pi-ai'
 import {
-  RECALL_TOOL_DESCRIPTION, RECALL_TOOL_NAME, SHADOW_SUMMARY_INSTRUCTION, callLabel, checkpointAdmitted, checkpointRecord, fitCheckpoint, planShadow, recallIndex, recallObservation,
+  RECALL_PROMPT_SNIPPET, RECALL_TOOL_DESCRIPTION, RECALL_TOOL_NAME, SHADOW_SUMMARY_INSTRUCTION, callLabel, checkpointAdmitted, checkpointRecord, fitCheckpoint, planShadow, recallIndex, recallObservation,
   renderCheckpoint, renderRecall,
 } from '@tokenwise/mechanisms'
 import type { ShadowMessage } from '@tokenwise/mechanisms'
@@ -41,10 +41,10 @@ export interface PiShadowOptions {
 const RECALL_PARAMETERS = {
   type: 'object',
   properties: {
-    observation_id: { type: 'string', description: 'An observation_id from the observation catalog, such as o-1a2b3c4d5e6f.' },
-    query: { type: 'string', description: 'An exact string the result contains; for results over 8 KB, this or line.' },
-    line: { type: 'integer', minimum: 1, description: 'A 1-based line number to read around; for results over 8 KB, this or query.' },
-    original: { type: 'boolean', description: 'Read the complete output TokenWise shortened before you first read it.' },
+    observation_id: { type: 'string', description: 'Such as o-1a2b3c4d5e6f.' },
+    query: { type: 'string', description: 'An exact string it contains: read around its first match.' },
+    line: { type: 'integer', minimum: 1, description: 'A 1-based line to read around.' },
+    original: { type: 'boolean', description: 'For a catalog entry marked original: the output before TokenWise shortened it.' },
   },
   required: ['observation_id'],
   additionalProperties: false,
@@ -126,7 +126,7 @@ export function registerLightShadow(pi: ExtensionAPI, options: PiShadowOptions):
     name: RECALL_TOOL_NAME,
     label: 'Recall',
     description: RECALL_TOOL_DESCRIPTION,
-    promptSnippet: `${RECALL_TOOL_NAME}: read again a tool result that context compaction replaced by an observation_id`,
+    promptSnippet: RECALL_PROMPT_SNIPPET,
     parameters: RECALL_PARAMETERS,
     // Declared to the model only once a checkpoint lists something to recall.
     defaultActive: false,
@@ -214,7 +214,8 @@ export function registerLightShadow(pi: ExtensionAPI, options: PiShadowOptions):
         append(checkpointRecord(base, { kind: 'standard', plan, checkpointTokens: Math.ceil(compact.length / 4), reason: 'checkpoint-not-smaller' }))
         return undefined
       }
-      append(checkpointRecord(base, { kind: 'lightshadow', plan, checkpointTokens: Math.ceil(text.length / 4) }))
+      append(checkpointRecord(base, { kind: 'lightshadow', plan, checkpointTokens: Math.ceil(text.length / 4),
+        addedTokens: Math.ceil(text.length / 4) - Math.ceil(result.summary.length / 4) }))
       if (plan.references.length > 0) activate()
       const details: LightShadowDetails & Record<string, unknown> = {
         ...typeof result.details === 'object' && result.details !== null ? result.details as Record<string, unknown> : {},

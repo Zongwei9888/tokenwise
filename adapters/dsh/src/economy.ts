@@ -10,7 +10,7 @@ import { HOST_PROFILES, V0_2_SPECS, negotiate } from '@tokenwise/protocol'
 import type { ArtifactPort, JournalPort, JournalRecord, MechanismMode, Negotiation } from '@tokenwise/protocol'
 import { FileArtifactStore, FileJournal, RuleStore, collectDaily, dataDirs, loadConfig, readJournals, resolveDataDir, writableDataDir } from '@tokenwise/store'
 import type { LoadedConfig } from '@tokenwise/store'
-import { bashShellResult } from './bash.ts'
+import { bashShellResult, jobShellResult } from './bash.ts'
 import { NATIVE_TOOLS, nativeResult } from './native.ts'
 import type { PostToolDecision, ToolExecution, ToolExecutionResult } from './host.ts'
 
@@ -41,6 +41,8 @@ export interface DshEconomyOptions {
   readonly mode: () => MechanismMode
   /** Longest projection delivered; see {@link INLINE_LIMIT_CHARS}. */
   readonly inlineLimitChars?: number
+  /** Bytes a background job has output so far (DSH's job registry); without it, `job_output` reads pass. */
+  readonly jobOutputTotal?: (jobId: string, exec: ToolExecution) => number | undefined
   /** Defaults to `$TOKENWISE_HOME` or `~/.tokenwise`. */
   readonly dataDir?: string
   readonly env?: NodeJS.ProcessEnv
@@ -64,6 +66,8 @@ export interface DshEconomy {
   report(session: { id: string; cwd?: string | undefined }): string
   /** Where originals and the journal are written (resolved on first use). */
   readonly dataDir: string
+  /** Every location records may be in, primary first. */
+  readonly dataDirs: readonly string[]
   /** Where configuration and learned rules live. */
   readonly configDir: string
   /** Negotiated LightShadow mode for a session. */
@@ -139,8 +143,6 @@ export function createDshEconomy(options: DshEconomyOptions): DshEconomy {
       engine = new EconomyEngine({ host: HOST, journal, artifacts, config: state.loaded.config.economy, mode,
         maxProjectedChars: options.inlineLimitChars ?? INLINE_LIMIT_CHARS,
         delivery: 'in-process', streams: 'separate', onError: error => warn(`TokenWise: ${String(error)}; delivering the original output`),
-        // The recall tool is registered unless LightShadow is off (index.ts).
-        recallHint: state.loaded.config.lightshadow.mode !== 'off',
         learned: () => ruleStore.load(error => warn(`TokenWise: learned rules not loaded: ${String(error)}`)) })
       state.engines.set(mode, engine)
     }
@@ -182,17 +184,34 @@ export function createDshEconomy(options: DshEconomyOptions): DshEconomy {
     if (linked.size > MAX_LINKED) linked.delete(linked.values().next().value!)
   }
 
+  const observe = (exec: ToolExecution, result: ToolExecutionResult, decision: PostToolDecision) => {
+    if (result.isError || decision.kind !== 'accept' || Object.hasOwn(decision, 'value') || exec.name === 'tokenwise_recall') return
+    const content = decision.content ?? result.content
+    if (content.length === 0 || !content.every(block => block.type === 'text' && typeof block.text === 'string')) return
+    const text = content.map(block => block.text as string).join('\n')
+    if (text === '') return
+    const session = sessionOf(exec)
+    const state = sessionState(session?.id ?? '', session?.cwd)
+    const mode = negotiateFor(state.loaded, requestedMode()).find(item => item.mechanism === 'economy')!.mode
+    if (mode === 'off') return
+    engineFor(state, mode).process({ sessionId: session?.id ?? null, callId: String(exec.callId), tool: exec.name,
+      command: describeToolCall(exec.name, exec.arguments), native: { rendered: text, projection: undefined } })
+  }
+
   const postExecute = (exec: ToolExecution, result: ToolExecutionResult, decision: PostToolDecision): PostToolDecision => {
     try {
       const requested = requestedMode()
       if (requested === 'off') return decision
       // Only the model's own calls: a run_code sub-dispatch hands its value to a program, not the model.
-      const native = exec.name !== 'bash' && NATIVE_TOOLS.has(exec.name)
-      if ((exec.name !== 'bash' && !native) || exec.parent !== undefined || result.isError) return decision
+      const job = exec.name === 'job_output'
+      const native = !job && exec.name !== 'bash' && NATIVE_TOOLS.has(exec.name)
+      if (exec.parent !== undefined || result.isError) return decision
+      // Any other tool: its text is journaled as it is (what the model read, TokenWise's own recall aside).
+      if (exec.name !== 'bash' && !native && !job) { observe(exec, result, decision); return decision }
       // Keep blocks, value replacements and anything another listener already rewrote.
       if (decision.kind !== 'accept' || Object.hasOwn(decision, 'value')) return decision
-      // A search tool's own text only; a search DSH capped or spilled (it rewrites those itself) is left alone.
-      if (native && decision.content !== undefined) return decision
+      // A search tool's or job read's own text only; one DSH capped or spilled (it rewrites those itself) is left alone.
+      if ((native || job) && decision.content !== undefined) return decision
       const session = sessionOf(exec)
       const state = sessionState(session?.id ?? '', session?.cwd)
       const mode = negotiateFor(state.loaded, requested).find(item => item.mechanism === 'economy')!.mode
@@ -204,6 +223,12 @@ export function createDshEconomy(options: DshEconomyOptions): DshEconomy {
         const found = nativeResult(exec.name, result.value, result.content)
         if (!found) return decision
         output = engineFor(state, mode).process({ ...call, command: describeToolCall(exec.name, exec.arguments), native: found })
+      } else if (job) {
+        // The whole output of a finished background bash job, filtered as the command that started it.
+        const written = options.jobOutputTotal
+        const shell = written ? jobShellResult(result.value, result.content, id => written(id, exec)) : undefined
+        if (!shell) return decision
+        output = engineFor(state, mode).process({ ...call, result: shell })
       } else {
         const content = decision.content ?? result.content
         const shell = bashShellResult((exec.arguments as { command?: unknown } | undefined)?.command, result.value, content)
@@ -253,6 +278,7 @@ export function createDshEconomy(options: DshEconomyOptions): DshEconomy {
       return lines.join('\n')
     },
     get dataDir() { return storage().dataDir },
+    dataDirs: readDirs,
     configDir,
     shadowMode: session => negotiateFor(sessionState(session.id, session.cwd).loaded).find(item => item.mechanism === 'lightshadow')!.mode,
     configuredShadowMode: () => loadConfig({ dataDir: configDir, env }).config.lightshadow.mode,

@@ -11,12 +11,11 @@ describe('DSH bundle package', () => {
     const patch = readFileSync(at('cordis.patch.yml'), 'utf8')
     expect(patch).toMatch(/- insert:\n\s+- id: tokenwise\n\s+name: '@tokenwise\/dsh'\n/)
   })
-  it('ships display metadata in both languages and a small self-contained icon', () => {
-    for (const lang of ['en', 'zh']) {
-      const meta = JSON.parse(readFileSync(at(`locale/${lang}.json`), 'utf8')).meta
-      expect(meta.title).toBe('TokenWise')
-      expect(meta.description.length).toBeGreaterThan(20)
-    }
+  it('ships display metadata, in English for every DSH language, and a small self-contained icon', () => {
+    const meta = JSON.parse(readFileSync(at('locale/en.json'), 'utf8')).meta
+    expect(meta.title).toBe('TokenWise')
+    expect(meta.description.length).toBeGreaterThan(20)
+    expect(readFileSync(at('locale/zh.json'), 'utf8')).toBe(readFileSync(at('locale/en.json'), 'utf8'))
     expect(manifest.icon).toBe('./icon.svg')
     const icon = readFileSync(at('icon.svg'), 'utf8')
     expect(statSync(at('icon.svg')).size).toBeLessThan(256 * 1024)

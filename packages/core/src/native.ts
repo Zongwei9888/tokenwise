@@ -151,3 +151,201 @@ export function nativePathLines(rendered: string): FilterCandidate | undefined {
   }
   return grouped ? native('native-glob', builder.finish()) : undefined
 }
+
+/** A text item of a host's result: its value and where it sits in the rendered text (a JSON string's inside, or a line). */
+interface Item { readonly value: string; readonly start: number; readonly end: number; readonly verbatim: boolean }
+
+/**
+ * The strings of a one-level JSON array of strings, exactly as rendered (`["a","b"]`, any white space), with each
+ * one's place inside its quotes; undefined for anything else. A string with an escape is not verbatim in the text.
+ */
+function jsonStrings(rendered: string): Item[] | undefined {
+  const items: Item[] = []
+  let i = 0
+  const space = () => { while (i < rendered.length && /\s/.test(rendered[i]!)) i++ }
+  space()
+  if (rendered[i] !== '[') return undefined
+  i++; space()
+  if (rendered[i] === ']') { i++; space(); return i === rendered.length ? items : undefined }
+  for (;;) {
+    if (rendered[i] !== '"') return undefined
+    const open = i
+    for (i++; i < rendered.length && rendered[i] !== '"'; i++) if (rendered[i] === '\\') i++
+    if (i >= rendered.length) return undefined
+    const token = rendered.slice(open, i + 1)
+    let value: unknown
+    try { value = JSON.parse(token) } catch { return undefined }
+    if (typeof value !== 'string') return undefined
+    items.push({ value, start: open + 1, end: i, verbatim: !token.includes('\\') })
+    i++; space()
+    if (rendered[i] === ',') { i++; space(); continue }
+    if (rendered[i] !== ']') return undefined
+    i++; space()
+    return i === rendered.length ? items : undefined
+  }
+}
+
+/** Copy part of an item (from `offset` on): its own text when verbatim, else the decoded value. */
+function copy(builder: ProjectionBuilder, item: Item, from: number, to = item.value.length): void {
+  if (to <= from) return
+  if (item.verbatim) builder.keep(item.start + from, item.start + to)
+  else builder.generate(item.value.slice(from, to), 'json-string')
+}
+
+/** The directory every path is in (with its trailing `/`), when that is worth saying once: '' otherwise. */
+function commonRoot(paths: readonly string[]): string {
+  if (paths.length < 2) return ''
+  let root = paths[0]!.slice(0, paths[0]!.lastIndexOf('/') + 1)
+  for (const path of paths) while (root && !path.startsWith(root)) root = root.slice(0, root.lastIndexOf('/', root.length - 2) + 1)
+  return root.length >= 8 ? root : ''
+}
+
+/**
+ * Paths, once each, in the host's order: their common directory said once, and
+ * consecutive paths in one directory grouped under it. `after` (notices the
+ * host put below the list) stays verbatim.
+ */
+function layoutPaths(rendered: string, items: readonly Item[], after?: { start: number; end: number }): MappedProjection | undefined {
+  if (items.length < 2 || items.some(item => item.value === '' || UNSAFE.test(item.value) || item.value.endsWith('/'))) return undefined
+  const root = commonRoot(items.map(item => item.value))
+  const builder = new ProjectionBuilder(rendered)
+  builder.generate(root ? `[paths under ${root}, grouped by directory; original order retained]\n` : '[paths grouped by directory; original order retained]\n', 'glob-layout')
+  const directoryOf = (item: Item) => item.value.slice(root.length, item.value.lastIndexOf('/') + 1)
+  let grouped = root !== ''
+  for (let i = 0; i < items.length;) {
+    const first = items[i]!
+    const directory = directoryOf(first)
+    let end = i + 1
+    while (end < items.length && directoryOf(items[end]!) === directory) end++
+    if (directory === '' || end - i < 2) {
+      for (; i < end; i++) { copy(builder, items[i]!, root.length); builder.generate('\n', 'glob-layout') }
+      continue
+    }
+    copy(builder, first, root.length, root.length + directory.length)
+    builder.generate('\n', 'glob-layout')
+    for (; i < end; i++) {
+      builder.generate('  ', 'glob-layout')
+      copy(builder, items[i]!, root.length + directory.length)
+      builder.generate('\n', 'glob-layout')
+    }
+    grouped = true
+  }
+  if (!grouped) return undefined
+  if (after && after.end > after.start) builder.keep(after.start, after.end)
+  return builder.finish()
+}
+
+/**
+ * A JSON array of paths, in the host's order (CodeBuddy `Glob`, and `Grep` in
+ * files_with_matches mode): every path once, their common directory said once,
+ * consecutive paths in one directory grouped under it.
+ */
+export function nativeJsonPaths(rendered: string): FilterCandidate | undefined {
+  const items = jsonStrings(rendered)
+  return items ? native('native-glob', layoutPaths(rendered, items)) : undefined
+}
+
+/**
+ * Absolute paths, one per line, in the host's order (OpenCode `glob`), and
+ * optionally a blank line and a notice in parentheses below them: their common
+ * directory said once, consecutive paths in one directory grouped under it.
+ */
+export function nativeAbsolutePathLines(rendered: string): FilterCandidate | undefined {
+  if (/[\u001b\0\r]/.test(rendered)) return undefined
+  const lines = sourceLines(rendered)
+  let count = 0
+  while (count < lines.length && lines[count]!.text.startsWith('/')) count++
+  const rest = lines.slice(count)
+  if (count < 2 || !rest.every(line => line.text === '' || /^\(.*\)$/.test(line.text))) return undefined
+  const items = lines.slice(0, count).map(line => ({ value: line.text, start: line.start, end: line.start + line.text.length, verbatim: true }))
+  const tail = rest.length ? { start: rest[0]!.start, end: rendered.length } : undefined
+  return native('native-glob', layoutPaths(rendered, items, tail))
+}
+
+/** A ripgrep row: `path:N:text` for a match, `path-N-text` for a context line, `--` between context blocks. */
+const RG_MATCH = /^(.+?):([1-9]\d*):/
+const MATCH_AFTER_PATH = /^:[1-9]\d*:/
+const CONTEXT_AFTER_PATH = /^-[1-9]\d*-/
+
+/**
+ * A JSON array of ripgrep rows (CodeBuddy `Grep` in content mode with line
+ * numbers): rows grouped under their file, each keeping its number, its `:`
+ * (match) or `-` (context) separator and its text; the files' common directory
+ * said once. Any row that is not one of these leaves the result alone.
+ */
+export function nativeJsonGrepRows(rendered: string): FilterCandidate | undefined {
+  const items = jsonStrings(rendered)
+  if (!items || items.length < 2 || items.some(item => UNSAFE.test(item.value))) return undefined
+  // Every `path:N:` prefix. A context line whose text holds `:N:` (a time, a slice) gives one too, but that
+  // one starts with a real file and `-N-`: ripgrep prints context only around a match, so that file is here.
+  const candidates = new Set<string>()
+  for (const item of items) { const file = RG_MATCH.exec(item.value)?.[1]; if (file !== undefined) candidates.add(file) }
+  const files = [...candidates].filter(file => ![...candidates].some(other =>
+    other.length < file.length && file.startsWith(other) && CONTEXT_AFTER_PATH.test(file.slice(other.length))))
+  if (files.length === 0) return undefined
+  const longestFirst = files.sort((a, b) => b.length - a.length)
+  const rows = items.map(item => {
+    if (item.value === '--') return { item, file: undefined, rest: 0 }
+    const match = longestFirst.find(file => item.value.startsWith(file) && MATCH_AFTER_PATH.test(item.value.slice(file.length)))
+    if (match !== undefined) return { item, file: match, rest: match.length + 1 }
+    const context = longestFirst.find(file => item.value.startsWith(file) && CONTEXT_AFTER_PATH.test(item.value.slice(file.length)))
+    return context === undefined ? undefined : { item, file: context, rest: context.length }
+  })
+  if (rows.some(row => row === undefined)) return undefined
+  const root = commonRoot([...files])
+  const builder = new ProjectionBuilder(rendered)
+  builder.generate(root ? `[matches grouped by file under ${root}; every line retained]\n` : '[matches grouped by file; every line retained]\n', 'search-layout')
+  let current: string | undefined
+  for (const row of rows) {
+    const { item, file, rest } = row!
+    if (file === undefined) { copy(builder, item, 0); builder.generate('\n', 'search-layout'); current = undefined; continue }
+    if (file !== current) {
+      copy(builder, item, root.length, file.length)
+      builder.generate('\n', 'search-layout')
+      current = file
+    }
+    builder.generate('  ', 'search-layout')
+    // A match keeps `N:text`, a context line `-N-text` (its leading `-` is the separator after the path).
+    copy(builder, item, rest)
+    builder.generate('\n', 'search-layout')
+  }
+  return native('native-grep', builder.finish())
+}
+
+/**
+ * OpenCode `grep`: `Found N matches`, then each file as `path:` with its rows
+ * as `  Line N: text` (a row's text keeps its newline, so a blank line follows
+ * most rows), blank lines between files, and optionally a notice in
+ * parentheses at the end. Rows become `  N: text`, the blank lines go, and the
+ * files' common directory is said once. Anything else leaves the result alone.
+ */
+export function nativeGrepBlocks(rendered: string): FilterCandidate | undefined {
+  if (/[\u001b\0\r]/.test(rendered)) return undefined
+  const lines = sourceLines(rendered)
+  if (!/^Found [1-9]\d* match(?:es)?(?: \(more matches available\))?$/.test(lines[0]?.text ?? '')) return undefined
+  const kinds: ('file' | 'row' | 'blank' | 'notice')[] = []
+  const files: string[] = []
+  for (const [index, line] of lines.slice(1).entries()) {
+    const text = line.text
+    if (text === '') kinds.push('blank')
+    else if (/^ {2}Line [1-9]\d*: /.test(text)) kinds.push('row')
+    else if (text.startsWith('/') && text.endsWith(':')) { kinds.push('file'); files.push(text.slice(0, -1)) }
+    else if (/^\(.*\)$/.test(text) && lines.slice(index + 2).every(next => next.text === '' || /^\(.*\)$/.test(next.text))) kinds.push('notice')
+    else return undefined
+  }
+  if (files.length === 0 || kinds[0] !== 'file') return undefined
+  const root = commonRoot(files)
+  const builder = new ProjectionBuilder(rendered)
+  builder.keep(lines[0]!.start, lines[0]!.end)
+  if (root) builder.generate(`[files under ${root}]\n`, 'search-layout')
+  for (const [index, kind] of kinds.entries()) {
+    const line = lines[index + 1]!
+    if (kind === 'blank') continue
+    if (kind === 'file') { builder.keep(line.start + root.length, line.end); builder.newline(); continue }
+    if (kind === 'notice') { builder.keep(line.start, line.end); builder.newline(); continue }
+    builder.generate('  ', 'search-layout')
+    builder.keep(line.start + '  Line '.length, line.end)
+    builder.newline()
+  }
+  return native('native-grep', builder.finish())
+}

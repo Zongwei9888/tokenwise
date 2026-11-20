@@ -35,6 +35,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tokenwise hook codex",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

@@ -9,7 +9,7 @@
  * OpenCode and Hermes plugins from the files the package carries in assets/.
  */
 import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -131,6 +131,8 @@ function perform(step: Step, env: NodeJS.ProcessEnv): boolean {
     if ('copy' in step) {
       if (!existsSync(step.copy)) { process.stderr.write(`  missing ${step.copy} (run pnpm build in the checkout)\n`); return false }
       mkdirSync(dirname(step.to), { recursive: true })
+      // A directory is TokenWise's own (a plugin, the skill): files an earlier version had there go.
+      if (statSync(step.copy).isDirectory()) rmSync(step.to, { recursive: true, force: true })
       cpSync(step.copy, step.to, { recursive: true, force: true })
       return true
     }

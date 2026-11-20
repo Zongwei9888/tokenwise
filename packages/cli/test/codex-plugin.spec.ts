@@ -5,7 +5,7 @@ const root = new URL('../../../adapters/codex/', import.meta.url)
 const json = (path: string) => JSON.parse(readFileSync(new URL(path, root), 'utf8'))
 
 describe('Codex plugin layout', () => {
-  it('declares the Bash PreToolUse hook, the SessionStart hooks (startup check, compact) and the recall MCP server', () => {
+  it('declares the Bash PreToolUse hook, the SessionStart hooks (startup check, compact), Stop and the recall MCP server', () => {
     const manifest = json('.codex-plugin/plugin.json')
     expect(manifest).toMatchObject({ name: 'tokenwise', hooks: './hooks/hooks.json', mcpServers: './.mcp.json' })
     // The skill comes from tokenwise setup (~/.agents/skills), as for every agent; a second copy here would show twice.
@@ -19,6 +19,8 @@ describe('Codex plugin layout', () => {
         { matcher: 'startup', hooks: [{ type: 'command', command: expect.stringContaining('then tokenwise hook codex; else'), timeout: 10 }] },
         { matcher: 'compact', hooks: [{ type: 'command', command: 'tokenwise hook codex', timeout: 60, additionalContextLimit: 6000 }] },
       ],
+      // The end of a turn: what TokenWise saved in the conversation.
+      Stop: [{ hooks: [{ type: 'command', command: 'tokenwise hook codex', timeout: 10 }] }],
     })
     // The model sees the tool as mcp__<server>__<tool>; the catalog names it so.
     expect(json('.mcp.json').mcpServers).toEqual({ tokenwise: { command: 'tokenwise', args: ['mcp', '--host', 'codex'] } })

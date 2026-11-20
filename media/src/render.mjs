@@ -2,8 +2,10 @@
 //   node render.mjs stills            every still image into ../
 //   node render.mjs stills social     just the ones whose name contains "social"
 //   node render.mjs video en|zh       the explainer video (frames piped to ffmpeg)
+//   node render.mjs video en promo    the promo: TokenWise in every agent (promo.html), with its soundtrack (music.mjs)
 import { createServer } from 'node:http'
-import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { readFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, extname, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -71,16 +73,20 @@ try {
       console.log('wrote images/' + still.name + '.png')
     }
   } else if (mode === 'video') {
-    const lang = arg ?? 'en'
+    const lang = arg ?? 'en', name = process.argv[4] ?? 'video'
     const fps = 30
     const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 })
-    await page.goto(base + `video.html?lang=${lang}`)
+    await page.goto(base + `${name}.html?lang=${lang}`)
     await page.evaluate(() => document.fonts.ready)
     await page.waitForFunction(() => window.ready === true)
     const duration = await page.evaluate(() => window.DURATION)
     mkdirSync(join(out, 'video'), { recursive: true })
-    const file = join(out, 'video', `tokenwise-${lang}.mp4`)
+    const file = join(out, 'video', name === 'video' ? `tokenwise-${lang}.mp4` : `tokenwise-${name}-${lang}.mp4`)
+    // The promo has a soundtrack, synthesized by music.mjs to its cues.
+    const music = name === 'promo' ? join(tmpdir(), `tokenwise-promo-${process.pid}.wav`) : null
+    if (music) { const { promoMusic, wav } = await import('./music.mjs'); writeFileSync(music, wav(promoMusic())) }
     const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'png', '-i', '-',
+      ...music ? ['-i', music, '-c:a', 'aac', '-b:a', '192k', '-shortest'] : [],
       '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', file], { stdio: ['pipe', 'inherit', 'inherit'] })
     const frames = Math.round(duration * fps)
     for (let i = 0; i < frames; i++) {
@@ -91,23 +97,24 @@ try {
     }
     ff.stdin.end()
     await new Promise(r => ff.on('close', r))
+    if (music) rmSync(music, { force: true })
     console.log('wrote', file)
   } else if (mode === 'frames') {
-    // Preview: node render.mjs frames en 3,9,12 -> frames written to $FRAMES_DIR (default ./.frames)
-    const [lang, list] = [arg ?? 'en', process.argv[4] ?? '0']
+    // Preview: node render.mjs frames en 3,9,12 [promo] -> frames written to $FRAMES_DIR (default ./.frames)
+    const [lang, list, name] = [arg ?? 'en', process.argv[4] ?? '0', process.argv[5] ?? 'video']
     const dir = process.env.FRAMES_DIR ?? join(here, '.frames'); mkdirSync(dir, { recursive: true })
     const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
-    await page.goto(base + `video.html?lang=${lang}`)
+    await page.goto(base + `${name}.html?lang=${lang}`)
     await page.evaluate(() => document.fonts.ready)
     await page.waitForFunction(() => window.ready === true)
     for (const t of list.split(',').map(Number)) {
       // replay from 0 so state that depends on earlier frames (none should) cannot hide a bug
       await page.evaluate(t => window.render(t), t)
-      await page.screenshot({ path: join(dir, `${lang}-${String(t).padStart(5, '0')}.png`) })
+      await page.screenshot({ path: join(dir, `${name === 'video' ? '' : name + '-'}${lang}-${String(t).padStart(5, '0')}.png`) })
     }
     console.log('frames in', dir)
   } else {
-    console.log('usage: node render.mjs stills [filter] | video [en|zh]')
+    console.log('usage: node render.mjs stills [filter] | video [en|zh] [page] | frames [en|zh] t1,t2 [page]')
   }
 } finally {
   await browser.close()

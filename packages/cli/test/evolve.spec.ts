@@ -85,8 +85,8 @@ describe('tokenwise evolve', () => {
     expect(tokenwise(['rules'], { home }).out).toContain(`active: ${report.adopted.slice(0, 12)}`)
     expect(tokenwise(['rules', 'show'], { home }).out).toContain('--- rules/build-progress.js')
     const filtered = tokenwise(['run', '-c', './build.sh'], { cwd, home })
-    // The shortened output ends with where its original is (Economy's recall hint).
-    expect(filtered.out).toMatch(/^Finished release in 4\.2s\n\[80 compile progress lines omitted\]\n\[TokenWise shortened this output\. The complete output is observation (o-[a-f0-9]{12}): .*`tokenwise recall \1`\.\]\n$/u)
+    // The shortened output alone: TokenWise adds no text of its own.
+    expect(filtered.out).toBe('Finished release in 4.2s\n[80 compile progress lines omitted]\n')
     const last = (new FileJournal(home).read({ host: 'shell' }) as EconomyRecord[]).at(-1)!
     expect(last).toMatchObject({ outcome: 'projected', filter: 'learned-rule', rule: 'build-progress', learnedRulesHash: report.adopted })
 

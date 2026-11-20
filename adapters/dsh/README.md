@@ -53,7 +53,10 @@ Use the profile you run (`web` for `dsh web`, `headless` for
 ## Use
 
 Nothing to do: recognized output is filtered from the next tool call on. In a
-session, type `/tokenwise` to see what it saved there.
+session, type `/tokenwise` to see what it saved there. When a turn ends with
+more saved, that conversation's page in the Web UI shows a toast (on screen
+then, or when you open it): *TokenWise saved 2,973 tokens in this conversation
+(tool output 90% shorter)*.
 
 On the plugin's page in **Plugins**, **Mode** switches between:
 
@@ -85,9 +88,17 @@ this setting further but never raise it; see the
   DSH delivered them complete: each match row loses its `Line ` prefix and
   consecutive paths are grouped under their directory; every match, line
   number and path stays. A search DSH capped or saved to a file is left alone.
-- Only the model's own `bash` calls that finished in the foreground. Background
-  jobs, `run_code` sub-calls, other tools, failed tool calls and results
-  another plugin already rewrote are left alone.
+- The model's own `bash` calls that finished in the foreground, and the
+  output of a background `bash` job when the model reads it with
+  `job_output` and that read is all of it: the job completed with an exit
+  code, and the read's bytes are every byte the job wrote (DSH's job registry
+  counts them), so a job read before, still running or with output dropped
+  passes. `run_code` sub-calls, other tools, failed tool calls and results
+  another plugin already rewrote are left alone. Verified on DSH 0.2.1: a
+  background `pytest -v` went from 3,307 to 334 tokens.
+- Every other tool's text (a `read`, a fetch) is journaled as it is, so the
+  share TokenWise reports is of everything the model read; it is not
+  changed.
 - The projection replaces one output stream (stdout, or a Cargo report on
   stderr) inside the result text; the `[stderr]` section, `[exit code: N]` and
   every other marker stay byte-for-byte.
@@ -172,14 +183,16 @@ their own; delete `~/.tokenwise` to remove them at once.
 TokenWise 是 DeepSeek Harness（DSH）的插件，在模型读取之前精简可识别的 `bash`
 输出（测试、构建、diff、搜索、安装等约 80 类命令），原文保留，失败信息、诊断、
 警告和退出码一律保留。精简结果必须在字节和 token 上都严格变小才会使用，否则原样
-交付；TokenWise 出任何错都交付原文；不联网。
+交付；TokenWise 出任何错都交付原文；不联网。后台运行的 `bash` 任务也一样：模型用
+`job_output` 读到的是这个任务跑完后的全部输出时，按启动它的命令精简；还在运行、之前
+已经读过一部分、或有输出被丢弃的，原样交付。
 
 需要 DSH **0.2.x**（已在 0.2.0-rc.2 和 0.2.1-alpha.2 上测试：Web 界面和命令行覆盖 macOS 与 Linux，桌面版覆盖 macOS，包括官方签名的 0.2.0-rc.2 安装包和 0.2.1-alpha.2 源码构建；Windows 尚未测试）；`dsh plugin` 需要 pnpm 11 及以上。
 
 **安装**：侧边栏 **插件** → **添加插件** → 输入 `@tokenwise/dsh` → **安装** →
 **立即启用**；或在终端执行 `dsh plugin --profile web add -w @tokenwise/dsh`。
 
-**使用**：装好即生效。在会话里输入 `/tokenwise` 查看本会话省下的 token、压缩和找回情况，以及正在用的学到的规则。
+**使用**：装好即生效。每轮结束时如果这次对话又省下了 token，网页上这个对话的页面会弹出提示（正在看就立刻弹，否则等你打开它时再弹），例如 “TokenWise saved 2,973 tokens in this conversation (tool output 90% shorter)”（TokenWise 显示的文字一律是英文）；同时到达的 TokenWise 提示依次弹出，不会叠在一起。在会话里输入 `/tokenwise` 查看本会话省下的 token、压缩和找回情况，以及正在用的学到的规则。
 
 **可找回的压缩**：DSH 压缩长对话时，被压缩部分的工具结果换成引用，模型可以用 `tokenwise_recall` 原样读回；你的原话逐字保留在检查点里；DSH 把超过 8192 字符的结果截成首尾两段时，完整内容也会保存并在截断处注明编号。检查点没有变小或出错时，DSH 按原方式压缩。网页版和桌面版里每个 agent 预设各有一个压缩模块，TokenWise 在 agent 启动时自动接上。
 

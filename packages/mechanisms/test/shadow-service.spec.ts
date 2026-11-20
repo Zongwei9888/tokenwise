@@ -126,4 +126,37 @@ describe('recallFromJournal', () => {
     // Found without knowing the session (the MCP server): journaled under the session that owns the reference.
     expect(recalls.map(record => record.sessionId)).toEqual(['s1', null, 's1'])
   })
+
+  it('gives a shell (tokenwise recall) the whole result up to 64 KB, and a window beyond that says how to ask for more', () => {
+    const store = memoryStore()
+    const [id] = catalogIds(shadowCatalog({ host: 'copilot', sessionId: 's1', messages: span('alpha') }, store).text)
+    const base = { host: 'copilot', artifacts: store.artifacts, read: store.read, sessionId: 's1' }
+    // 400 lines, about 8.6 KB: the tool gets its first window, a shell all of it to grep through.
+    expect(recallFromJournal({ observation_id: id! }, base).text).toMatch(/^\[o-[a-f0-9]{12}: lines 1-\d+ of 400, numbered; line 1 is marked >\]\n/u)
+    expect(recallFromJournal({ observation_id: id! }, { ...base, via: 'command' }).text).toBe(log(400, 'alpha'))
+    // Asked for a part, a shell gets a window like the tool, and is told how to ask for another.
+    expect(recallFromJournal({ observation_id: id!, query: 'alpha 300:' }, { ...base, via: 'command' }).text)
+      .toMatch(/^\[o-[a-f0-9]{12}: lines \d+-\d+ of 400; another part: tokenwise recall o-[a-f0-9]{12} --line N, or --query 'exact text'\]\n/u)
+  })
+
+  it('journals a recall of output two conversations share under the one the host names, else the later one', () => {
+    const store = memoryStore()
+    let now = Date.parse('2026-11-17T00:00:00Z')
+    const later = { ...store, now: () => new Date(now += 60_000) }
+    // The same command, the same output, a day apart: one ID. The later conversation's file is read first.
+    const [id] = catalogIds(shadowCatalog({ host: 'claude', sessionId: 'yesterday', messages: span('alpha') }, later).text)
+    shadowCatalog({ host: 'claude', sessionId: 'today', messages: span('alpha') }, later)
+    const records = [...store.records.filter(record => record.sessionId === 'today'), ...store.records.filter(record => record.sessionId === 'yesterday')]
+    const base = { host: 'claude', artifacts: store.artifacts, read: store.read, journal: store.journal, sessionId: null, readAll: () => records }
+    recallFromJournal({ observation_id: id!, line: 1 }, base)
+    recallFromJournal({ observation_id: id!, line: 1 }, { ...base, sessionHint: 'yesterday' })
+    // A stale hint (a conversation without that output) is ignored.
+    recallFromJournal({ observation_id: id!, line: 1 }, { ...base, sessionHint: 'another' })
+    // `tokenwise recall` in an agent's shell names no agent: the recall goes with the conversation, under its agent.
+    shadowCatalog({ host: 'copilot', sessionId: 'shell-run', messages: span('alpha') }, later)
+    recallFromJournal({ observation_id: id!, line: 1 }, { artifacts: store.artifacts, read: store.read, journal: store.journal, sessionId: null, readAll: () => store.records })
+    const recalls = store.records.filter(record => record.type === 'shadow/recall')
+    expect(recalls.map(record => record.sessionId)).toEqual(['today', 'yesterday', 'today', 'shell-run'])
+    expect(recalls.map(record => record.host)).toEqual(['claude', 'claude', 'claude', 'copilot'])
+  })
 })

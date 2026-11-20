@@ -113,6 +113,52 @@ describe('TokenWise for OpenCode', () => {
     expect(told).toBe(1)
   })
 
+  it('lays out its own glob and grep results without losing a path or a row', async () => {
+    const { home, hooks, errors } = await plugin()
+    const root = '/Users/me/work/project/'
+    const paths = Array.from({ length: 30 }, (_, i) => `${root}docs/rules/${i}-rule.md`)
+    const glob = { title: 'docs/rules/*.md', output: paths.join('\n'), metadata: { count: 30, truncated: false } }
+    await hooks['tool.execute.after']!({ tool: 'glob', sessionID: 'ses_1', callID: 'call_g', args: { pattern: 'docs/rules/*.md' } }, glob)
+    expect(glob.output.startsWith(`[paths under ${root}docs/rules/, grouped by directory; original order retained]\n`)).toBe(true)
+    for (let i = 0; i < 30; i++) expect(glob.output).toContain(`\n${i}-rule.md\n`)
+    const files = Array.from({ length: 12 }, (_, i) => `${root}src/module_${i}.py`)
+    const rows = ['Found 24 matches', ...files.flatMap((file, i) => [`${file}:`, `  Line ${i + 3}: def register_${i}():`, '', `  Line ${i + 40}:     register_${i}()`, '', ''])].join('\n')
+    const grep = { title: 'register', output: rows, metadata: { matches: 24, truncated: false } }
+    await hooks['tool.execute.after']!({ tool: 'grep', sessionID: 'ses_1', callID: 'call_r', args: { pattern: 'register' } }, grep)
+    expect(grep.output).toBe(['Found 24 matches', `[files under ${root}src/]`,
+      ...files.flatMap((_, i) => [`module_${i}.py:`, `  ${i + 3}: def register_${i}():`, `  ${i + 40}:     register_${i}()`]), ''].join('\n'))
+    expect(records(home).map(r => [r.tool, r.outcome, r.filter])).toEqual([['glob', 'projected', 'native-glob'], ['grep', 'projected', 'native-grep']])
+    const read = { title: 'a.py', output: '<path>/a</path>', metadata: {} }
+    await hooks['tool.execute.after']!({ tool: 'read', sessionID: 'ses_1', callID: 'call_x', args: {} }, read)
+    expect(read.output).toBe('<path>/a</path>')
+    expect(errors).toEqual([])
+  })
+
+  it('says what a conversation saved when an answer ends, once, never for a subagent, a restart or a toast that failed', async () => {
+    const toasts: { body: { message: string } }[] = []
+    // A real toast is a request to the TUI: slow enough for a second idle to arrive before the first is told.
+    const client = { tui: { calls: toasts, async showToast(options: { body: { message: string } }) { await new Promise(resolve => setTimeout(resolve, 15)); this.calls.push(options) } } }
+    const home = temp()
+    const plugin = (tui: unknown) => createTokenWise({ env: { TOKENWISE_HOME: home, LANG: 'en_US.UTF-8' }, notice: async () => undefined, told: async () => undefined })({ directory: temp(), client: tui as never })
+    const failing = await plugin({ tui: { showToast: async () => { throw new Error('TUI away') } } })
+    await failing['tool.execute.after']!({ tool: 'bash', sessionID: 'ses_1', callID: 'call_1', args: { command: 'python3 -m pytest -v' } }, bashOutput(pytest, 1))
+    await failing.event!({ event: { type: 'session.idle', properties: { sessionID: 'ses_1' } } })
+    await new Promise(resolve => setTimeout(resolve, 20))
+    // Not shown, so not told: the next OpenCode says it.
+    const hooks = await plugin(client)
+    const idle = (id: string) => hooks.event!({ event: { type: 'session.idle', properties: { sessionID: id } } })
+    await hooks.event!({ event: { type: 'session.created', properties: { info: { id: 'ses_child', parentID: 'ses_1' } } } })
+    await idle('ses_child'); await idle('ses_1'); await idle('ses_1')
+    await new Promise(resolve => setTimeout(resolve, 60))
+    // The card under the toast's own "TokenWise" title: a small jar, what was saved, a bar; no colour (the toast prints escape codes as text).
+    expect(toasts.map(t => t.body.message)).toEqual([expect.stringMatching(/^ ▗▄▄▖\n▗▛[●░]{2}▜▖ saved [\d,]+ tokens in this conversation\n▐[●·]{4}▌ [▰▱]{10} tool output \d+% shorter$/u)])
+    // A restarted OpenCode resuming the session does not say the same number again.
+    const restarted = await plugin(client)
+    await restarted.event!({ event: { type: 'session.idle', properties: { sessionID: 'ses_1' } } })
+    await new Promise(resolve => setTimeout(resolve, 60))
+    expect(toasts).toHaveLength(1)
+  })
+
   it('shows nothing, and never fails, without a notice or a TUI', async () => {
     const failing = { tui: { showToast: async () => { throw new Error('no TUI') } } }
     let told = 0

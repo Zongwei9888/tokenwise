@@ -17,8 +17,20 @@ describe('git-log', () => {
     expect(projected).toBe([...all.slice(0, 10), '[48 commits omitted]\n', ...all.slice(58)].join(''))
     expect(projectStaticFilter({ command: 'git log', stdout: captured.log, exitCode: 0 })?.filter).toBe('git-log')
     // Twenty commits: still cut; fifteen or fewer: left alone.
-    expect(gitLogFilter.project({ command: 'git log -20', stdout: captured.log20, exitCode: 0 })).toContain('[8 commits omitted]')
-    expect(gitLogFilter.project({ command: 'git log -15', stdout: all.slice(0, 15).join(''), exitCode: 0 })).toBeUndefined()
+    expect(gitLogFilter.project({ command: 'git log', stdout: captured.log20, exitCode: 0 })).toContain('[8 commits omitted]')
+    expect(gitLogFilter.project({ command: 'git log', stdout: all.slice(0, 15).join(''), exitCode: 0 })).toBeUndefined()
+  })
+
+  it('leaves whole a log the agent scoped itself, which is also how it reads what a bare log left out', () => {
+    for (const command of ['git log -20', 'git log -n 20', 'git log -n20', 'git log --max-count=20', 'git log --skip=10', 'git log --since=2.weeks',
+      'git log --author Ann', 'git log --grep=fix', 'git log -S total', 'git log -Gtotal', 'git log main..feature', 'git log origin/main',
+      'git log -- ledger.py', 'git log ledger.py', 'git log -L 1,5:module.py', 'git log --oneline -40']) {
+      expect(gitLogFilter.project({ command, stdout: command.includes('--oneline') ? captured.oneline : captured.log, exitCode: 0 }), command).toBeUndefined()
+    }
+    // Layout options alone do not scope it.
+    for (const command of ['git log --all', 'git log --no-merges', 'git log --decorate', 'git log --first-parent']) {
+      expect(gitLogFilter.project({ command, stdout: captured.log, exitCode: 0 }), command).toContain('[48 commits omitted]')
+    }
   })
 
   it('never omits a commit whose message mentions a failure, an error, a conflict or a revert', () => {
@@ -34,7 +46,7 @@ describe('git-log', () => {
     expect(rows).toHaveLength(60)
     const projected = gitLogFilter.project({ command: 'git log --oneline', stdout: captured.oneline, exitCode: 0 })!
     expect(projected).toBe([...rows.slice(0, 30), '[25 commits omitted]', ...rows.slice(55)].join('\n') + '\n')
-    expect(gitLogFilter.project({ command: 'git log --oneline -50', stdout: rows.slice(0, 50).join('\n') + '\n', exitCode: 0 })).toBeUndefined()
+    expect(gitLogFilter.project({ command: 'git log --oneline', stdout: rows.slice(0, 50).join('\n') + '\n', exitCode: 0 })).toBeUndefined()
   })
 
   it('leaves other layouts, failures and anything not in the default shape alone', () => {

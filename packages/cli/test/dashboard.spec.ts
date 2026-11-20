@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { removeTree } from '@tokenwise/store'
-import { startDashboard, startLanguage, type DashboardServer } from '../src/dashboard.ts'
+import { startDashboard, type DashboardServer } from '../src/dashboard.ts'
 import { dashboardPage } from '../src/dashboard-page.ts'
 import { frame } from '../src/saved.ts'
 import { readSavings, savingsOf, summarize } from '../src/savings.ts'
@@ -88,6 +88,15 @@ describe('what TokenWise saved', () => {
     expect(summarize([], 'week', NOW)).toMatchObject({ tokens: 0, today: 0, since: null, agents: [] })
   })
 
+  it('does not take recalls or what compactions added off what it saved', () => {
+    const home = temp()
+    const recall = { schemaVersion: 1, type: 'shadow/recall', time: at(0, 11), host: 'claude', sessionId: 's', callId: null, id: 'o-1', original: false, outcome: 'returned', bytes: 2000 }
+    const catalog = { schemaVersion: 1, type: 'shadow/checkpoint', time: at(0, 12), host: 'claude', sessionId: 's', kind: 'assisted', references: [],
+      userMessages: 0, segmentTokens: 9000, checkpointTokens: 300 }
+    journal(home, 'claude', [record('claude', at(0, 9), 4000, 400), JSON.stringify(recall) + '\n', JSON.stringify(catalog) + '\n'])
+    expect(savingsOf([home], 'week', NOW)).toMatchObject({ tokens: 3600, today: 3600, outputs: 1, agents: ['claude'] })
+  })
+
   it('reads every data location, and a journal file again only when it changed', () => {
     const a = temp(), b = temp()
     const file = journal(a, 'codex', [record('codex', at(0), 1000, 100)])
@@ -112,6 +121,8 @@ describe('tokenwise saved', () => {
   it('draws the jar and the number in the terminal, plain without colour and when piped', () => {
     const cwd = project(), home = temp()
     tokenwise(['run', '--host', 'codex', '-c', 'pytest -v'], cwd, home)
+    // English whatever the locale; Chinese only when asked for.
+    expect(tokenwise(['saved'], cwd, home, { LANG: 'zh_CN.UTF-8' })).toContain('This week, TokenWise saved you')
     const out = tokenwise(['saved', '--lang', 'zh'], cwd, home)
     expect(out).toContain('这周，TokenWise 已为你省下')
     expect(out).toContain('来自 1 次被缩短的命令输出')
@@ -168,7 +179,8 @@ describe('tokenwise dashboard', () => {
     expect(page.body).toContain(`<style nonce="${nonce}">`)
     // Inline style attributes would be refused under this policy: the page sets sizes from its script.
     expect(page.body).not.toMatch(/ style=\\?"/u)
-    expect(page.body).toContain('<html lang="zh">')
+    // English even for a Chinese browser.
+    expect(page.body).toContain('<html lang="en">')
     const week = JSON.parse((await get(server, `/api/savings?t=${server.token}&period=week`)).body)
     expect(week.savings).toMatchObject({ tokens: 3600, today: 3600, outputs: 1, agents: ['claude'] })
     expect(week.all.tokens).toBe(3600 + 9000)
@@ -180,12 +192,5 @@ describe('tokenwise dashboard', () => {
     const html = dashboardPage({ nonce: 'n', token: 't', language: 'en', week: { ...s, agents: ['</script><script>alert(1)</script>'] }, all: s })
     expect(html).not.toContain('</script><script>alert(1)')
     expect(html).toContain('\\u003c/script>')
-  })
-
-  it('starts in the browser\'s language, else this machine\'s', () => {
-    expect(startLanguage('zh-CN,zh;q=0.9')).toBe('zh')
-    expect(startLanguage('en-US,en;q=0.9', 'zh-CN')).toBe('en')
-    expect(startLanguage(undefined, 'zh-Hans-CN')).toBe('zh')
-    expect(startLanguage(undefined, 'de-DE')).toBe('en')
   })
 })

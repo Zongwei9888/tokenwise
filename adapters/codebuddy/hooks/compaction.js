@@ -30,17 +30,15 @@ const INSTRUCTION = 'After this compaction every tool result in this span stays 
   + 'errors, what passed and what failed) and the decisions made. Do not paste whole files, logs or test output; '
   + 'say what they showed. Do not list observation IDs. The user\'s messages are kept word for word after the summary. '
   + 'Keep it concise: a short line per finding, so the summary fits well within your output limit.'
-const DESCRIPTION = 'Read again a tool result that context compaction removed, exactly as you first saw it. '
-  + 'Its observation_id is listed in the observation catalog of the compacted summary, next to the call (command or path) that produced it. Results larger than 8 KB come back a window at a time: pass a line number (you get the lines around it) or a query: '
-  + 'an exact string they contain (a symbol, path or error message); you get the lines around its first match. With neither, you get the first lines. '
-  + 'Set original to true for the complete output TokenWise shortened before you first read it, when the catalog marks one.'
+const DESCRIPTION = 'Read again a tool result TokenWise kept, by the observation_id in the observation catalog. '
+  + 'Results over 8 KB come back a window at a time.'
 const SCHEMA = {
   type: 'object',
   properties: {
-    observation_id: { type: 'string', description: 'An observation_id from the observation catalog, such as o-1a2b3c4d5e6f.' },
-    query: { type: 'string', description: 'An exact string the result contains; for results over 8 KB, this or line.' },
-    line: { type: 'integer', minimum: 1, description: 'A 1-based line number to read around; for results over 8 KB, this or query.' },
-    original: { type: 'boolean', description: 'Read the complete output TokenWise shortened before you first read it.' },
+    observation_id: { type: 'string', description: 'Such as o-1a2b3c4d5e6f.' },
+    query: { type: 'string', description: 'An exact string it contains: read around its first match.' },
+    line: { type: 'integer', minimum: 1, description: 'A 1-based line to read around.' },
+    original: { type: 'boolean', description: 'For a catalog entry marked original: the output before TokenWise shortened it.' },
   },
   required: ['observation_id'],
   additionalProperties: false,

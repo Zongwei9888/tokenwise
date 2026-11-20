@@ -119,7 +119,8 @@ export function shadowCheckpoint(span: ShadowSpan & { readonly summary: string
     record(store, checkpointRecord(base, { kind: 'standard', plan: planned, checkpointTokens: Math.ceil(compact.length / 4), reason: 'checkpoint-not-smaller' }))
     return { text: undefined, references: 0, list: [] }
   }
-  record(store, checkpointRecord(base, { kind: 'lightshadow', plan: planned, checkpointTokens: Math.ceil(text.length / 4) }))
+  record(store, checkpointRecord(base, { kind: 'lightshadow', plan: planned, checkpointTokens: Math.ceil(text.length / 4),
+    addedTokens: Math.ceil(text.length / 4) - Math.ceil(span.summary.length / 4) }))
   return { text, references: planned.references.length, list: planned.references.map(reference => ({ id: reference.id, callId: reference.callId })) }
 }
 
@@ -152,9 +153,12 @@ export function shadowCatalog(span: ShadowSpan & { readonly toolName?: string; r
   const added = planned.references.filter(reference => !known.has(reference.id)).length
   const catalog = renderCatalog([...merged.values()], { budgetTokens: span.budgetTokens ?? 8_000 })
   const text = catalog.text ? `${span.lead ?? catalogLead(span.toolName ?? 'tokenwise_recall')}\n\n${catalog.text}` : ''
-  record(store, checkpointRecord(base, { kind: 'assisted', plan: planned, checkpointTokens: Math.ceil(text.length / 4) }))
+  record(store, checkpointRecord(base, { kind: 'assisted', plan: planned, checkpointTokens: Math.ceil(text.length / 4), addedTokens: Math.ceil(text.length / 4) }))
   return { text, references: catalog.references.length, added }
 }
+
+/** `tokenwise recall` prints a result up to this size whole: the model reads it through its own pipe. */
+const SHELL_RECALL_WHOLE_BYTES = 65_536
 
 /**
  * The recall tool over the journal. With a session, its checkpoints are
@@ -163,8 +167,17 @@ export function shadowCatalog(span: ShadowSpan & { readonly toolName?: string; r
  * so a hit is the same text).
  */
 export function recallFromJournal(args: RecallArguments, options: {
-  readonly host: string
+  /** The agent the recall is journaled under; without one (`tokenwise recall` in a shell), the agent of the conversation that owns it. */
+  readonly host?: string
   readonly sessionId: string | null
+  /**
+   * With no `sessionId`: the session the host says this is (Claude Code gives
+   * its MCP servers one), which owns the recall when it holds the reference. It
+   * can be stale (a server outlives a `/clear`), so it is only a preference.
+   */
+  readonly sessionHint?: string
+  /** `command` for `tokenwise recall`: up to 64 KB comes back whole, and a window says how to ask for another (`renderRecall`). */
+  readonly via?: 'tool' | 'command'
   readonly callId?: string | null
   readonly artifacts: ArtifactPort
   readonly read: (sessionId: string) => readonly JournalRecord[]
@@ -175,21 +188,25 @@ export function recallFromJournal(args: RecallArguments, options: {
   const session = options.sessionId ? recallIndex(options.read(options.sessionId)) : new Map<string, ShadowReference>()
   let all: readonly JournalRecord[] | undefined, everywhere: Map<string, ShadowReference> | undefined
   // A caller that does not know its session (the MCP server) has the recall journaled under the session that owns the reference.
-  let owner = options.sessionId
+  let owner = options.sessionId, ownerHost = options.host
   const lookup = (id: string) => {
     const hit = session.get(id)
     if (hit || !options.readAll) return hit
     all ??= options.readAll()
     const found = (everywhere ??= recallIndex(all)).get(id)
-    if (found && owner === null) owner = ownerOf(all, id)
+    if (found && owner === null) {
+      const by = ownerOf(all, id, options.sessionHint)
+      if (by) { owner = by.sessionId; ownerHost ??= by.host }
+    }
     return found
   }
-  const result = recallObservation(args, { lookup, artifacts: options.artifacts })
+  // In a shell the model pipes the text through grep, head or tail itself: a window would hide what it looks for.
+  const result = recallObservation(args, { lookup, artifacts: options.artifacts, ...options.via === 'command' ? { wholeBytes: SHELL_RECALL_WHOLE_BYTES } : {} })
   const id = typeof args.observation_id === 'string' ? args.observation_id.trim() : ''
-  const text = renderRecall(id, result)
+  const text = renderRecall(id, result, options.via)
   if (options.journal) {
     const entry: ShadowRecallRecord = {
-      schemaVersion: 1, type: 'shadow/recall', time: (options.now?.() ?? new Date()).toISOString(), host: options.host, sessionId: owner,
+      schemaVersion: 1, type: 'shadow/recall', time: (options.now?.() ?? new Date()).toISOString(), host: ownerHost ?? 'shell', sessionId: owner,
       callId: options.callId ?? null, id, original: args.original === true || args.original === 'true',
       outcome: !result.ok ? 'failed' : result.complete ? 'returned' : 'window', bytes: Buffer.byteLength(text),
     }
@@ -198,24 +215,32 @@ export function recallFromJournal(args: RecallArguments, options: {
   return { ok: result.ok, text }
 }
 
-/** The session whose checkpoint listed a reference, or whose Economy decision saved it (the latest one). */
-function ownerOf(records: readonly JournalRecord[], id: string): string | null {
-  for (let i = records.length - 1; i >= 0; i--) {
-    const record = records[i]!
-    if (record.type === 'shadow/checkpoint' && record.references.some(reference => reference.id === id)) return record.sessionId
-    if (record.type === 'economy/decision' && record.outcome === 'projected' && record.raw && referenceId(record.raw.sha256) === id) return record.sessionId
+/**
+ * The session whose checkpoint listed a reference, or whose Economy decision
+ * saved it. The same output in two conversations has one ID, so: `prefer` (the
+ * session the host says it is) when it is one of them, else the one that
+ * recorded it last (by time: records come file by file, not in time order).
+ */
+function ownerOf(records: readonly JournalRecord[], id: string, prefer?: string): { sessionId: string | null; host: string } | undefined {
+  let owner: { sessionId: string | null; host: string } | undefined, at = ''
+  for (const record of records) {
+    const owns = (record.type === 'shadow/checkpoint' && record.references.some(reference => reference.id === id))
+      || (record.type === 'economy/decision' && record.outcome === 'projected' && record.raw !== undefined && referenceId(record.raw.sha256) === id)
+    if (!owns) continue
+    if (prefer !== undefined && record.sessionId === prefer) return { sessionId: prefer, host: record.host }
+    if (record.time >= at) { owner = { sessionId: record.sessionId, host: record.host }; at = record.time }
   }
-  return null
+  return owner
 }
 
 /** The recall tool's parameters as JSON Schema, for hosts that declare tools that way (MCP, OpenAI-style function tools). */
 export const RECALL_INPUT_SCHEMA = {
   type: 'object',
   properties: {
-    observation_id: { type: 'string', description: 'An observation_id from the observation catalog, such as o-1a2b3c4d5e6f.' },
-    query: { type: 'string', description: 'An exact string the result contains; for results over 8 KB, this or line.' },
-    line: { type: 'integer', minimum: 1, description: 'A 1-based line number to read around; for results over 8 KB, this or query.' },
-    original: { type: 'boolean', description: 'Read the complete output TokenWise shortened before you first read it.' },
+    observation_id: { type: 'string', description: 'Such as o-1a2b3c4d5e6f.' },
+    query: { type: 'string', description: 'An exact string it contains: read around its first match.' },
+    line: { type: 'integer', minimum: 1, description: 'A 1-based line to read around.' },
+    original: { type: 'boolean', description: 'For a catalog entry marked original: the output before TokenWise shortened it.' },
   },
   required: ['observation_id'],
   additionalProperties: false,

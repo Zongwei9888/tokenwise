@@ -138,6 +138,8 @@ describe('normalizeShellCommand and summaries', () => {
     expect(summary.savedTokens).toBeGreaterThan(0)
     expect(summary.byFilter[0]).toMatchObject({ filter: 'grep', count: 1 })
     expect(summary.uncovered[0]).toMatchObject({ command: 'terraform-like', count: 2 })
+    // Every output seen counts toward the share, shortened or not.
+    expect(summary.seenTokens).toBe(records.filter(r => r.type === 'economy/decision').reduce((n, r) => n + ((r as EconomyRecord).raw?.tokens ?? 0), 0))
   })
 })
 
@@ -155,7 +157,7 @@ describe('prepare and commit', () => {
   })
 })
 
-describe('Economy recall hint', () => {
+describe('what the model reads', () => {
   // pytest -v with 300 passing tests and one failure: a lossy projection (noise removal).
   const pytest = [
     '============================= test session starts ==============================',
@@ -172,42 +174,20 @@ describe('Economy recall hint', () => {
     '========================= 1 failed, 300 passed in 0.12s =========================', '',
   ].join('\n')
 
-  it('ends a shortened output with the ID of its original, which the recall index reaches, and accounts for it', async () => {
+  it('is the projection alone: TokenWise adds no text of its own, and the recall tool still reads the original', async () => {
     const { recallFromJournal } = await import('../src/index.ts')
-    const { engine, records, artifacts } = setup({ recallHint: true })
+    const { engine, records, artifacts } = setup({})
     const out = engine.process({ sessionId: 's', callId: 'c1', tool: 'bash', result: { ...shell('python3 -m pytest -v', pytest), exitCode: 1 } })
-    const id = /observation (o-[a-f0-9]{12}): read it with tokenwise_recall/u.exec(out.text!)?.[1]
-    expect(id).toBe(`o-${sha256(pytest).slice(0, 12)}`)
-    expect(out.text!.endsWith('`tokenwise recall ' + id + '`.]\n')).toBe(true)
+    expect(out.text).toBeDefined()
+    expect(out.text).not.toContain('TokenWise')
+    expect(out.text).not.toContain('[full output')
+    expect(out.text!.trimEnd().endsWith('1 failed, 300 passed in 0.12s =========================')).toBe(true)
     const record = records.at(-1) as EconomyRecord
     expect(record.projected).toMatchObject({ bytes: Buffer.byteLength(out.text!) })
-    // Before any compaction the recall tool reads the complete original by that ID (with or without `original`).
+    // The ID a compaction's catalog gives it: the recall tool reads the complete original by it.
+    const id = `o-${sha256(pytest).slice(0, 12)}`
     const recalled = recallFromJournal({ observation_id: id, query: 'test_250 PASSED' }, { host: 'test', sessionId: 's', artifacts, read: () => records })
     expect(recalled).toMatchObject({ ok: true })
     expect(recalled.text).toContain('tests/test_a.py::test_250 PASSED')
-    expect(recallFromJournal({ observation_id: id, original: true, line: 1 }, { host: 'test', sessionId: 's', artifacts, read: () => records }).ok).toBe(true)
-  })
-
-  it('goes before what the host appends after the stream, and never after a lossless layout or a host tool\'s own result', () => {
-    const { engine } = setup({ recallHint: true, streams: 'separate' })
-    const footer = '\n[stderr]\nDeprecationWarning: x\n[exit 1]'
-    const rendered = pytest + footer
-    const out = engine.process({ sessionId: 's', callId: 'c2', tool: 'bash',
-      result: { command: 'python3 -m pytest -v', exitCode: 1, rendered, stdout: { start: 0, text: pytest }, stderr: { start: pytest.length + 10, text: 'DeprecationWarning: x\n' } } })
-    expect(out.text!.endsWith(footer.slice(1))).toBe(true)
-    expect(out.text).toMatch(/`tokenwise recall o-[a-f0-9]{12}`\.\]\n\[stderr\]/u)
-    const records = Array.from({ length: 30 }, (_, i) => ({ path: `src/f${i % 3}.ts`, line: i + 1, text: `const v${i} = ${i}` }))
-    const native = nativeGrepRecords(records.map(r => `${r.path}:${r.line}:${r.text}`).join('\n'))
-    if (native) {
-      const layout = engine.process({ sessionId: 's', callId: 'c3', tool: 'grep', command: 'grep v', native: { rendered: records.map(r => `${r.path}:${r.line}:${r.text}`).join('\n'), projection: native } })
-      if (layout.text) expect(layout.text).not.toContain('TokenWise shortened')
-    }
-  })
-
-  it('is left out when the projection would no longer save enough with it', () => {
-    const { engine } = setup({ recallHint: true })
-    const small = grep(6)
-    const out = engine.process({ sessionId: 's', callId: 'c4', tool: 'bash', result: shell('grep -rn value src', small) })
-    if (out.text !== undefined) expect(Buffer.byteLength(out.text)).toBeLessThan(Buffer.byteLength(small))
   })
 })

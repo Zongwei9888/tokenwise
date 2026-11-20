@@ -19,7 +19,7 @@ describe('pi package loading', () => {
       const extension = extensions[0]!
       expect(extension.path).toContain('dist/extension.js')
       expect([...extension.flags.keys()]).toContain('tokenwise')
-      expect([...extension.handlers.keys()].sort()).toEqual(['session_before_compact', 'session_shutdown', 'session_start', 'tool_call', 'tool_result', 'turn_end'])
+      expect([...extension.handlers.keys()].sort()).toEqual(['agent_end', 'agent_start', 'context_with_system', 'session_before_compact', 'session_shutdown', 'session_start', 'tool_call', 'tool_result', 'turn_end'])
       expect([...extension.tools.keys()]).toEqual(['tokenwise_recall'])
     } finally {
       rmSync(dir, { recursive: true, force: true })

@@ -7,13 +7,14 @@
  * (./shadow.ts): DSH's compaction keeps tool results recallable through
  * `tokenwise_recall`. `/tokenwise` reports both; the `mode` setting is live.
  * Self-evolution (./learning.ts): routes under /api/tokenwise for the
- * Plugins page, where a learning run starts, and `/tokenwise learn`.
+ * Plugins page, where a learning run starts, and `/tokenwise learn`. When a
+ * turn ends, a toast on that conversation's page says what it saved.
  */
 import Schema from '@deepseek-ai/schemastery'
 import type { MechanismMode } from '@tokenwise/protocol'
-import { formatTokens, outcomeSentence, readEvolveStatus } from '@tokenwise/mechanisms'
+import { formatTokens, markSavingsTold, outcomeSentence, readEvolveStatus, untoldSavings } from '@tokenwise/mechanisms'
 import { HOST, INLINE_LIMIT_CHARS, createDshEconomy } from './economy.ts'
-import type { HostContext, Volatile } from './host.ts'
+import type { HostContext, JobRegistry, Volatile } from './host.ts'
 import { createDshLearning } from './learning.ts'
 import type { DshLearningOptions } from './learning.ts'
 import { RECALL_TOOL, createDshShadow } from './shadow.ts'
@@ -43,6 +44,17 @@ export function apply(ctx: HostContext, config: Config): void {
     mode: () => config.mode.get(),
     inlineLimitChars: config.inlineLimitChars,
     warn: message => ctx.logger.warn(message),
+    jobOutputTotal: (id, exec) => {
+      // A service the plugin does not inject: looked up when needed. It answers only the job's owner (its agent's session).
+      const jobs = ctx.get?.('jobs') as JobRegistry | undefined
+      for (const caller of new Set([exec.agent?.session?.id, exec.agent?.id])) {
+        try {
+          const total = jobs?.get(id, caller)?.output?.total
+          if (typeof total === 'number' && Number.isSafeInteger(total)) return total
+        } catch { /* Not this caller's, or no such job. */ }
+      }
+      return undefined
+    },
   })
   // Registered last, so it runs innermost: it sees the bash result itself, and DSH's spill policy
   // (which prepends) bounds the projection rather than handing TokenWise a spilled preview.
@@ -77,10 +89,10 @@ export function apply(ctx: HostContext, config: Config): void {
       parameters: {
         type: 'object',
         properties: {
-          observation_id: { type: 'string', description: 'An observation_id from the observation catalog, such as o-1a2b3c4d5e6f.' },
-          query: { type: 'string', description: 'An exact string the result contains; for results over 8 KB, this or line.' },
-          line: { type: 'integer', minimum: 1, description: 'A 1-based line number to read around; for results over 8 KB, this or query.' },
-          original: { type: 'boolean', description: 'Read the complete output TokenWise shortened before you first read it.' },
+          observation_id: { type: 'string', description: 'Such as o-1a2b3c4d5e6f.' },
+          query: { type: 'string', description: 'An exact string it contains: read around its first match.' },
+          line: { type: 'integer', minimum: 1, description: 'A 1-based line to read around.' },
+          original: { type: 'boolean', description: 'For a catalog entry marked original: the output before TokenWise shortened it.' },
         },
         required: ['observation_id'],
         additionalProperties: false,
@@ -97,11 +109,26 @@ export function apply(ctx: HostContext, config: Config): void {
       },
     })
   }
+  // The end of a turn in a conversation (not a subagent's): its page in the browser (client/saved.ts) then asks what TokenWise
+  // saved in it so far, said when that grew since it was last said (kept on disk) and told once handed over.
+  const turnEnded = new Set<string>()
+  ctx.on('session/event', (session, event) => {
+    if (event?.type !== 'turn/end' || session?.header?.origin === 'subagent' || session?.id === undefined) return
+    turnEnded.add(String(session.id))
+    if (turnEnded.size > 256) turnEnded.delete(turnEnded.values().next().value!)
+  }, { global: true })
+  const conversation = (sessionId: string) => {
+    if (!turnEnded.delete(sessionId)) return undefined
+    const savings = untoldSavings(economy.read, economy.dataDirs, HOST, sessionId)
+    if (savings) markSavingsTold(economy.dataDir, HOST, sessionId, savings.savedTokens)
+    return savings
+  }
   const learning = createDshLearning({
     configDir: economy.configDir, env: process.env,
     selection: () => (ctx.get?.('agentDefaultModel') as { currentSelection?: () => { provider: string; model: string } } | undefined)?.currentSelection?.(),
     installAnchor: () => (ctx.get?.('profileContext') as { installAnchor?: string } | undefined)?.installAnchor,
     patchPath: () => (ctx.get?.('profileContext') as { patchPath?: string } | undefined)?.patchPath,
+    conversation,
     ...testing.learning,
   })
   // The Plugins page's self-evolution section talks to these.
