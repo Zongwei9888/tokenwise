@@ -87,11 +87,6 @@ function withoutRunners(argv: readonly string[]): readonly string[] {
   return rest
 }
 
-/** Unsupported compounds are never reduced to their final segment. */
-export function lastEffectiveCommand(command: string): string {
-  return literalCommand(command)?.join(' ') ?? ''
-}
-
 /** Only transparent, literal package runners; never infer a package script's body. */
 export function developerCommand(command: string): readonly string[] | undefined {
   const argv = toolArgv(command)

@@ -27,6 +27,29 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tokenwise hook codebuddy",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Grep|Glob|TaskOutput|Read|WebFetch|WebSearch|Task|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tokenwise hook codebuddy",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

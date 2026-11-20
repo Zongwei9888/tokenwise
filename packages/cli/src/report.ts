@@ -1,9 +1,10 @@
-import { collectSubagents, formatTokens, summarizeEconomy, summarizeShadow } from '@tokenwise/mechanisms'
+import { collectSubagents, formatTokens, overheadOf, summarizeEconomy, summarizeShadow } from '@tokenwise/mechanisms'
 import type { EconomySummary, ShadowSummary } from '@tokenwise/mechanisms'
 import type { JournalRecord } from '@tokenwise/protocol'
 import { cliContext } from './context.ts'
 
-export function formatSummary(summary: EconomySummary, scope: string): string {
+/** `overhead`: what TokenWise itself put in front of the model (`overheadOf`), said with what it saved net of it. */
+export function formatSummary(summary: EconomySummary, scope: string, overhead?: number): string {
   const lines = [`TokenWise — ${scope}`]
   if (summary.decisions === 0 && summary.rewrites === 0) return `${lines[0]}\nNo recorded decisions yet.\n`
   const percent = summary.rawTokens ? ` (${Math.round(100 * summary.savedTokens / summary.rawTokens)}% of filtered outputs)` : ''
@@ -13,6 +14,10 @@ export function formatSummary(summary: EconomySummary, scope: string): string {
   lines.push(`  passed unchanged      ${summary.passed}`)
   if (summary.failedOpen) lines.push(`  failed open           ${summary.failedOpen}`)
   lines.push(`  tokens saved          ~${formatTokens(summary.savedTokens)}${percent}`)
+  if (overhead) {
+    lines.push(`  TokenWise's own text  ~${formatTokens(overhead)} (the recall tool once per conversation, recalls, compaction catalogs)`)
+    lines.push(`  net saved             ~${formatTokens(summary.savedTokens - overhead)}`)
+  }
   if (summary.rewrites) lines.push(`  command rewrites      ${summary.rewrites}`)
   if (summary.byFilter.length) {
     lines.push('', '  by filter')
@@ -56,9 +61,11 @@ export function report(options: { host?: string; session?: string; json?: boolea
   const all = subagents ? [...records, ...subagents.records] : records
   const summary = summarizeEconomy(all)
   const shadow = summarizeShadow(all)
+  const overhead = overheadOf(all)
   const n = subagents?.sessions.length ?? 0
   const session = options.session ? `session ${options.session}${n > 0 ? ` and its ${n} subagent session${n === 1 ? '' : 's'}` : ''}` : 'all sessions'
   const scope = [options.host ?? 'all hosts', session].join(', ')
-  process.stdout.write(options.json ? JSON.stringify({ ...summary, lightshadow: shadow }, null, 2) + '\n' : formatSummary(summary, scope) + formatShadow(shadow))
+  process.stdout.write(options.json ? JSON.stringify({ ...summary, overheadTokens: overhead, netSavedTokens: summary.savedTokens - overhead, lightshadow: shadow }, null, 2) + '\n'
+    : formatSummary(summary, scope, overhead) + formatShadow(shadow))
   return 0
 }

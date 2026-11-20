@@ -11,10 +11,10 @@ import { join } from 'node:path'
 export const BUILD_PROGRESS = Array.from({ length: 120 }, (_, i) => `[${String(i + 1).padStart(3)}/120] Compiling module_${i}`).join('\n')
 export const BUILD_LEARNED = 'Finished in 3.1s\n[120 progress lines omitted]\n'
 
-/** A learned projection as the model reads it: the projection, then the line naming its original (a host footer may follow). */
+/** A learned projection as the model reads it: the projection and no text of TokenWise's own (a host footer may follow). */
 export function assertLearned(text, projection = BUILD_LEARNED) {
   assert.ok(typeof text === 'string' && text.startsWith(projection), `the learned rule did not apply: ${text}`)
-  assert.match(text.slice(projection.length), /^\[TokenWise shortened this output\. The complete output is observation o-[0-9a-f]{12}: /)
+  assert.doesNotMatch(text, /TokenWise|Compiling module_/)
 }
 
 export function writeBuildScript(dir) {

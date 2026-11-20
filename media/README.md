@@ -17,6 +17,7 @@ pytest log through the real filter (260 lines → 17, 19.0 KB → 852 bytes).
 | `images/before-after.png`, `-zh` | 3200×1800 | the one-image demo: same run, 17 lines instead of 260 |
 | `images/icons/agent-*.png` | 128 px | the README's agent-wall badges for any shell and more agents |
 | `video/tokenwise-en.mp4`, `-zh.mp4` | 1920×1080, 53 s | the explainer, in three chapters: context on demand, self-evolving, cross-platform |
+| `video/tokenwise-promo-en.mp4` | 1920×1080, 35 s | the promo: TokenWise in every agent, saving into one jar (`promo.html`; `node render.mjs video en promo`) |
 | `video/fold.gif`, `fold-zh.gif` | 960 wide, 8 s | the fold, looping: README and chat where video does not play |
 
 Images are rendered at 2× for sharp text on any screen.
@@ -55,17 +56,24 @@ ffmpeg -ss 6.9 -t 7.6 -i tokenwise-en.mp4 -vf "fps=15,scale=960:-1:flags=lanczos
 
 ## Look
 
+Cyber Mint: a mint pixel jar of gold coins on ink. The logo is that jar, the same one `tokenwise saved`,
+the dashboard, the card at the end of an answer and the promo video show.
+
 | Token | Value | Role |
 |---|---|---|
-| Paper | `#EEF3F1` | ground |
-| Ink | `#0E2A26` | text |
-| Teal | `#0F766E` | brand |
-| Mint | `#CCFBF1` | tint, notes in terminals |
-| Terminal | `#0B3B36` | terminal ground |
-| Kept | `#F2B705` | evidence that stays (the logo's bolt); only ever used for that |
+| Ink | `#071E1B` | the logo's ground, terminals, the night ground of the promo |
+| Mint | `#4FE3C1` | the jar, accents on dark grounds |
+| Gold | `#FFD24A` (edge `#E0A500`) | coins: what was saved |
+| Deep mint | `#0A7A69` | the brand on light grounds (text, badges) |
+| Paper | `#F1F4F3` | light ground |
+| Text | `#0B1A18` | text on light grounds |
+| Kept | `#FFC21A` | evidence that stays, in the fold |
+
+`docs/assets/logo.svg` is the logo; `adapters/dsh/icon.svg` is the same without the glow (DeepSeek
+Harness takes no `url()` in a plugin icon).
 
 Type: [Archivo](https://fonts.google.com/specimen/Archivo) for headlines, set narrow (width 64%): the
 type is compressed the way the output is. [JetBrains Mono](https://www.jetbrains.com/lp/mono/) for
 terminal text, with ligatures off so code reads as typed. Both are under the SIL Open Font License
 (`src/fonts/`). The one motif is the fold: rows of output squeezing into a seam, with only the
-evidence lit below it. Icons sit in teal or amber badges, never on their own.
+evidence lit below it. Icons sit in mint or gold badges, never on their own.

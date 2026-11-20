@@ -6,9 +6,9 @@
 </h1>
 
 <p>
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-0F766E?style=flat-square&labelColor=0E2A26"></a>
-  <img alt="Agents: 9 and any shell" src="https://img.shields.io/badge/agents-9_%2B_any_shell-0F766E?style=flat-square&labelColor=0E2A26">
-  <img alt="Runtime dependencies: 0" src="https://img.shields.io/badge/runtime_deps-0-0F766E?style=flat-square&labelColor=0E2A26">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-0A7A69?style=flat-square&labelColor=071E1B"></a>
+  <img alt="Agents: 9 and any shell" src="https://img.shields.io/badge/agents-9_%2B_any_shell-0A7A69?style=flat-square&labelColor=071E1B">
+  <img alt="Runtime dependencies: 0" src="https://img.shields.io/badge/runtime_deps-0-0A7A69?style=flat-square&labelColor=071E1B">
 </p>
 
 **English** · [简体中文](docs/zh/README.md)
@@ -57,10 +57,10 @@ Harness, or `tokenwise learn` in any terminal.
 ## 💾 Context on demand
 
 Think of it as virtual memory for your agent's context. What the model needs now
-stays in context; the rest is set aside on your machine and comes back with one
-call, exactly as it was. That holds for a single noisy command and for a whole
-history the agent has just compacted, so the agent never has to run the tests
-again to see one line.
+stays in context; the rest is set aside on your machine. When the agent compacts
+a long conversation, every tool result it drops comes back with one call,
+exactly as it was, so the agent never has to run the tests again to see one
+line.
 
 <p align="center"><img src="media/video/fold.gif" alt="A 260-line pytest run folds into the 17 lines the model reads; the failure stays" width="100%"></p>
 
@@ -107,6 +107,10 @@ There is nothing to configure: it works from the next command. To see what it
 does for you, or to teach it one of your commands, type `/tokenwise` in your
 agent (`$tokenwise` in Codex, `@tokenwise` in OpenCode and DeepSeek Harness,
 `/skill:tokenwise` in pi).
+When an answer ends and the conversation saved more, your agent shows a small
+card: a jar filling with coins, *TokenWise · saved 2,973 tokens in this
+conversation*, and a bar for *tool output 90% shorter* (in pi it fills as you
+watch).
 `tokenwise saved` shows what it saved you, as a jar filling with coins in your terminal;
 `tokenwise dashboard` shows the same jar in your browser, and drops a coin in as it saves more.
 `tokenwise doctor` shows, for each agent, whether TokenWise is on and when it last
@@ -115,7 +119,7 @@ saw a command; `tokenwise uninstall` takes it out again.
 ## ✨ Technical highlights
 
 - **Nothing is invented.** Every character the model reads comes from the real
-  output; every cut is counted, and the original is always one call away.
+  output; every cut is counted, and the original stays on your machine.
 - **Errors are never cut.** Failures, warnings and totals always stay; anything
   TokenWise does not recognize passes through untouched.
 - **Deterministic.** The same output always reads the same, so prompt caches keep

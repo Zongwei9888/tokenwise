@@ -145,13 +145,15 @@ export interface RecallOptions {
 /** `tokenwise recall`: prints what the recall tool would return; exit 1 when it failed. */
 export function recall(options: RecallOptions): number {
   const context = cliContext()
-  const host = options.host ?? 'shell'
   const writable = context.writable()
   const result = recallFromJournal({
     observation_id: options.id, ...options.query === undefined ? {} : { query: options.query },
     ...options.line === undefined ? {} : { line: options.line }, ...options.original ? { original: true } : {},
   }, {
-    host, sessionId: options.session ?? null, callId: options.call ?? null,
+    // Without --host (an agent's shell ran it), the recall is journaled with the conversation it came from.
+    ...options.host === undefined ? {} : { host: options.host }, sessionId: options.session ?? null, callId: options.call ?? null,
+    // A model in a shell sees this; CodeBuddy's mod passes its tool's result through `--host`, where the tool's parameters say how.
+    ...options.host === undefined ? { via: 'command' as const } : {},
     artifacts: { save: () => { throw new Error('read only') }, read: hash => context.readArtifact(hash) },
     read: sessionId => context.readJournal({ sessionId }),
     readAll: () => context.readJournal({}),

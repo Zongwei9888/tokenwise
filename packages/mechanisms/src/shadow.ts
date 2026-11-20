@@ -5,11 +5,13 @@ import type { ArtifactPort, EconomyRecord, ShadowCheckpointRecord, ShadowReferen
 /**
  * LightShadow: recoverable history compaction. When the host compacts an
  * older segment of the conversation, tool results in it are saved privately
- * and replaced by references with a short excerpt; the host's summarizer then
- * condenses only what is left, the user's own messages are kept word for
- * word, and the checkpoint lists the references so the model can read any of
- * them again with the `recall` tool. A checkpoint that is not smaller than the
- * segment is not used: the host's standard compaction runs instead.
+ * and the host's summarizer reads the segment, tool results in full, asked to
+ * keep their findings rather than their bodies (summarizing references
+ * instead made agents re-run commands: docs/architecture.md). The checkpoint
+ * is that summary, the user's own messages word for word, and the references
+ * with a short excerpt, so the model can read any result again with the
+ * `recall` tool. A checkpoint that is not smaller than the segment is not
+ * used: the host's standard compaction runs instead.
  */
 
 /** One message of the segment being compacted, as the model read it. */
@@ -44,7 +46,7 @@ export interface ShadowOptions {
 }
 
 export interface ShadowPlan {
-  /** The segment with externalized results replaced by reference markers: the summarizer's input. */
+  /** The segment with externalized results replaced by reference markers (an earlier checkpoint by its summary part alone). */
   readonly residual: readonly ShadowMessage[]
   readonly references: readonly ShadowReference[]
   /** The user's messages, word for word, oldest first. */
@@ -86,10 +88,12 @@ export const SHADOW_ASSISTED_INSTRUCTION = [
   'say what they showed. Do not list observation IDs.',
 ].join(' ')
 
-export const RECALL_TOOL_DESCRIPTION = 'Read again a tool result that context compaction removed, exactly as you first saw it. '
-  + 'Its observation_id is listed in the observation catalog of the compacted summary, next to the call (command or path) that produced it. Results larger than 8 KB come back a window at a time: pass a line number (you get the lines around it) or a query: '
-  + 'an exact string they contain (a symbol, path or error message); you get the lines around its first match. With neither, you get the first lines. '
-  + 'Set original to true for the complete output TokenWise shortened before you first read it, when the catalog marks one.'
+/**
+ * The recall tool's description. It is in every request the model gets, so it
+ * says only what a call needs; the parameters say the rest.
+ */
+export const RECALL_TOOL_DESCRIPTION = 'Read again a tool result TokenWise kept, by the observation_id in the observation catalog. '
+  + 'Results over 8 KB come back a window at a time.'
 
 const CATALOG_OPEN = '<tokenwise-observation-catalog>'
 const CATALOG_CLOSE = '</tokenwise-observation-catalog>'
@@ -366,17 +370,9 @@ export function checkpointAdmitted(text: string, plan: ShadowPlan, estimate: Tok
   return estimate(text) < plan.segmentTokens
 }
 
-/** The summarizer's input: the residual segment as one transcript. */
-export function serializeResidual(messages: readonly ShadowMessage[]): string {
-  return messages.map(message => {
-    const label = message.role === 'tool' ? `[tool result${message.toolName ? `: ${message.toolName}` : ''}]`
-      : message.role === 'summary' ? '[earlier summary]' : `[${message.role}]`
-    return `${label}\n${message.text}`
-  }).join('\n\n')
-}
-
 export function checkpointRecord(base: { host: string; sessionId: string | null; time: string }, fields: {
   kind: ShadowCheckpointRecord['kind']; plan: Pick<ShadowPlan, 'references' | 'contract' | 'segmentTokens'>; checkpointTokens: number
+  addedTokens?: number
   reason?: ShadowCheckpointRecord['reason']
   error?: unknown
 }): ShadowCheckpointRecord {
@@ -384,6 +380,7 @@ export function checkpointRecord(base: { host: string; sessionId: string | null;
     schemaVersion: 1, type: 'shadow/checkpoint', ...base, kind: fields.kind,
     references: fields.kind === 'standard' ? [] : fields.plan.references,
     userMessages: fields.plan.contract.length, segmentTokens: fields.plan.segmentTokens, checkpointTokens: fields.checkpointTokens,
+    ...fields.addedTokens === undefined ? {} : { addedTokens: Math.max(0, fields.addedTokens) },
     ...fields.reason ? { reason: fields.reason } : {},
     ...fields.error === undefined ? {} : { error: describeError(fields.error) },
   }
@@ -443,6 +440,8 @@ export function recallObservation(args: RecallArguments, options: {
   readonly lookup: (id: string) => ShadowReference | undefined
   readonly artifacts: ArtifactPort
   readonly windowBytes?: number
+  /** Up to this size a result asked for with neither line nor query comes back whole (default: `windowBytes`). */
+  readonly wholeBytes?: number
 }): RecallResult {
   const id = typeof args.observation_id === 'string' ? args.observation_id.trim() : ''
   if (!id) return { ok: false, error: 'pass an observation_id from the observation catalog' }
@@ -457,6 +456,7 @@ export function recallObservation(args: RecallArguments, options: {
   const query = typeof args.query === 'string' ? args.query : ''
   let line = typeof args.line === 'number' ? args.line : typeof args.line === 'string' && /^\s*\d+\s*$/u.test(args.line) ? Number(args.line) : undefined
   // A small result comes back whole, unless a line is asked for: then numbered, so it need not be counted out.
+  if (bytes(text) <= (options.wholeBytes ?? windowBytes) && line === undefined && !query) return { ok: true, text, complete: true }
   if (bytes(text) <= windowBytes && line === undefined) return { ok: true, text, complete: true }
   const lines = text.split('\n')
   // A line that is no number is a mistake to report, not a request for the start.
@@ -502,14 +502,20 @@ export function recallObservation(args: RecallArguments, options: {
 }
 
 /** How a recall result reads to the model. */
-export function renderRecall(id: string, result: RecallResult): string {
+/**
+ * What a recall returns. A window says where it is; read with `tokenwise
+ * recall` (`via: 'command'`) it also says how to ask for another, since the
+ * tool's parameters are not there to tell.
+ */
+export function renderRecall(id: string, result: RecallResult, via: 'tool' | 'command' = 'tool'): string {
   if (!result.ok) return `recall failed: ${result.error}`
   if (result.complete) return result.text
+  const more = via === 'command' ? `; another part: tokenwise recall ${id} --line N, or --query 'exact text'` : ''
   if (result.columns) {
-    return `[${id}: line ${result.lines![0]} of ${result.totalLines}, characters ${result.columns[0]}-${result.columns[1]} of ${result.lineLength}]\n${result.text}`
+    return `[${id}: line ${result.lines![0]} of ${result.totalLines}, characters ${result.columns[0]}-${result.columns[1]} of ${result.lineLength}${more}]\n${result.text}`
   }
   const numbered = result.numbered === undefined ? '' : `, numbered; line ${result.numbered} is marked >`
-  return `[${id}: lines ${result.lines![0]}-${result.lines![1]} of ${result.totalLines}${numbered}]\n${result.text}`
+  return `[${id}: lines ${result.lines![0]}-${result.lines![1]} of ${result.totalLines}${numbered}${more}]\n${result.text}`
 }
 
 /** Fold every checkpoint record into a lookup of reachable references (later records win). */
@@ -545,7 +551,3 @@ export function recallIndex(records: Iterable<{ type: string }>): Map<string, Sh
   return index
 }
 
-/** The line Economy adds after an output it shortened: where the complete output is. */
-export function recallHint(id: string): string {
-  return `[TokenWise shortened this output. The complete output is observation ${id}: read it with ${RECALL_TOOL_NAME} (observation_id ${id}), or run \`tokenwise recall ${id}\`.]`
-}

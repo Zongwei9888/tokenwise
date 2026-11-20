@@ -1,7 +1,7 @@
 # TokenWise for CodeBuddy Code
 
-A CodeBuddy plugin with one `PreToolUse` hook on the `Bash` tool. For a
-command that a TokenWise filter may recognize (test runners, compilers,
+A CodeBuddy plugin. Its `PreToolUse` hook on the `Bash` tool does the main
+work: for a command that a TokenWise filter may recognize (test runners, compilers,
 `git status/diff`, `grep`/`rg`, `find`, `ls`, build tools, …) the hook
 rewrites
 
@@ -29,13 +29,42 @@ Verified against CodeBuddy Code 2.175.0 in real `codebuddy -p` sessions:
   checks the command as the model wrote it, so your rules keep working: with
   `--allowedTools "Bash(python3 -m pytest:*)"` the wrapped run went ahead,
   and with `--disallowedTools "Bash(python3 -m pytest:*)"` it was blocked.
-- CodeBuddy's `PostToolUse` event carries the exit code but not the
-  command's output, so results cannot be replaced after the fact; wrapping
-  is the only route.
+- For `Bash`, CodeBuddy's `PostToolUse` event carries the exit code but not
+  the command's output, so results cannot be replaced after the fact;
+  wrapping is the only route.
 - Background commands (`run_in_background`) are not wrapped: `tokenwise run`
-  would hold their output back until they end.
+  would hold their output back until they end. Their output is filtered when
+  the model reads it with `TaskOutput` (a `PostToolUse` hook) and the read
+  holds the whole stdout of the finished command (`chars=0-N`, nothing
+  omitted, filtered or still to come); the header, labels and stderr stay.
+  `TaskOutput` shows no exit code: a `failed` one is read as exit 1 unless
+  CodeBuddy's completion notice gave it. Verified on CodeBuddy 2.184: a
+  background `pytest -v` went from 3,300 to 327 tokens.
+- `Read`, `WebFetch`, `WebSearch`, `Task` and MCP results are journaled as
+  they are. A `Read` that repeats an earlier one (same file and range, same
+  text) still in the model's copy of the transcript, with no compaction or
+  prompt-too-long recovery since, is a one-line note (2,896 → 79 tokens
+  verified); the read right after a note is whole.
 - `tokenwise` must be on the `PATH` CodeBuddy runs hooks with
   (`npm install -g @tokenwise/cli`, then `tokenwise doctor`).
+
+## CodeBuddy's own Grep and Glob
+
+Their results reach the model as one line of JSON: an array of absolute paths
+(`Glob`, and `Grep` in files_with_matches mode) or of ripgrep rows (`Grep` in
+content mode). A `PostToolUse` hook lays them out instead: the common
+directory once, then paths grouped by directory, or rows grouped by file,
+every path and row kept, in CodeBuddy's order. Verified on CodeBuddy 2.184:
+the model read the layout and answered with the same counts and line numbers.
+A call made from code in CodeBuddy's REPL is left alone, since that program
+reads the array; the hook tells the two apart by CodeBuddy's transcript,
+which lists only the model's own calls.
+
+## At the end of an answer
+
+When an answer ends and the conversation saved more than when it was last
+said, a `Stop` hook adds a small card: a jar with as many coins as the share it saved, *saved 2,973 tokens in this conversation*, and a bar for *tool output 90% shorter*. The share is of all the tool output TokenWise saw in
+the conversation, shortened or not; it is in English whatever your locale.
 
 ## Compaction (full, through a mod)
 

@@ -42,7 +42,7 @@ tokenwise.register(Ctx())
 tokenwise._remember_session(tool_name="terminal", session_id="sess-1", tool_call_id="call-1", args={})
 print(json.dumps({"hooks": hooks, "out": tokenwise._transform(command="pytest", output=${JSON.stringify(output)}, returncode=1, task_id="default", env_type="local", tool_call_id="call-1")}))`,
     { TOKENWISE_BIN: tokenwise.script })
-    expect(JSON.parse(result)).toEqual({ hooks: ['pre_tool_call', 'transform_terminal_output'], out: 'projected' })
+    expect(JSON.parse(result)).toEqual({ hooks: ['pre_tool_call', 'transform_terminal_output', 'transform_tool_result'], out: 'projected' })
     expect(tokenwise.argv()).toBe('hook hermes')
     expect(tokenwise.sent()).toMatchObject({ hook_event_name: 'transform_terminal_output', command: 'pytest', output, returncode: 1,
       session_id: 'sess-1', task_id: 'default', tool_call_id: 'call-1', env_type: 'local' })
@@ -58,7 +58,27 @@ print(json.dumps({"hooks": hooks, "out": tokenwise._transform(command="pytest", 
     expect(run(`command="pytest", output=${JSON.stringify(output)}, returncode=0`, { TOKENWISE_BIN: stub('{"output": "projected"}', 1).script })).toBe('null')
     expect(run(`command="pytest", output=${JSON.stringify(output)}, returncode=0`, { TOKENWISE_BIN: stub('').script })).toBe('null')
     expect(run(`command="pytest", output=${JSON.stringify(output)}, returncode=0`, { TOKENWISE_BIN: stub('not json').script })).toBe('null')
-  }, 30_000) // Seven Python processes: past the default 5 s on a loaded machine.
+    // A background process's tail (Hermes passes no env_type for it), even once it exited with a code.
+    expect(run(`command="pytest", output=${JSON.stringify(output)}, returncode=0, env_type=""`, { TOKENWISE_BIN: ok.script })).toBe('null')
+  }, 30_000) // Eight Python processes: past the default 5 s on a loaded machine.
+
+  it('hands a finished background process\'s complete output (process_manage wait) to tokenwise, and keeps the rest of the result', () => {
+    const tokenwise = stub('{"output": "projected"}')
+    const exited = { status: 'exited', command: 'pytest -v', exit_code: 1, completion_reason: 'exited', termination_source: '', output }
+    const run = (value: unknown, args: Record<string, unknown> = { action: 'wait', session_id: 'proc_1' }, tool = 'process_manage') =>
+      JSON.parse(plugin(`print(json.dumps(tokenwise._transform_result(tool_name=${JSON.stringify(tool)}, args=json.loads(${JSON.stringify(JSON.stringify(args))}), result=${JSON.stringify(JSON.stringify(value))}, session_id="sess-1", tool_call_id="call-9")))`,
+        { TOKENWISE_BIN: tokenwise.script })) as string | null
+    expect(JSON.parse(run(exited)!)).toEqual({ ...exited, output: 'projected' })
+    expect(tokenwise.sent()).toMatchObject({ hook_event_name: 'process_output', command: 'pytest -v', output, returncode: 1, session_id: 'sess-1', tool_call_id: 'call-9' })
+    // Only the whole output of a process that exited on its own, read with wait.
+    expect(run({ ...exited, output_cut: 21_893 })).toBeNull()
+    expect(run({ ...exited, completion_reason: 'killed' })).toBeNull()
+    expect(run({ ...exited, status: 'timeout' })).toBeNull()
+    expect(run({ ...exited, exit_code: null })).toBeNull()
+    expect(run({ ...exited, detached: true })).toBeNull()
+    expect(run(exited, { action: 'poll', session_id: 'proc_1' })).toBeNull()
+    expect(run(exited, { action: 'wait' }, 'terminal')).toBeNull()
+  }, 30_000)
 
   it('posts the startup notice into the session that started, when Hermes can post', () => {
     const tokenwise = stub('TokenWise: output from make keeps coming back long.')
@@ -80,7 +100,8 @@ class Old:
 tokenwise.register(Old())
 print(json.dumps({"hooks": sorted(k for k in hooks if k != "old"), "old": hooks["old"], "posted": posted}))`, { TOKENWISE_BIN: tokenwise.script })
     // A Hermes without post_message gets no session hook.
-    expect(JSON.parse(result)).toEqual({ hooks: ['on_session_start', 'pre_tool_call', 'transform_terminal_output'], old: ['pre_tool_call', 'transform_terminal_output'],
+    expect(JSON.parse(result)).toEqual({ hooks: ['on_session_start', 'post_llm_call', 'pre_tool_call', 'transform_terminal_output', 'transform_tool_result'],
+      old: ['pre_tool_call', 'transform_terminal_output', 'transform_tool_result'],
       posted: ['TokenWise: output from make keeps coming back long.'] })
     // Told only once posted.
     expect(tokenwise.argv()).toBe('notice hermes --told')
@@ -104,12 +125,35 @@ for t in threading.enumerate():
     expect(plugin('print(tokenwise._notice())', { TOKENWISE_BIN: join(temp(), 'missing') })).toBe('None')
   }, 60_000)
 
+  it('posts what the conversation saved when a turn ends, told only once a surface showed it', () => {
+    const run = (delivered: string) => {
+      const tokenwise = stub('TokenWise saved 2,973 tokens in this conversation (tool output 90% shorter)')
+      const result = plugin(`ARGV_PATH = ${JSON.stringify(join(tokenwise.script, '..', 'argv'))}
+posted = []
+class Handle:
+    ok = True
+    result = {"ok": True, "delivered": ${delivered}}
+class Ctx:
+    def register_hook(self, name, fn):
+        if name == "post_llm_call": self.end = fn
+    def post_message(self, text): posted.append(text); return Handle()
+ctx = Ctx()
+tokenwise.register(ctx)
+ctx.end(session_id="s1", platform="cli")
+print(json.dumps(posted))`, { TOKENWISE_BIN: tokenwise.script })
+      return { posted: JSON.parse(result), argv: tokenwise.argv() }
+    }
+    // Posted before the hook returns, while the turn is open. Shown: told. Not delivered: left for a later turn.
+    expect(run('True')).toEqual({ posted: ['TokenWise saved 2,973 tokens in this conversation (tool output 90% shorter)'], argv: 'notice hermes --session s1 --told' })
+    expect(run('False')).toEqual({ posted: ['TokenWise saved 2,973 tokens in this conversation (tool output 90% shorter)'], argv: 'notice hermes --session s1 --peek' })
+  }, 30_000)
+
   it('declares its hooks in the manifest Hermes reads', () => {
     const manifest = readFileSync(join(adapter, 'tokenwise', 'plugin.yaml'), 'utf8')
     const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version as string
     expect(manifest).toContain('name: tokenwise\n')
     expect(manifest).toContain(`version: "${version}"\n`)
-    expect(manifest).toContain('provides_hooks:\n  - pre_tool_call\n  - transform_terminal_output\n  - on_session_start\n')
+    expect(manifest).toContain('provides_hooks:\n  - pre_tool_call\n  - transform_terminal_output\n  - transform_tool_result\n  - on_session_start\n  - post_llm_call\n')
   })
 })
 
@@ -188,7 +232,7 @@ print(json.dumps({"name": engine.name, "prompt": engine.last_prompt, "summary": 
     // Hermes already keeps the user's messages; TokenWise does not add a second copy.
     expect(parsed.summary).not.toContain('User messages (verbatim)')
     expect(parsed.ids).toHaveLength(2)
-    expect(parsed.head).toMatch(/\[TokenWise kept the full output: tokenwise_recall observation_id o-[a-f0-9]{12}\]$/u)
+    expect(parsed.head).toMatch(/\[full output: tokenwise_recall o-[a-f0-9]{12}\]$/u)
     expect(parsed.tools).toEqual(['tokenwise_recall'])
     expect(parsed.recall.result).toContain(`head 250: ${(250 * 7919) % 10007}`)
   })

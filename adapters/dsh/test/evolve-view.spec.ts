@@ -9,7 +9,8 @@ vi.mock('react', () => ({ useState: (v: unknown) => [v, () => {}], useEffect: ()
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({ Button: 'Button', StateDot: 'StateDot', Switch: 'Switch', Tag: 'Tag', TextShimmer: 'TextShimmer', Toast: 'Toast' }))
 
 const { EvolveSection, EvolveView, outcomeText, readyText, toastText } = await import('../src/client/evolve.ts')
-const { en, zh } = await import('../src/client/locales.ts')
+const { savedText } = await import('../src/client/saved.ts')
+const { en } = await import('../src/client/locales.ts')
 type ViewProps = Parameters<typeof EvolveView>[0]
 
 interface El { type: unknown; props: Record<string, unknown> }
@@ -113,21 +114,20 @@ describe('self-evolution section', () => {
     expect(EvolveSection({ t, subject: { kind: 'bundle', pkg: { name: '@tokenwise/dsh' } } })).not.toBeNull()
   })
 
-  it('words outcomes and toasts in both languages', () => {
-    const zt = translate(zh) as ViewProps['t']
+  it('words outcomes and toasts in English', () => {
     const rejected = { result: 'rejected' as const, reasons: ['did-not-generalize', 'replay-token-regression'] }
     expect(outcomeText(t, rejected)).toBe('they only fit the examples the learner saw; they would have saved less on some outputs')
-    expect(outcomeText(zt, rejected)).toBe('只适用于学习者看过的样本；在部分输出上省得更少')
     expect(toastText(t, { schemaVersion: 1, runId: 'r', host: 'dsh', learner: 'x', pid: 1, startedAt: '', phase: 'done', outcome: rejected })).toBe('TokenWise learning: Not adopted — they only fit the examples the learner saw; they would have saved less on some outputs')
     const run = { schemaVersion: 1 as const, runId: 'r', host: 'dsh', learner: 'x', pid: 1, startedAt: '', phase: 'done' as const,
       outcome: { result: 'adopted' as const, rules: ['build-progress', 'compile-progress'], changes: { added: ['compile-progress'], changed: [], removed: [] }, gainTokens: 2628 } }
     expect(toastText(t, run)).toBe('TokenWise learned compile-progress (+2.6k tokens)')
-    expect(toastText(zt, run)).toBe('TokenWise 学到了 compile-progress（+2.6k tokens）')
     expect(toastText(t, { ...run, outcome: { result: 'nothing-to-learn' } })).toBeUndefined()
     const ready = [{ command: 'cargo test', cases: 4, leftTokens: 5200 }, { command: 'pytest', cases: 3, leftTokens: 2400 }]
     expect(readyText(t, ready)).toBe('TokenWise can learn from your cargo test, pytest output (~7.6k tokens to save). Start it in Plugins → TokenWise.')
-    expect(readyText(zt, ready)).toBe('TokenWise 可以从 cargo test, pytest 的输出中学习了（约可省 7.6k tokens），在 插件 → TokenWise 里开始。')
     expect(readyText(t, [])).toBeUndefined()
-    expect(Object.keys(zh).sort()).toEqual(Object.keys(en).sort())
+    // What a conversation saved, in the words every other agent uses.
+    expect(savedText(t, { savedTokens: 2973, seenTokens: 3300 })).toBe('TokenWise saved 2,973 tokens in this conversation (tool output 90% shorter)')
+    expect(savedText(t, { savedTokens: 40, seenTokens: 900_000 })).toBe('TokenWise saved 40 tokens in this conversation (tool output under 1% shorter)')
+    expect(savedText(t, { savedTokens: 0, seenTokens: 10 })).toBeUndefined()
   })
 })

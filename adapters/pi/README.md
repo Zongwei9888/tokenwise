@@ -42,7 +42,10 @@ without installing: `pi -e npm:@tokenwise/pi`.
 
 Nothing to do: from the next `bash`, `grep` or `find` call on, recognized output is filtered.
 
-- The status bar shows the tokens saved in the session (`TokenWise −5.8k tok`).
+- The status bar shows the tokens saved in the session (*TokenWise saved 5.8k tokens*), and
+  when an answer ends with more saved, a card above the editor fills in about a second (the coins drop into a
+  small jar, the number counts up, the bar fills) and stays until your next prompt: *TokenWise · saved 2,973
+  tokens in this conversation*, *tool output 90% shorter*.
 - `/tokenwise` opens TokenWise's panel: the session's savings and
   compactions, the learned rules and what each saved, the commands worth
   learning from, and a learning run in progress. Keys: `l` learn now, `c`
@@ -81,6 +84,16 @@ with the other TokenWise hosts; see the
   limit notice kept as it is.
 - pi merges stdout and stderr and appends `Command exited with code N` on
   failure; that footer is always kept.
+
+## Every tool, and a file read again
+
+Every other tool's text is journaled as it is. For every request,
+`context_with_system` looks at the list pi is about to send: a `read` with
+the same path, range and text as an earlier one still in that list goes as a
+one-line note pointing back to it, and the read right after a note goes
+whole. pi's session keeps every read whole, so after a compaction the later
+read is sent whole again. Verified on pi 1.1.0: a 122-line file read twice
+was sent once (2,744 → 77 tokens for the repeat).
 
 ## Compaction
 
@@ -155,7 +168,7 @@ pi 的 `context_edit` 交付，**pi 自己的会话文件、TUI 和导出仍是�
 - 可找回的压缩：pi 压缩长会话时，被压缩部分的工具结果换成引用，模型可以用 `tokenwise_recall` 原样读回；你的原话逐字保留在摘要里；结果没变小或出错时交给 pi 自己压缩
 - `/tokenwise` 打开面板：本会话的节省和压缩、学到的规则及各自省下的 token、值得学习的命令、正在进行的学习。按键：`l` 开始学习，`c` 取消，`r` 回滚，`o` 开关学到的规则，`esc` 关闭；`/tokenwise status` 输出文字版
 - 学到的规则：在面板里按 `l` 并确认，TokenWise 会在后台用当前会话的模型启动 pi 作为学习者，从记录的输出里学新规则，验证通过才采用，正在运行的会话从下一条输出起生效；也可以用 `tokenwise evolve --learner pi`
-- 状态栏显示本会话省下的 token；`/tokenwise` 查看明细
+- 状态栏显示本会话省下的 token；每轮回答结束时如果又省下了，输入框上方会出现一张小卡片，大约一秒内装满（硬币落进小罐子、数字往上数、进度条填满），一直留到你下一次提问；`/tokenwise` 查看明细
 - pi 自带的 `grep`、`find` 工具的结果做无损排版（同一文件的匹配、同一目录的路径归到一起，每行、每个路径和提示都保留）；`read`、`edit`、`write`、`ls` 从不改动
 - 子 agent：每个子 agent 单独起一个 `pi` 进程的子 agent 扩展（如 pi 自带的 subagent 示例）里，TokenWise 同样生效；父会话的状态栏和 `/tokenwise` 会把子 agent 省下的一起算上（通过环境变量 `TOKENWISE_PARENT_SESSION` 传递父会话 ID，只有该 pi 直接启动的子进程才会认领；同一个 pi 里 `/new`、`/resume`、`/fork` 出来的会话不算子 agent）
 - `pi --tokenwise observe` 本次运行只记录不改动；`pi config` 里可以关闭扩展

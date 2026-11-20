@@ -42,3 +42,44 @@ function isForeground(value: unknown): value is BashForegroundValue {
     && (v.signal === null || typeof v.signal === 'string') && typeof v.timedOut === 'boolean' && typeof v.aborted === 'boolean'
     && stream(v.stdout) && stream(v.stderr)
 }
+
+const JOB_STATUS = /^\[status: completed, exit code: (\d+)\]$/u
+const JOB_DROPPED = /\[some output was dropped from memory; full output: [^\n]*\]$/u
+
+/**
+ * A DSH `job_output` read (0.2.1) holding the whole output of a finished
+ * background `bash` job, as the `ShellResult` of the command that started it
+ * (the job's label is that command, exactly as the model wrote it). A read
+ * returns only what is new since the previous one, so it is the whole output
+ * only when its bytes are all the job ever wrote: `total` (the job registry's
+ * count) must equal the read's stdout and stderr bytes, which DSH renders as
+ * stdout, a `[stderr]` header and stderr. Anything else (a job still running,
+ * killed or failed, output read before, dropped from memory, or another
+ * layout) is undefined.
+ */
+export function jobShellResult(value: unknown, content: readonly ContentBlock[], total: (jobId: string) => number | undefined): ShellResult | undefined {
+  const v = value as { text?: unknown; job?: { id?: unknown; kind?: unknown; label?: unknown; status?: unknown; detail?: unknown } } | null
+  if (v === null || typeof v !== 'object' || typeof v.text !== 'string' || v.text === '' || !v.job) return undefined
+  const { id, kind, label, status, detail } = v.job
+  if (kind !== 'bash' || status !== 'completed' || typeof id !== 'string' || typeof label !== 'string' || label === '' || typeof detail !== 'string') return undefined
+  if (content.length !== 1 || content[0]!.type !== 'text' || typeof content[0]!.text !== 'string') return undefined
+  const rendered = content[0]!.text, text = v.text
+  const tail = rendered.slice(text.length + (text.endsWith('\n') ? 0 : 1))
+  const code = JOB_STATUS.exec(tail)
+  if (!rendered.startsWith(text) || (!text.endsWith('\n') && rendered[text.length] !== '\n') || !code || `exit code: ${code[1]}` !== detail) return undefined
+  if (JOB_DROPPED.test(text.trimEnd())) return undefined
+  const written = total(id)
+  if (written === undefined) return undefined
+  const extra = Buffer.byteLength(text, 'utf8') - written
+  const base = { command: label, rendered, exitCode: Number(code[1]) }
+  if (extra === 0) return text.startsWith(STDERR_HEADER) || text.includes(`\n${STDERR_HEADER}`) ? undefined : { ...base, stdout: { start: 0, text } }
+  // `[stderr]\n`, after a `\n` that ends stdout when stdout does not end with one itself.
+  if (extra !== STDERR_HEADER.length && extra !== STDERR_HEADER.length + 1) return undefined
+  const at = text.startsWith(STDERR_HEADER) ? 0 : text.indexOf(`\n${STDERR_HEADER}`) + 1
+  if (at < 0 || (at > 0 && text.indexOf(`\n${STDERR_HEADER}`, at) !== -1)) return undefined
+  const out = at === 0 ? '' : text.slice(0, extra === STDERR_HEADER.length ? at : at - 1)
+  if (extra === STDERR_HEADER.length + 1 && (out.endsWith('\n') || out === '')) return undefined
+  if (extra === STDERR_HEADER.length && at > 0 && !out.endsWith('\n')) return undefined
+  const start = at + STDERR_HEADER.length
+  return { ...base, stdout: { start: 0, text: out }, stderr: { start, text: text.slice(start) } }
+}

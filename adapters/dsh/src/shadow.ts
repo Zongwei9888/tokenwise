@@ -7,10 +7,10 @@
  * registers and wraps two of its methods on that instance:
  *
  * - `summarize(input, agent, signal)`, which BasicCompactionEngine documents
- *   as its customization point: tool results in the span become references,
- *   DSH's own summarizer condenses the rest, and the checkpoint gains the
- *   user's exact messages and the catalog. A checkpoint that is not smaller,
- *   or any failure, runs DSH's summarizer on the original span instead.
+ *   as its customization point: DSH's own summarizer condenses the span, tool
+ *   results in full, and the checkpoint is its summary, the user's exact
+ *   messages and the catalog of the saved results. A checkpoint that is not
+ *   smaller, or any failure, runs DSH's summarizer on the original span instead.
  * - the pruner's `pruneContent(blocks)`: the complete text of a result it cuts
  *   to a head and tail is saved, and its marker names the observation to recall.
  *
@@ -214,7 +214,7 @@ export function createDshShadow(options: DshShadowOptions): DshShadow {
         return original(input, agent, signal)
       }
       const tokens = measure(text)
-      append(checkpointRecord(base(), { kind: 'lightshadow', plan, checkpointTokens: tokens }))
+      append(checkpointRecord(base(), { kind: 'lightshadow', plan, checkpointTokens: tokens, addedTokens: tokens - measure(summary) }))
       return { ...result, summary: [{ type: 'text', text }] }
     }
     engine[WRAPPED] = true
@@ -249,7 +249,8 @@ export function createDshShadow(options: DshShadowOptions): DshShadow {
         const next = [...pruned]
         next[markerAt] = { ...block, text: String(block.text).replace(DSH_PRUNE_MARKER, note) }
         append(checkpointRecord({ host: options.host, sessionId: cutting.id, time: time() },
-          { kind: 'cut', plan: { references: [reference], contract: [], segmentTokens: Math.ceil(full.length / 4) }, checkpointTokens: Math.ceil(kept / 4) }))
+          { kind: 'cut', plan: { references: [reference], contract: [], segmentTokens: Math.ceil(full.length / 4) }, checkpointTokens: Math.ceil(kept / 4),
+            addedTokens: Math.ceil((note.length - DSH_PRUNE_MARKER.length) / 4) }))
         return next
       } catch (error) {
         options.warn?.(`TokenWise compaction: ${String(error)}; keeping DSH's cut`)

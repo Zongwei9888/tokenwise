@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createPolicy, decideNativeProjection, nativeGrepRecords, nativeGrepSections, nativePathLines, nativePathList } from '../src/index.ts'
+import { createPolicy, decideNativeProjection, nativeAbsolutePathLines, nativeGrepBlocks, nativeGrepRecords, nativeGrepSections, nativeJsonGrepRows, nativeJsonPaths, nativePathLines, nativePathList } from '../src/index.ts'
 import type { FilterCandidate, NativeSearchMatch } from '../src/index.ts'
 
 /** Every copied span is the source text it claims to be. */
@@ -110,6 +110,90 @@ describe('native path lists', () => {
     expect(nativePathList(['a/b', 'a/c\nd'], 'a/b\na/c\nd')).toBeUndefined()
     expect(nativePathLines('one.ts\ntwo.ts\nthree.ts')).toBeUndefined()
     expect(nativePathLines('No files found matching pattern')).toBeUndefined()
+  })
+})
+
+/** The paths a path layout lists, rebuilt from its root, directory lines and indented names. */
+function pathsOf(text: string): string[] {
+  const [head, ...lines] = text.replace(/\n$/u, '').split('\n')
+  const root = /^\[paths under (.*), grouped by directory/u.exec(head!)?.[1] ?? ''
+  const paths: string[] = []
+  let directory = ''
+  for (const line of lines) {
+    if (line.startsWith('  ')) paths.push(root + directory + line.slice(2))
+    else if (line.endsWith('/')) directory = line
+    else if (line !== '' && !line.startsWith('(')) { directory = ''; paths.push(root + line) }
+  }
+  return paths
+}
+
+describe('native path lists as their hosts render them', () => {
+  const root = '/Users/me/work/project/'
+  const paths = ['tools/a.py', 'tools/b.py', 'tools/web/c.py', 'agent/x.py', 'tools/d.py', 'README.md'].map(path => root + path)
+
+  it('says a JSON array of paths (CodeBuddy Glob) once each, under their common directory, in their order', () => {
+    const raw = JSON.stringify(paths)
+    const projection = nativeJsonPaths(raw)!
+    expect(projection.filter).toBe('native-glob')
+    expect(projection.text.split('\n')[0]).toBe(`[paths under ${root}, grouped by directory; original order retained]`)
+    expect(pathsOf(projection.text)).toEqual(paths)
+    expect(projection.text).toContain('tools/\n  a.py\n  b.py\n')
+    copiesExactly(projection, raw)
+  })
+
+  it('decodes a path the JSON escapes, and leaves anything but an array of strings alone', () => {
+    const odd = [`${root}say "hi".md`, `${root}tab\\name.md`]
+    const projection = nativeJsonPaths(JSON.stringify(odd))!
+    expect(pathsOf(projection.text)).toEqual(odd)
+    for (const raw of ['[]', '["/one/path.py"]', '{"files":["/a/b","/a/c"]}', '["/a/b",1]', '["/a/b","/a/c"] trailing', '["/a/\\nb","/a/c"]']) {
+      expect(nativeJsonPaths(raw), raw).toBeUndefined()
+    }
+  })
+
+  it('lays out absolute path lines (OpenCode glob) and keeps the notice below them', () => {
+    const raw = paths.join('\n') + '\n\n(Results are truncated: showing first 100 results. Consider using a more specific path or pattern.)'
+    const projection = nativeAbsolutePathLines(raw)!
+    expect(pathsOf(projection.text)).toEqual(paths)
+    expect(projection.text.endsWith('\n\n(Results are truncated: showing first 100 results. Consider using a more specific path or pattern.)')).toBe(true)
+    copiesExactly(projection, raw)
+    expect(nativeAbsolutePathLines('No files found')).toBeUndefined()
+    expect(nativeAbsolutePathLines(`${paths[0]}\nsomething else\n${paths[1]}`)).toBeUndefined()
+  })
+})
+
+describe('native grep rows as their hosts render them', () => {
+  const root = '/Users/me/work/project/'
+  it('groups a JSON array of ripgrep rows (CodeBuddy Grep content) under each file, every row kept', () => {
+    const rows = [`${root}tools/a.py:66:def register(x: str = "/root") -> bool:`, `${root}tools/a.py:109:def register_all():`,
+      `${root}tools/b.py-3-# context line`, `${root}tools/b.py:4:    def register(self):`, '--', `${root}agent/c.py:12:register()`]
+    const raw = JSON.stringify(rows)
+    const projection = nativeJsonGrepRows(raw)!
+    expect(projection.filter).toBe('native-grep')
+    expect(projection.text).toBe([`[matches grouped by file under ${root}; every line retained]`, 'tools/a.py', '  66:def register(x: str = "/root") -> bool:',
+      '  109:def register_all():', 'tools/b.py', '  -3-# context line', '  4:    def register(self):', '--', 'agent/c.py', '  12:register()', ''].join('\n'))
+    copiesExactly(projection, raw)
+    expect(nativeJsonGrepRows(JSON.stringify([`${root}a.py:1:x`, 'not a row']))).toBeUndefined()
+  })
+
+  it('keeps a context line whose text holds `:N:` (a time, a slice) under its own file', () => {
+    const rows = [`${root}app.py-11-    started = "12:30:45"`, `${root}app.py:12:def register(name):`,
+      `${root}app.py-13-    return names[1:10:2]`, '--', `${root}util.py:40:def register_all():`, `${root}util.py-41-    pass`]
+    const raw = JSON.stringify(rows)
+    const projection = nativeJsonGrepRows(raw)!
+    expect(projection.text).toBe([`[matches grouped by file under ${root}; every line retained]`, 'app.py', '  -11-    started = "12:30:45"',
+      '  12:def register(name):', '  -13-    return names[1:10:2]', '--', 'util.py', '  40:def register_all():', '  -41-    pass', ''].join('\n'))
+    copiesExactly(projection, raw)
+  })
+
+  it('drops OpenCode grep\'s `Line ` and blank lines, saying the files\' directory once', () => {
+    const raw = ['Found 3 matches', `${root}src/cli.py:`, '  Line 42:     parser.add_argument("--x")', '', '  Line 155:     y = 1', '', '',
+      `${root}src/run.py:`, '  Line 5: import threading', '', '', '(Results truncated. Consider using a more specific path or pattern.)'].join('\n')
+    const projection = nativeGrepBlocks(raw)!
+    expect(projection.text).toBe(['Found 3 matches', `[files under ${root}src/]`, 'cli.py:', '  42:     parser.add_argument("--x")', '  155:     y = 1',
+      'run.py:', '  5: import threading', '(Results truncated. Consider using a more specific path or pattern.)', ''].join('\n'))
+    copiesExactly(projection, raw)
+    expect(nativeGrepBlocks('No files found')).toBeUndefined()
+    expect(nativeGrepBlocks(`Found 1 match\n${root}a.py:\n  Line 1: x\nstray line`)).toBeUndefined()
   })
 })
 

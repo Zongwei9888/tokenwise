@@ -80,9 +80,11 @@ describe('DSH browser half', () => {
       expect.objectContaining({ name: 'plugins.bundle.config', key: '@tokenwise/dsh', locale: 'tokenwise.settings' }),
       { name: 'plugins.detail.section', id: 'tokenwise.evolve', order: 10, locale: 'tokenwise.settings' },
       { name: 'shell.overlay', id: 'tokenwise.evolve-toast', order: 50, locale: 'tokenwise.settings' },
+      { name: 'conversation.composer.dock', id: 'tokenwise.saved-toast', order: 50, locale: 'tokenwise.settings' },
     ])
     expect(Object.keys(mounted.dictionaries['tokenwise.settings']!).sort()).toEqual(['en', 'zh'])
-    expect(Object.keys(mounted.dictionaries['tokenwise.settings']!.zh!).sort()).toEqual(Object.keys(mounted.dictionaries['tokenwise.settings']!.en!).sort())
+    // English in every DSH language.
+    expect(mounted.dictionaries['tokenwise.settings']!.zh).toEqual(mounted.dictionaries['tokenwise.settings']!.en)
   })
   it('renders a three-way mode control that stages edits, and a reset once overridden', () => {
     const mounted = mount()

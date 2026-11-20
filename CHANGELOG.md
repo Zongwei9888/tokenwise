@@ -11,10 +11,90 @@ allows it (in full on five, assisted on three), and self-evolving filters. (0.1.
   since you installed it, today, per day, and in which agents. In the terminal
   a pixel jar fills with falling coins and the number appears in pixel digits
   (plain text when piped; `--json` for the numbers). In the browser the same
-  jar fills as it saves more, a coin dropping in whenever today grows; English
-  and Chinese, light and dark. The page only reads, listens on 127.0.0.1 only,
+  jar fills as it saves more, a coin dropping in whenever today grows; light
+  and dark. The page only reads, listens on 127.0.0.1 only,
   answers only its own host name and the random token in the address it
   prints, and ships inside the CLI.
+- A new logo and colours (Cyber Mint): a mint pixel jar of gold coins on ink,
+  the jar people already see in `tokenwise saved`, the dashboard and the card at
+  the end of an answer, whose coins are gold now too. The README, the dashboard,
+  the DeepSeek Harness plugin icon and every image and video in `media/` use it;
+  `media/video/tokenwise-promo-en.mp4` is a new 35 s promo of TokenWise in all
+  nine agents.
+- Everything TokenWise shows is in English, whatever the locale: the card at
+  the end of an answer, pi's status bar, the DeepSeek Harness toasts and
+  plugin page, `tokenwise saved` and the dashboard (which still switch to
+  Chinese when asked: `--lang zh`, the page's 中文 button).
+- At the end of an answer, every agent says what TokenWise saved in the
+  conversation, when that grew, as a small card in TokenWise's mint: a jar
+  with as many coins as the share saved, *TokenWise · saved 2,973 tokens in
+  this conversation*, and a bar for *tool output 90% shorter*, the share
+  being of all the tool output TokenWise saw. Claude Code, Codex, CodeBuddy
+  and Grok show it from their Stop hook, Copilot in its timeline, OpenCode as
+  a toast, Hermes in its TUI's status line or with the answer in its classic
+  CLI; colour where the agent shows it (not Grok, Copilot or OpenCode;
+  `NO_COLOR` turns it off). In pi the card fills above the editor as you
+  watch (the coins drop in, the number counts up) and stays until the next
+  prompt; its status bar says *TokenWise saved 5.8k tokens*. DeepSeek Harness
+  says it as a toast in its Web UI, and TokenWise's toasts there now take
+  turns instead of covering each other.
+- The agents' own search tools are laid out too, losslessly: CodeBuddy's
+  `Grep` and `Glob` (a one-line JSON array of absolute paths or ripgrep rows)
+  and OpenCode's `glob` and `grep` now come back with their common directory
+  said once, paths grouped by directory and rows by file, every path and row
+  kept. A CodeBuddy call made from code
+  in its REPL is left alone, since that program reads the array. Copilot's,
+  Grok's and Hermes's own searches are already grouped or short, so they pass.
+- A command the agent runs in the background is filtered too, when the agent
+  reads its output later and that read holds the whole output of the finished
+  command: Claude Code's task output file (read whole, or `cat`), CodeBuddy's
+  `TaskOutput`, Grok's `get_command_or_subagent_output`, Copilot's
+  `read_bash`, DeepSeek Harness's `job_output` and Hermes's `process_manage`
+  wait. The output is filtered as the command that started it; a command still
+  running, cut, read in part, or read before, is left alone.
+- Hermes also hands background-process output to the hook TokenWise uses for
+  its terminal, but only the last 200 to 2,000 characters of it; TokenWise no
+  longer treats such a tail as a whole output.
+- Every tool's result passes through TokenWise, not only shell output: file
+  reads, web fetches and searches, subagent reports and MCP tools are
+  journaled as they are, so the share in the end-of-answer line is of
+  everything the model read.
+- What TokenWise says it saved (the end-of-answer line, pi's status bar,
+  `tokenwise saved`, the dashboard) is net of what TokenWise itself puts in
+  front of the model: its text in every request (the recall tool, on pi only
+  once a compaction showed it, and the skill's listing on OpenCode and
+  Hermes) once per conversation, each recall's answer, and what a
+  compaction added (the catalog, the part of a checkpoint beyond the host's
+  summary, the note at a cut). A conversation that has not yet saved more than
+  that says nothing. `tokenwise report` lists the cost and the net beside the
+  gross. Compaction records now keep what they added (`addedTokens`).
+- TokenWise's text in every request is a third of what it was (about 170
+  tokens instead of 520 on Claude Code): a shorter recall tool description and
+  parameters, no MCP server instructions (the catalog after a compaction says
+  when to recall), and the `tokenwise` skill, `/tokenwise:learn` and
+  `/tokenwise:rules` are for the person to call only (`/tokenwise`,
+  `$tokenwise` in Codex: `disable-model-invocation`, and
+  `policy.allow_implicit_invocation: false` for Codex), so the model's skill
+  list does not carry them. OpenCode and Hermes cannot hide a skill yet.
+- pytest output loses the session header's environment lines (platform and
+  versions, cache and root paths, config file, plugins, asyncio mode);
+  `collected N items` and plugin lines such as a random seed stay. A long
+  `git status` lists its files as the rows `git status --short` prints (one
+  `XY path` row each, a file staged and changed again as one `MM` row), under
+  one legend line, with the branch, ahead/behind and merge or rebase state
+  lines as they were and no usage hints; with fewer than three files only the
+  hints go. In a `| tail` slice of a pytest run, the note on omitted passing rows
+  is a line of its own also when the agent strips the output's last newline
+  (Claude Code does). Filter runtime `static-v14`.
+- A file read again, unchanged (same file, same range, same text), while the
+  earlier read is still in the model's context, is sent as one line pointing
+  back to it; asked again right after, the model gets the whole text. Claude
+  Code, CodeBuddy, Grok and Copilot decide when the read returns, from their
+  own record of what the model has (no compaction or clearing since; on Grok
+  within two of your prompts, on Copilot within five minutes); OpenCode and pi
+  decide anew for every request on the list they are about to send, so once
+  a compaction drops the earlier read, the later one is sent whole. Hermes
+  already does this itself; DeepSeek Harness and Codex send every read whole.
 - GitHub Copilot CLI joins as the ninth agent (`tokenwise setup copilot`): a
   `postToolUse` hook replaces the model's copy of a bash result, failed
   commands included. Where Copilot shortened the output itself, TokenWise works
@@ -73,9 +153,10 @@ allows it (in full on five, assisted on three), and self-evolving filters. (0.1.
 - New filters, each with a written contract (`tokenwise filters`) and real
   captured outputs in the conformance corpus (filter runtime `static-v13`;
   every earlier case unchanged):
-  - `git-log` (long default and `--oneline` logs: first and last commits
-    kept, the middle counted; commits mentioning errors, conflicts or
-    reverts always kept) and `git-blame` (repeated hash, author and date
+  - `git-log` (a long bare `git log` or `git log --oneline`: first and last
+    commits kept, the middle counted; commits mentioning errors, conflicts or
+    reverts always kept; a log the agent scoped itself, with a count, a time
+    window, a search, a range or a path, stays whole) and `git-blame` (repeated hash, author and date
     dropped within a run; every line number and code line kept).
   - `search-context`: grep/rg/git grep `-A/-B/-C` output grouped by file,
     losslessly.
@@ -93,7 +174,9 @@ allows it (in full on five, assisted on three), and self-evolving filters. (0.1.
   folds passing rows in `| tail` and `| head` slices.
 - `git-show`: `git show <commit>` and `git log -p` keep every commit header
   and message verbatim and preview oversized hunks exactly as `git diff`
-  does; merge diffs and other layouts pass through.
+  does; merge diffs and other layouts pass through. `git diff` and `git show`
+  limited to paths (`git diff -- a.ts`) stay whole: that is how the agent
+  reads a long hunk a broader diff previewed.
 - Every filter is TokenWise code under the MIT license: the 63 declarative
   rules adapted from RTK, which never applied in real sessions recorded on
   eight agents, are gone, with their Apache-2.0 notices. Filter runtime
@@ -213,14 +296,9 @@ allows it (in full on five, assisted on three), and self-evolving filters. (0.1.
   recognized like the command without them; before, its output passed
   through unfiltered. Found in real
   agent sessions, where it hid the largest outputs (a 31 KB pytest run).
-- A shortened output ends with one line naming its original's ID
-  (`[TokenWise shortened this output. The complete output is observation
-  o-…: read it with tokenwise_recall …, or run tokenwise recall o-….]`), placed
-  before the host's own footer, and only when the projection still saves
-  enough with it; lossless layouts get none. The recall tool and `tokenwise recall`
-  read these originals by that ID before any compaction (pi shows its recall
-  tool when the first one appears). A learned rule's original read this way
-  counts toward switching the rule off.
+- A shortened output carries no text of TokenWise's own: the model reads the
+  projection alone. Its original stays saved; once a compaction takes it out
+  of the conversation, the catalog names it and the recall tool reads it.
 - A program given by its path (`.venv/bin/pytest`,
   `/opt/homebrew/bin/python3 -m pytest`, `/usr/bin/git diff`) is recognized
   by the built-in filters like the bare name; learned rules still see the

@@ -44,6 +44,12 @@ sessions:
   `sandbox_workspace_write.writable_roots`. In `read-only` mode nothing can be
   saved, so nothing is filtered.
 
+## At the end of an answer
+
+When an answer ends and the conversation saved more than when it was last
+said, a `Stop` hook adds a small card: a jar with as many coins as the share it saved, *saved 2,973 tokens in this conversation*, and a bar for *tool output 90% shorter* (after a plugin update, trust the hooks again in `/hooks`). The share is of all the tool output TokenWise saw in
+the conversation, shortened or not; it is in English whatever your locale.
+
 ## Compaction (assisted)
 
 Codex writes the summary itself (for OpenAI models an opaque compaction

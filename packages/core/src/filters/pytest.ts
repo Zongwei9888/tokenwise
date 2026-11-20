@@ -10,6 +10,13 @@ const WINDOW = /\s*\|\s*(?:tail|head)\s+(?:-n\s*)?-?\d+\s*$/u
 /** A verbose pytest row of a passing test (`-v`), and a progress row with nothing but passes and skips. */
 const PASSED_ROW = /^\S+\.py::\S.*\s+PASSED\s+\[\s*\d+%\]$/u
 const PASS_PROGRESS = /^(?:\S+\.py\s+)?[.s]+\s*(?:\[\s*\d+%\])?$/u
+/**
+ * The session header's environment lines (interpreter and pytest versions,
+ * cache and root paths, config file, plugins, asyncio mode): the same in every
+ * run of a project. `collected N items` and anything a plugin adds (a random
+ * seed, a hypothesis profile) stay.
+ */
+const ENV_HEADER = /^(?:platform \S+ -- Python |cachedir: |rootdir: |configfile: |testpaths: |plugins: |asyncio: mode=)/u
 /** Section rules (`=== FAILURES ===`, `--- Captured stdout ---`): what follows is diagnostics, kept verbatim. */
 const SECTION = /^[-=]{3,}.*[-=]{3,}$/u
 
@@ -43,6 +50,8 @@ function projectMapped(input: FilterInput): MappedProjection | undefined {
     && !/^[.sFxXE]+\s*(?:\[\s*\d+%\])?$/.test(first?.text.trim() ?? '')) return undefined
   const builder = new ProjectionBuilder(input.stdout)
   let diagnostics = false
+  // Right after the session banner, up to the first line that is not an environment line.
+  let header = false
   for (const line of lines) {
     // Keep the original summary, including elapsed time and every status count.
     if (line === last) {
@@ -50,9 +59,12 @@ function projectMapped(input: FilterInput): MappedProjection | undefined {
       continue
     }
     const value = line.text.trim()
+    const banner = /^=+ test session starts =+$/.test(value)
+    header = banner || (header && ENV_HEADER.test(line.text))
+    if (header && !banner) continue
     // PASSES and captured-output sections can also contain progress-looking text.
-    if (/^[-=]{3,}.*[-=]{3,}$/.test(value) && !/^=+ test session starts =+$/.test(value)) diagnostics = true
-    if (!diagnostics && (/^=+ test session starts =+$/.test(value)
+    if (/^[-=]{3,}.*[-=]{3,}$/.test(value) && !banner) diagnostics = true
+    if (!diagnostics && (banner
       || /^(?:\S+\.py\s+)?[.s]+\s*(?:\[\s*\d+%\])?$/.test(value)
       || /^\S+\.py::\S+\s+PASSED\s+\[\s*\d+%\]$/.test(value)
       || value === '')) continue
@@ -78,6 +90,8 @@ function projectWindow(raw: string, lines: readonly SourceLine[]): MappedProject
     builder.keep(line.start, line.end)
   }
   if (removed < 5) return undefined
+  // On a line of its own, also after output whose last line has no newline (Claude Code strips it).
+  builder.newline()
   builder.generate(`[${removed} passing test rows omitted]\n`, 'pytest-passing-rows')
   return builder.finish()
 }

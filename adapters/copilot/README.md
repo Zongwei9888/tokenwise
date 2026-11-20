@@ -18,8 +18,20 @@ Verified against Copilot CLI 1.0.103 in `copilot -p`:
   folder), records it, and replaces Copilot's version only when its own
   projection is shorter. On a failing `pytest -v` with 151 tests, the model
   read 1,108 bytes instead of Copilot's 1,227 (13,191 originally).
-- Output Copilot saved to a file because it was too large, still-running
-  shells and other tools pass through.
+- Output Copilot saved to a file because it was too large and other tools
+  pass through. A shell that goes on running (`mode: async`, detached, or
+  still running after its wait) is remembered; its output is filtered when the
+  model's `read_bash` finds the command finished, the read holding its whole
+  output and the status line `<shellId: X completed with exit code N>`.
+  Verified on Copilot 1.0.107: a background `pytest -v` went from 3,299 to 279
+  tokens (Copilot had compacted it itself first). When a background shell
+  finishes while the session is idle, Copilot reads it on its own, without a
+  hook, so that read is not filtered.
+- Every other tool's text is journaled as it is. A `view` that repeats an
+  earlier one (same path and range, same text) still in the session's events,
+  under five minutes old and with no compaction, truncation or clear since,
+  is a one-line note (2,744 → 78 tokens verified); the view after a note is
+  whole.
 - At the start of a session a `sessionStart` hook says, as a line in Copilot's
   timeline, when the `tokenwise` command is missing, when a command keeps
   coming back long, and when a learning run finished.
@@ -27,6 +39,12 @@ Verified against Copilot CLI 1.0.103 in `copilot -p`:
   own summary; TokenWise's originals stay readable with `tokenwise show`.
 - Copilot cannot be the learner; `tokenwise learn --learner <another agent>`
   learns from Copilot's recorded output as well.
+
+## At the end of an answer
+
+When an answer ends and the conversation saved more than when it was last
+said, an `agentStop` hook adds to Copilot's timeline a small card: a jar with as many coins as the share it saved, *saved 2,973 tokens in this conversation*, and a bar for *tool output 90% shorter* (without colour: Copilot drops it). The share is of all the tool output TokenWise saw in
+the conversation, shortened or not; it is in English whatever your locale.
 
 ## Install
 

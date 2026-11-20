@@ -23,6 +23,29 @@ Verified against OpenCode 1.19.4 in real `opencode run` sessions:
 - OpenCode starts every function a plugin module exports, so the bundle
   exports only `TokenWise`.
 
+OpenCode's own `glob` and `grep` results are laid out too, losslessly: their
+common directory once, then paths grouped by directory (`glob`) or each
+file's rows as `  N: text` without OpenCode's blank lines (`grep`), every path
+and row kept, in OpenCode's order. Notices such as `(Results are truncated…)`
+stay.
+
+## Every tool, and a file read again
+
+Every other tool's text is journaled as it is. For every request,
+`experimental.chat.messages.transform` looks at the list OpenCode is about to
+send: a `read` with the same file, range and text as an earlier one still in
+that list (not pruned) goes as a one-line note pointing back to it, and the
+read right after a note goes whole. OpenCode's session keeps every read
+whole, so after a compaction drops the earlier read the later one is sent
+whole again. Verified on OpenCode 1.19.4: a 122-line file read twice was sent
+once (2,926 → 79 tokens for the repeat).
+
+## At the end of an answer
+
+When an answer ends and the conversation saved more than when it was last
+said, a toast titled TokenWise shows a small card: a jar with as many coins as the share it saved, *saved 2,973 tokens in this conversation*, and a bar for *tool output 90% shorter*. The share is of all the tool output TokenWise saw in
+the conversation, shortened or not; it is in English whatever your locale.
+
 ## Compaction (full)
 
 Through OpenCode's compaction hooks (all `experimental.*`; verified on
@@ -41,7 +64,9 @@ model answered from one recall.
 `~/.config/opencode/skills`. Ask for it with `@tokenwise`: it shows what
 TokenWise shortens and which commands are worth teaching it, and teaches it
 one with you (your agent writes the rule, shows you the before and after on
-your own output, and keeps it only when you say so).
+your own output, and keeps it only when you say so). OpenCode has no switch
+that keeps a skill from the model, so here the model can also pick it on its
+own.
 
 When a session starts, a toast says once when a learning run has finished
 or when a command keeps coming back long (the text comes from `tokenwise

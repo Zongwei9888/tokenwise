@@ -17,6 +17,16 @@ Verified against Grok Build 1.0.70, in `grok -p` and in `grok agent stdio`
   the original, and TokenWise saves it under `~/.tokenwise` as well.
 - Results Grok already cut, results over 128 KiB (which Grok hands to hooks
   as text) and any layout other than `exit: N\n<output>` pass through.
+- A background command's output is filtered when the model reads it with
+  `get_command_or_subagent_output` and the read holds all of it: the command
+  finished (completed or failed, with an exit code), nothing was cut, and the
+  text is its log file's. Monitors, subagents, several tasks at once and
+  commands still running pass. Verified on Grok 1.0.77: a background
+  `pytest -v` went from 3,299 to 326 tokens.
+- `read_file` and `list_dir` text is journaled. A `read_file` that repeats an
+  earlier one still in `chat_history.jsonl`, before the call and fewer than
+  three of your prompts ago (Grok trims older results without a trace), is a
+  one-line note (2,754 → 78 tokens verified); the read after a note is whole.
 - Grok holds back hooks in folders you have not trusted. `grok -p` counts
   its folder as trusted for your own hooks, and plugins loaded with
   `--plugin-dir` are trusted; in the TUI, trust a project with `/hooks-trust`.
@@ -24,6 +34,12 @@ Verified against Grok Build 1.0.70, in `grok -p` and in `grok agent stdio`
   Grok's events alone, so nothing is filtered twice.
 - `tokenwise` must be on the `PATH` Grok runs hooks with
   (`npm install -g @tokenwise/cli`, then `tokenwise doctor`).
+
+## At the end of an answer
+
+When an answer ends and the conversation saved more than when it was last
+said, the `Stop` hook adds a small card: a jar with as many coins as the share it saved, *saved 2,973 tokens in this conversation*, and a bar for *tool output 90% shorter*. The share is of all the tool output TokenWise saw in
+the conversation, shortened or not; it is in English whatever your locale.
 
 ## Compaction (assisted)
 

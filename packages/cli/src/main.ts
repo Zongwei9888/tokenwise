@@ -11,6 +11,7 @@ import { evolve, evolveCheck, evolveTry, rules } from './evolve.ts'
 import { hook } from './hook.ts'
 import { learnCancel, learnStart, learnStatus, NOTICE_HOSTS, startupNotice } from './learn.ts'
 import { mcp } from './mcp.ts'
+import { conversationNotice } from './conversation.ts'
 import { report } from './report.ts'
 import { run } from './run.ts'
 import { recall, shadow } from './shadow.ts'
@@ -29,10 +30,11 @@ Usage:
   tokenwise run [--host H] [--session S] [--call C] -- <program> [args...]
   tokenwise hook codex|claude|codebuddy|grok|hermes|copilot
                                    hook handler for that host (reads hook JSON on stdin)
-  tokenwise notice opencode|hermes [--peek|--told]
-                                   the startup notice that agent's plugin shows, if any (--peek: leave it untold; --told: mark it told)
+  tokenwise notice opencode|hermes [--session ID] [--peek|--told]
+                                   the startup notice that agent's plugin shows, if any (--peek: leave it untold; --told: mark it told);
+                                   with --session, what TokenWise saved in that conversation, if more than last said
   tokenwise saved [--month|--all] [--static] [--lang en|zh] [--json]
-                                   what TokenWise saved you, in the terminal
+                                   what TokenWise saved you, in the terminal (English; --lang zh for Chinese)
   tokenwise dashboard [--port N] [--no-open]
                                    the same, as a page in your browser that updates as it saves
   tokenwise report [--host H] [--session S] [--json]
@@ -123,11 +125,16 @@ async function dispatch(command: string | undefined, rest: string[]): Promise<nu
     }
     case 'hook': return hook(rest[0])
     case 'notice': {
-      // The OpenCode and Hermes plugins show this at a session's start; it never fails them. --peek prints it and leaves
+      // The OpenCode and Hermes plugins show this at a session's start (and with --session at a turn's end); it never fails them. --peek prints it and leaves
       // it to be told; --told then marks it told without printing, once the plugin has shown it.
       try {
-        const host = rest.find(arg => !arg.startsWith('-'))
-        const text = host && NOTICE_HOSTS.has(host) ? startupNotice(host, process.env, { peek: rest.includes('--peek') }) : undefined
+        const at = rest.indexOf('--session')
+        const session = at >= 0 ? rest[at + 1] : undefined
+        const host = rest.find((arg, i) => !arg.startsWith('-') && (at < 0 || i !== at + 1))
+        const peek = rest.includes('--peek')
+        // With --session: what TokenWise saved in that conversation, at the end of one of its turns, when it grew.
+        const text = !host || !NOTICE_HOSTS.has(host) ? undefined : session !== undefined ? conversationNotice(host, session, process.env, { peek, told: rest.includes('--told') })
+          : startupNotice(host, process.env, { peek })
         if (text && !rest.includes('--told')) process.stdout.write(text + '\n')
       } catch { /* Nothing to say. */ }
       return 0

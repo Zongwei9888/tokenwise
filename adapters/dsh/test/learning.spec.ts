@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { sha256 } from '@tokenwise/core'
+import { contextOverheadTokens } from '@tokenwise/mechanisms'
 import { FileArtifactStore, FileJournal, RuleStore, removeTree } from '@tokenwise/store'
 import { apply, testing } from '../src/index.ts'
 import type { CommandRuntime, ConnectionRuntime, HostContext } from '../src/host.ts'
@@ -54,8 +55,9 @@ JS
 function mount() {
   const routes = new Map<string, Parameters<ConnectionRuntime['fetch']['register']>[0]>()
   const commands: Parameters<CommandRuntime['register']>[0][] = []
+  const listeners = new Map<string, (...args: unknown[]) => unknown>()
   const ctx: HostContext = {
-    on: (() => () => {}) as HostContext['on'],
+    on: ((name: string, listener: (...args: unknown[]) => unknown) => { listeners.set(name, listener); return () => {} }) as HostContext['on'],
     inject: (_deps, callback) => callback({ ...ctx, commands: { register: definition => { commands.push(definition); return () => {} } },
       connection: { fetch: { register: route => { routes.set(route.path, route); return async () => {} } } } }),
     effect: execute => { execute() },
@@ -72,7 +74,7 @@ function mount() {
   }
   const post = (path: string, body?: unknown) => call(path, { method: 'POST', ...body === undefined ? {} : { body: JSON.stringify(body), headers: { 'content-type': 'application/json' } } })
   const command = (rawInput: string) => commands[0]!.handler({ agent: { session: { id: 's1' } }, rawInput }) as { text: string }
-  return { routes, call, post, command }
+  return { routes, call, post, command, listeners }
 }
 
 async function until<T>(read: () => Promise<T | undefined>, timeoutMs = 30_000): Promise<T> {
@@ -84,6 +86,37 @@ async function until<T>(read: () => Promise<T | undefined>, timeoutMs = 30_000):
     await new Promise(resolve => setTimeout(resolve, 150))
   }
 }
+
+describe('what a DSH conversation saved', () => {
+  it('reaches that conversation\'s page once after a turn that saved more, never another page, a subagent or a restart', async () => {
+    const decision = (sessionId: string, raw: number, read: number, outcome = 'projected') => new FileJournal(home).append({ schemaVersion: 1, type: 'economy/decision',
+      time: new Date().toISOString(), host: 'dsh', sessionId, callId: 'c', tool: 'bash', command: 'pytest', exitCode: 1, delivery: 'in-process', streams: 'separate', mode: 'apply',
+      outcome, runtimeVersion: 'v', policyHash: 'p', raw: { sha256: 'a', bytes: raw * 4, tokens: raw, stored: true }, ...outcome === 'projected' ? { projected: { sha256: 'b', bytes: read * 4, tokens: read } } : {} } as never)
+    decision('s1', 3000, 300); decision('s1', 1000, 1000, 'passed'); decision('s2', 800, 200); decision('sub', 5000, 100)
+    let host = mount()
+    const turnEnd = (id: string, origin?: string) => host.listeners.get('session/event')!({ id, header: origin ? { origin } : {} }, { type: 'turn/end', data: { turn: 1 } })
+    const saved = async (sessionId?: string) => (await host.post(ROUTES.saved, sessionId === undefined ? {} : { sessionId })).saved
+    turnEnd('sub', 'subagent')
+    host.listeners.get('session/event')!({ id: 's1', header: {} }, { type: 'step/end', data: {} })
+    expect(await saved('sub')).toBeNull()
+    expect(await saved('s1')).toBeNull()
+    turnEnd('s1')
+    // Only s1's own page hears of s1; the learning toast never carries it.
+    expect(await saved('s2')).toBeNull()
+    expect(await saved()).toBeNull()
+    expect(await host.post(ROUTES.announcement)).toEqual({ run: null, ready: null })
+    // Net of what TokenWise's own text cost the conversation.
+    expect(await saved('s1')).toEqual({ savedTokens: 2700 - contextOverheadTokens('dsh'), seenTokens: 4000 })
+    expect(await saved('s1')).toBeNull()
+    turnEnd('s1')
+    expect(await saved('s1')).toBeNull()
+    // Told is kept on disk: a restarted Host does not say it again, but says s2's.
+    host = mount()
+    turnEnd('s1'); turnEnd('s2')
+    expect(await saved('s1')).toBeNull()
+    expect(await saved('s2')).toEqual({ savedTokens: 600 - contextOverheadTokens('dsh'), seenTokens: 800 })
+  })
+})
 
 describe('DSH self-evolution routes', () => {
   it('tells the browser once when recorded output is worth learning from', async () => {

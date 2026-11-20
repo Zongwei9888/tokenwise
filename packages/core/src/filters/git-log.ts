@@ -19,12 +19,12 @@ const NOTABLE = /\b(?:errors?|warnings?|fail(?:ed|ing|s|ures?)?|fatal|panic(?:ke
 const OTHER_LAYOUT = /^(?:-p|-u|-s|--patch|--no-patch|--stat|--numstat|--shortstat|--dirstat|--name-only|--name-status|--raw|--summary|--word-diff|--format|--pretty|--graph|--show-signature|--notes|--left-right|--boundary|--cc|-c|--patch-with-stat|--patch-with-raw|--compact-summary|--source|--children|--parents|--log-size|-z|--color|--color-words)(?:=|$)|^-[^-]*[puszc]/u
 
 /**
- * Default `git log` with more than LOG_MIN commits keeps the first LOG_HEAD
+ * A bare `git log` with more than LOG_MIN commits keeps the first LOG_HEAD
  * commits whole and the last LOG_TAIL. An agent that runs a bare `git log`
  * nearly always wants the recent history; ten commits with their full messages
- * cover that, the oldest two show where the listing ends, and the complete
- * output stays recoverable. Commits whose message mentions a failure, error,
- * warning, conflict or revert are kept wherever they are.
+ * cover that, and the oldest two show where the listing ends. Commits whose
+ * message mentions a failure, error, warning, conflict or revert are kept
+ * wherever they are. A log the agent scoped itself is left whole (SCOPED).
  */
 const LOG_MIN = 15
 const LOG_HEAD = 10
@@ -33,6 +33,13 @@ const LOG_TAIL = 2
 const ONELINE_MIN = 50
 const ONELINE_HEAD = 30
 const ONELINE_TAIL = 5
+
+/**
+ * Options with which the agent chose the commits itself: a count, a skip, a
+ * time window, a search, a line range. Nothing it asked for is cut, so this is
+ * also how it reads the commits a bare log left out (`git log -40`).
+ */
+const SCOPED = /^(?:-n|-\d+|--max-count|--skip|--since|--after|--until|--before|--author|--committer|--grep|-S|-G|-L|--follow)(?:=|$)|^-[nSGL]./u
 
 function gitLogArgv(command: string): readonly string[] | undefined {
   const argv = toolArgv(command)
@@ -88,6 +95,8 @@ function projectMapped(input: FilterInput): MappedProjection | undefined {
   if (args === undefined || input.exitCode !== 0 || /[\u001b\0\r]/u.test(input.stdout)) return undefined
   const oneline = args.includes('--oneline')
   if (args.some(arg => arg !== '--oneline' && OTHER_LAYOUT.test(arg))) return undefined
+  // A revision, a range or a path (with or without `--`) scopes the log too.
+  if (args.some(arg => !arg.startsWith('-') || arg === '--' || SCOPED.test(arg))) return undefined
   const lines = sourceLines(input.stdout)
   const notable = (unit: [number, number]) => lines.slice(unit[0], unit[1]).some(line => NOTABLE.test(line.text))
   if (oneline) {

@@ -25,7 +25,7 @@ export interface ToolExecution {
   readonly callId: string
   readonly name: string
   readonly arguments: unknown
-  readonly agent?: { readonly session?: HostSession }
+  readonly agent?: { readonly id?: string; readonly session?: HostSession }
   /** Set on `run_code` sub-dispatches; the program, not the model, receives their value. */
   readonly parent?: unknown
 }
@@ -84,6 +84,9 @@ export interface HostContext {
   on(name: 'tools/post-execute',
     listener: (exec: ToolExecution, result: ToolExecutionResult, next: () => Promise<PostToolDecision>) => Promise<PostToolDecision>): () => void
   on(name: 'agent/created', listener: (payload: unknown) => undefined, options: { global: true }): () => void
+  /** Every event appended to a session's log (`turn/end` closes a turn). */
+  on(name: 'session/event', listener: (session: { readonly id?: unknown; readonly header?: { readonly origin?: string } } | undefined,
+    event: { readonly type?: string } | undefined) => void, options: { global: true }): () => void
   on(name: 'agent/pre-step', listener: (payload: unknown, next: () => Promise<unknown>) => Promise<unknown>, options: { global: true; prepend: true }): () => void
   /** The event bus; LightShadow reads its listener list to find DSH's compaction engines. */
   readonly events?: unknown
@@ -105,4 +108,9 @@ export interface ConnectionRuntime {
       readonly fetch: (request: Request) => Promise<Response>
     }): () => Promise<void>
   }
+}
+
+/** DSH's job registry (the `jobs` service, `@deepseek-ai/dsh-jobs`): a job's view, with how many bytes it has output so far. */
+export interface JobRegistry {
+  get(id: string, caller?: string): { readonly output?: { readonly total?: unknown } }
 }

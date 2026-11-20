@@ -61,6 +61,11 @@ ${additions}
     expect(projected).toContain('lines truncated')
     expect(projected).toContain('+200 -0')
     expect(projected).toContain('+line199')
+    // Limited to paths, the agent chose the files: the hunk stays whole. That is how it reads one a broader diff previewed.
+    for (const command of ['git diff -- foo.py', 'git diff HEAD~1 -- foo.py', 'git diff --cached -- foo.py']) {
+      expect(gitDiffFilter.project({ command, stdout, exitCode: 0 }), command).toBeUndefined()
+    }
+    expect(gitDiffFilter.project({ command: 'git diff HEAD~1 --', stdout, exitCode: 0 })).toContain('lines truncated')
   })
 
   it('previews oversized hunks of git show and git log -p, keeping every commit header and message', () => {
@@ -83,6 +88,9 @@ ${additions}
       expect(gitShowFilter.project({ command, stdout: show, exitCode: 0 }), command).toBeUndefined()
     }
     expect(gitShowFilter.project({ command: 'git show HEAD:ledger/money.py', stdout: 'def to_cents(x):\n    return x\n', exitCode: 0 })).toBeUndefined()
+    // git show limited to paths stays whole; a file's patch history (git log -p -- path) is still previewed.
+    expect(gitShowFilter.project({ command: 'git show 5cac6a1 -- ledger/money.py', stdout: show, exitCode: 0 })).toBeUndefined()
+    expect(gitShowFilter.project({ command: 'git log -p -2 -- b.py', stdout: log, exitCode: 0 })).toContain('lines truncated')
     expect(gitShowFilter.project({ command: 'git show 5cac6a1', stdout: show.replace('diff --git a/ledger/money.py b/ledger/money.py', 'diff --cc ledger/money.py'), exitCode: 0 })).toBeUndefined()
   })
 
@@ -106,6 +114,8 @@ ${additions}
       expect(slice).toContain('tests/test_discount.py::test_rate FAILED [100%]')
       expect(slice).toContain(failure.join('\n'))
     }
+    // Output whose last line has no newline (Claude Code strips it): the note is still a line of its own.
+    expect(pytestFilter.project({ command: 'pytest -v | tail -60', stdout: tail.trimEnd(), exitCode: 0 })).toMatch(/0\.12s =+\n\[30 passing test rows omitted\]\n$/u)
     // A slice with fewer than five passing rows, or of output pytest does not own (-s), is left alone.
     expect(pytestFilter.project({ command: 'pytest -v | tail -8', stdout: [...passed.slice(0, 3), ...failure].join('\n') + '\n', exitCode: 0 })).toBeUndefined()
     expect(pytestFilter.project({ command: 'pytest -v -s | tail -60', stdout: tail, exitCode: 0 })).toBeUndefined()

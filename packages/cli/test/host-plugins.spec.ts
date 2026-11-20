@@ -53,14 +53,19 @@ describe('Claude Code, CodeBuddy and Grok plugin layouts', () => {
   it('calls tokenwise with the host\'s own name, on the events that host can use', () => {
     expect(json('adapters/claude-code/hooks/hooks.json').hooks).toEqual({
       PreToolUse: [{ matcher: 'Bash', hooks: hook('claude') }, { matcher: 'mcp__plugin_tokenwise_tokenwise__tokenwise_recall', hooks: hook('claude') }],
-      PostToolUse: [{ matcher: 'Bash', hooks: hook('claude') }],
+      // Read (a repeat read, a background command's output file) and the tools whose text is journaled.
+      PostToolUse: [{ matcher: 'Bash|Read|WebFetch|WebSearch|Agent|mcp__.*', hooks: hook('claude') }],
       PreCompact: [{ hooks: hook('claude') }],
       SessionStart: [{ matcher: 'startup', hooks: check('claude') }, { matcher: 'compact', hooks: [{ type: 'command', command: 'tokenwise hook claude', timeout: 60 }] }],
+      // The end of a turn: what TokenWise saved in the conversation.
+      Stop: [{ hooks: hook('claude') }],
     })
     // The recall tool's name is mcp__plugin_<plugin>_<server>__<tool>; the PreToolUse matcher above must follow it.
     expect(json('adapters/claude-code/.mcp.json').mcpServers).toEqual({ tokenwise: { command: 'tokenwise', args: ['mcp', '--host', 'claude'], alwaysLoad: true } })
+    // CodeBuddy: its own Grep and Glob results and a background command's TaskOutput (PostToolUse), and the end of a turn.
     expect(json('adapters/codebuddy/hooks/hooks.json').hooks).toEqual({ PreToolUse: [{ matcher: 'Bash', hooks: hook('codebuddy') }],
-      SessionStart: [{ matcher: 'startup', hooks: check('codebuddy') }] })
+      SessionStart: [{ matcher: 'startup', hooks: check('codebuddy') }], Stop: [{ hooks: hook('codebuddy') }],
+      PostToolUse: [{ matcher: 'Grep|Glob|TaskOutput|Read|WebFetch|WebSearch|Task|mcp__.*', hooks: hook('codebuddy') }] })
     // LightShadow on CodeBuddy is a mod: an ES module the plugin's hooks.json lists.
     expect(json('adapters/codebuddy/hooks/hooks.json').modules).toEqual(['./compaction.js'])
     expect(json('adapters/codebuddy/package.json')).toMatchObject({ type: 'module' })
@@ -74,7 +79,9 @@ describe('Claude Code, CodeBuddy and Grok plugin layouts', () => {
   it('has /tokenwise:learn and /tokenwise:rules commands that learn with the host itself', () => {
     for (const [plugin, learner] of [['adapters/claude-code', 'claude'], ['adapters/codebuddy', 'codebuddy'], ['adapters/grok', 'grok']]) {
       const learn = readFileSync(new URL(`${plugin}/commands/learn.md`, root), 'utf8')
-      expect(learn).toMatch(/^---\ndescription: .+\nargument-hint: .+\nallowed-tools: Bash\(tokenwise learn:\*\)\n---\n/u)
+      // Typed by the person, never chosen by the model: so they stay out of the skill list in every request.
+      expect(learn).toMatch(/^---\ndescription: .+\ndisable-model-invocation: true\nargument-hint: .+\nallowed-tools: Bash\(tokenwise learn:\*\)\n---\n/u)
+      expect(readFileSync(new URL(`${plugin}/commands/rules.md`, root), 'utf8')).toMatch(/^---\ndescription: .+\ndisable-model-invocation: true\n/u)
       // The arguments are never pasted into the command: CodeBuddy fills an empty $ARGUMENTS with the command's own name.
       for (const command of ['tokenwise learn status', 'tokenwise learn cancel', `tokenwise learn --learner ${learner}`]) expect(learn).toContain(`\`${command}\``)
       expect(learn).not.toMatch(/tokenwise learn \$ARGUMENTS/u)

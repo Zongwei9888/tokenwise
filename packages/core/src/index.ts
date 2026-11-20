@@ -7,7 +7,7 @@ export type { MappedProjection, OmittedSourceRange, SourceLine, SourceMap, Sourc
 export { DEFAULT_FILTER_OPTIONS, FILTER_OPTION_LIMITS, resolveFilterOptions } from './filter-options.ts'
 export type { FilterOptions } from './filter-options.ts'
 export { STATIC_FILTERS, projectStaticFilter } from './filters/index.ts'
-export { developerCommand, lastEffectiveCommand, literalCommand, looksUp, readsFileContent, toolArgv } from './command.ts'
+export { developerCommand, literalCommand, looksUp, readsFileContent, toolArgv } from './command.ts'
 export { hasBuiltinCommand, inspectShell } from './shell-inspection.ts'
 export type { ShellInspection } from './shell-inspection.ts'
 export { rewriteCommand } from './command-rewrite.ts'
@@ -20,7 +20,7 @@ export {
 export type { LearnedCandidate, LearnedRuleEntry, LearnedRuleInput, LearnedRuleSet, RuleFile } from './learned.ts'
 export type { EconomyPolicy } from './policy.ts'
 export { classifyMiss, decideNativeProjection, decideShellProjection, embedProjection, exactDiagnosticDeduplication, mayProject } from './economy.ts'
-export { nativeGrepRecords, nativeGrepSections, nativePathLines, nativePathList } from './native.ts'
+export { nativeAbsolutePathLines, nativeGrepBlocks, nativeGrepRecords, nativeGrepSections, nativeJsonGrepRows, nativeJsonPaths, nativePathLines, nativePathList } from './native.ts'
 export type { NativeSearchMatch } from './native.ts'
 export type {
   EconomyDecision, EconomyDecisionOptions, EconomyMatchDetail, EconomyPass, EconomyPassReason,

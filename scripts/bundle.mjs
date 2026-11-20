@@ -6,7 +6,7 @@
  * other TokenWise package; the host's own modules stay external and come from the
  * running host.
  */
-import { copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
@@ -30,6 +30,8 @@ const node = {
 async function bundleNode({ entry, outfile, external, name, executable = false }) {
   await build({ ...node, entryPoints: [at(entry)], outfile: at(outfile), external,
     banner: { js: `${executable ? '#!/usr/bin/env node\n' : ''}${LICENSE_BANNER(name)}` } })
+  // A fresh build must stay runnable through the `tokenwise` link a global install made.
+  if (executable) chmodSync(at(outfile), 0o755)
 }
 
 /**

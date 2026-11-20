@@ -10,6 +10,8 @@ export interface EconomySummary {
   /** Applied projections only. */
   readonly rawTokens: number
   readonly projectedTokens: number
+  /** Every output decided on, shortened or not: what the model would have read without TokenWise. */
+  readonly seenTokens: number
   readonly savedTokens: number
   readonly savedBytes: number
   /** Would-be savings of observe-mode previews. */
@@ -25,7 +27,7 @@ const ranked = <T extends { count: number }>(map: Map<string, T>) => [...map.val
 
 export function summarizeEconomy(records: Iterable<JournalRecord>): EconomySummary {
   let decisions = 0, projected = 0, previewed = 0, passed = 0, failedOpen = 0, rewrites = 0
-  let rawTokens = 0, projectedTokens = 0, savedBytes = 0, previewSavedTokens = 0
+  let rawTokens = 0, projectedTokens = 0, savedBytes = 0, previewSavedTokens = 0, seenTokens = 0
   const filters = new Map<string, { filter: string; count: number; savedTokens: number }>()
   const reasons = new Map<string, { reason: string; count: number }>()
   const uncovered = new Map<string, { command: string; count: number; rawTokens: number }>()
@@ -34,6 +36,7 @@ export function summarizeEconomy(records: Iterable<JournalRecord>): EconomySumma
     if (item.type !== 'economy/decision') continue
     const record = item as EconomyRecord
     decisions++
+    seenTokens += record.raw?.tokens ?? 0
     if (record.outcome === 'projected' && record.raw && record.projected) {
       projected++
       rawTokens += record.raw.tokens
@@ -63,7 +66,7 @@ export function summarizeEconomy(records: Iterable<JournalRecord>): EconomySumma
       }
     }
   }
-  return { decisions, projected, previewed, passed, failedOpen, rawTokens, projectedTokens,
+  return { decisions, projected, previewed, passed, failedOpen, rawTokens, projectedTokens, seenTokens,
     savedTokens: rawTokens - projectedTokens, savedBytes, previewSavedTokens,
     byFilter: ranked(filters).map(item => ({ ...item })), passReasons: ranked(reasons), uncovered: ranked(uncovered).slice(0, 20), rewrites }
 }

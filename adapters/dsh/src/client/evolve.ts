@@ -12,6 +12,7 @@ import type { EvolveOutcome, EvolveRunStatus } from '@tokenwise/mechanisms'
 import { api, formatTokens } from './api.ts'
 import type { LearningPayload, ReadyCommand } from './api.ts'
 import type { Copy } from './locales.ts'
+import { useToastTurn } from './turns.ts'
 
 export type Translate = (key: keyof Copy, params?: Record<string, string | number>) => string
 
@@ -338,6 +339,9 @@ export function EvolveToast({ t }: { t: Translate }): unknown {
     timer = setTimeout(() => { void poll() }, 1500)
     return () => { alive = false; if (timer) clearTimeout(timer) }
   }, [])
-  if (!notice) return null
-  return jsx(Toast, { key: notice.key, text: notice.text, holdMs: notice.key.startsWith('ready:') ? 9000 : 6000, ...notice.success ? { tone: 'success' } : {}, onDone: () => setNotice(undefined) })
+  // One toast at a time: DSH draws them all in one place.
+  const turn = useToastTurn(notice?.key)
+  if (!notice || !turn.mine) return null
+  return jsx(Toast, { key: notice.key, text: notice.text, holdMs: notice.key.startsWith('ready:') ? 9000 : 6000, ...notice.success ? { tone: 'success' } : {},
+    onDone: () => { turn.done(); setNotice(undefined) } })
 }

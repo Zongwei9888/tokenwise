@@ -3,16 +3,16 @@
 @font-face { font-family: 'JetBrains Mono'; src: url(fonts/JetBrainsMono.ttf) format('truetype'); font-weight: 100 800; }
 
 :root {
-  --paper: #EEF3F1;     /* cool mint-grey ground */
-  --ink: #0E2A26;       /* teal-black text */
-  --teal: #0F766E;      /* brand */
-  --mint: #CCFBF1;      /* brand tint */
+  --paper: #F1F4F3;     /* cool mint-grey ground */
+  --ink: #0B1A18;       /* teal-black text */
+  --teal: #0A7A69;      /* brand on light grounds (Cyber Mint: mint #4FE3C1 on dark, coins #FFD24A) */
+  --mint: #D2F8EE;      /* brand tint */
   --noise: #8FA6A0;     /* output the model no longer reads */
-  --kept: #F2B705;      /* evidence that stays: the bolt's amber */
+  --kept: #FFC21A;      /* evidence that stays: the coins' gold */
   --kept-ink: #5A4300;
   --rule: #C9D8D3;
-  --term: #0B3B36;      /* terminal ground: deep teal, not black */
-  --term-ink: #D7F5EE;
+  --term: #071E1B;      /* terminal ground: the logo's ink */
+  --term-ink: #D9FFF4;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { width: 100%; height: 100%; }
@@ -34,7 +34,7 @@ body { background: var(--paper); color: var(--ink); font-family: Archivo, 'PingF
 .term .noise { color: #6E9C94; }
 .term .pass { color: #7FD9C6; }
 .term .fail { color: #FFB4A8; }
-.term .kept { background: rgba(242,183,5,.16); box-shadow: inset 3px 0 0 var(--kept); color: #FFE7A3; }
+.term .kept { background: rgba(255,194,26,.16); box-shadow: inset 3px 0 0 var(--kept); color: #FFE7A3; }
 .term .note { color: var(--mint); font-style: italic; }
 .term .bar { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: rgba(0,0,0,.18); }
 .term .bar i { width: 11px; height: 11px; border-radius: 50%; background: rgba(215,245,238,.22); display: block; }

@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { FileArtifactStore, RuleStore } from '@tokenwise/store'
 import { claudeHook, codebuddyHook, copilotHook, eventHost, grokHook, hermesHook } from '../src/hook.ts'
+import { projectOutput } from '../src/project.ts'
 
 const dirs: string[] = []
 const temp = () => { const dir = mkdtempSync(join(tmpdir(), 'tokenwise-hooks-')); dirs.push(dir); return dir }
@@ -231,6 +232,9 @@ describe('GitHub Copilot CLI hook', () => {
     expect(text.endsWith(status)).toBe(true)
     expect(text).toContain("E       AssertionError: assert '1.10.0' > '1.9.0'")
     expect(text.length).toBeLessThan(failingPytest.length / 3)
+    // The shortened output alone: TokenWise adds no text of its own.
+    expect(text).not.toContain('TokenWise')
+    expect(text).not.toContain('[full output')
     expect(records(home, 'copilot')).toMatchObject([{ type: 'economy/decision', outcome: 'projected', command: 'pytest -v', exitCode: 1, delivery: 'result-hook' }])
   })
 
@@ -363,5 +367,405 @@ describe('learned rules on hook-based agents', () => {
       { TOKENWISE_HOME: home })!)
     expect(hermes.output).toContain('[200 step lines omitted]')
     expect(records(home, 'claude').map(record => record.rule)).toEqual(['deploy-steps', 'deploy-steps'])
+  })
+})
+
+describe('what a conversation saved, at the end of a turn', () => {
+  /** A conversation in which TokenWise shortened one failing pytest. */
+  const stripAnsi = (text: string) => text.replace(/\x1b\[[0-9;]*m/gu, '')
+  function savedConversation(host: string, sessionId = 's1') {
+    const home = temp()
+    const stdout = projectOutput({ host, delivery: 'result-hook', tool: 'Bash', sessionId, callId: 'c1', command: 'pytest -v', exitCode: 1,
+      interrupted: false, stdout: failingPytest, env: { TOKENWISE_HOME: home, HOME: temp() } })
+    expect(stdout).toBeDefined()
+    return { TOKENWISE_HOME: home, HOME: temp(), LANG: 'en_US.UTF-8' } as NodeJS.ProcessEnv
+  }
+
+  it('says it once in Claude Code, CodeBuddy and Codex, and again only when it grew', () => {
+    for (const [host, run] of [['claude', claudeHook], ['codebuddy', codebuddyHook]] as const) {
+      const env = savedConversation(host)
+      const stop = { hook_event_name: 'Stop', session_id: 's1', stop_hook_active: false, cwd: '/w' }
+      const reply = JSON.parse(run(stop, env)!)
+      // The card: a small jar, what was saved, a bar. Claude Code labels the first line, so the card starts below it; both show colour.
+      const card = stripAnsi(reply.systemMessage as string)
+      expect(card).toMatch(new RegExp(`^${host === 'claude' ? '\\n' : ''} ▗▄▄▖\\n▗▛[●░]{2}▜▖ TokenWise · saved [\\d,]+ tokens in this conversation\\n▐[●·]{4}▌ [▰▱]{10} tool output \\d+% shorter$`, 'u'))
+      expect(reply.systemMessage).toContain('\x1b[')
+      expect(run(stop, env)).toBeUndefined()
+      expect(run({ ...stop, stop_hook_active: true }, env)).toBeUndefined()
+    }
+    const env = savedConversation('copilot')
+    const reply = JSON.parse(copilotHook({ sessionId: 's1', stopReason: 'end_turn', stop_hook_active: false, cwd: '/w' }, env)!)
+    // Copilot drops colour: none is sent.
+    expect(reply).toMatchObject({ type: 'progress', message: expect.stringMatching(/^ ▗▄▄▖\n▗▛[●░]{2}▜▖ TokenWise · saved [\d,]+ tokens in this conversation\n/u) })
+    expect(reply.message).not.toContain('\x1b[')
+    expect(copilotHook({ sessionId: 's1', stopReason: 'end_turn', cwd: '/w' }, env)).toBeUndefined()
+  })
+
+  it('speaks English whatever the locale, and says nothing for a conversation that saved nothing', () => {
+    const env = { ...savedConversation('claude'), LANG: 'zh_CN.UTF-8', LC_ALL: 'zh_CN.UTF-8' }
+    expect(stripAnsi(JSON.parse(claudeHook({ hook_event_name: 'Stop', session_id: 's1' }, env)!).systemMessage)).toMatch(/TokenWise · saved [\d,]+ tokens in this conversation\n▐[●·]{4}▌ [▰▱]{10} tool output \d+% shorter$/u)
+    expect(claudeHook({ hook_event_name: 'Stop', session_id: 'other' }, env)).toBeUndefined()
+    // NO_COLOR is honoured.
+    expect(JSON.parse(claudeHook({ hook_event_name: 'Stop', session_id: 's2' }, { ...savedConversation('claude', 's2'), NO_COLOR: '1' })!).systemMessage).not.toContain('\x1b[')
+  })
+})
+
+describe('CodeBuddy\'s own Grep and Glob', () => {
+  const root = '/Users/me/work/project/'
+  /** CodeBuddy's transcript as it stands when PostToolUse runs: the model's own call is in it. */
+  const transcript = (ids: string[]) => {
+    const path = join(temp(), 'session.jsonl')
+    writeFileSync(path, ids.map(id => JSON.stringify({ id: `m-${id}`, type: 'function_call', name: 'Glob', arguments: '{}', callId: id })).join('\n') + '\n')
+    return path
+  }
+  let calls = 0
+  const event = (tool: string, input: Record<string, unknown>, response: unknown, id = `call_${++calls}`, recorded = true) => ({ session_id: 'cb',
+    hook_event_name: 'PostToolUse', tool_name: tool, tool_input: input, tool_response: response, tool_use_id: id, cwd: root, generation_id: 'g1',
+    transcript_path: transcript(recorded ? [`call_0`, id] : ['call_0']) })
+  const paths = Array.from({ length: 40 }, (_, i) => `${root}tools/${i % 3 ? 'web/' : ''}module_${i}.py`)
+
+  it('lays out a Glob result and files_with_matches as paths, every path kept, and journals it', () => {
+    const env = { TOKENWISE_HOME: temp(), HOME: temp() }
+    for (const [tool, input] of [['Glob', { pattern: '**/*.py' }], ['Grep', { pattern: 'x' }]] as const) {
+      const reply = JSON.parse(codebuddyHook(event(tool, input, paths), env)!)
+      const text = reply.hookSpecificOutput.updatedToolOutput as string
+      expect(text.startsWith(`[paths under ${root}tools/, grouped by directory; original order retained]\n`)).toBe(true)
+      for (const path of paths) expect(text).toContain(path.slice(path.lastIndexOf('/') + 1))
+      expect(text.length).toBeLessThan(JSON.stringify(paths).length / 2)
+    }
+    expect(records(env.TOKENWISE_HOME, 'codebuddy').filter(r => r.outcome === 'projected').map(r => r.tool)).toEqual(['Glob', 'Grep'])
+  })
+
+  it('groups content-mode rows by file, and leaves count mode, other tools and other shapes alone', () => {
+    const env = { TOKENWISE_HOME: temp(), HOME: temp() }
+    const rows = paths.slice(0, 10).flatMap((path, i) => [`${path}:${i + 1}:def register_${i}(x: str = "a") -> None:`, `${path}:${i + 40}:    register_${i}()`])
+    const text = JSON.parse(codebuddyHook(event('Grep', { pattern: 'register', output_mode: 'content', '-n': true }, rows), env)!).hookSpecificOutput.updatedToolOutput as string
+    expect(text).toContain('  1:def register_0(x: str = "a") -> None:\n  40:    register_0()\n')
+    expect(codebuddyHook(event('Grep', { pattern: 'x', output_mode: 'count' }, paths.map(p => `${p}:3`)), env)).toBeUndefined()
+    expect(codebuddyHook(event('Read', { file_path: paths[0] }, paths), env)).toBeUndefined()
+    expect(codebuddyHook(event('Glob', { pattern: '*' }, 'not a list'), env)).toBeUndefined()
+  })
+
+  it('leaves alone a call from code the model wrote (CodeBuddy\'s REPL), which the transcript does not list as the model\'s', () => {
+    const env = { TOKENWISE_HOME: temp(), HOME: temp() }
+    expect(codebuddyHook(event('Glob', { pattern: '**/*.py' }, paths, '01a1e200-46d7-7d80-8e2e-a60e37a6a6e6', false), env)).toBeUndefined()
+    expect(codebuddyHook({ ...event('Glob', { pattern: '**/*.py' }, paths), transcript_path: join(temp(), 'missing.jsonl') }, env)).toBeUndefined()
+    expect(codebuddyHook(event('Glob', { pattern: '**/*.py' }, paths), env)).toBeDefined()
+  })
+})
+
+describe('Output of a background command, read later', () => {
+  const tasks = '/private/tmp/claude-501/-w/cc-session/tasks'
+
+  it('Claude Code: a finished task read whole (Read or cat) is filtered as the command that started it', () => {
+    const home = temp()
+    const env = { TOKENWISE_HOME: home }
+    // Started in the background: nothing to filter yet, but the command is remembered under the task.
+    const start = claudeEvent('PostToolUse', 'python3 -m pytest -v', { tool_input: { command: 'python3 -m pytest -v', run_in_background: true },
+      tool_response: { stdout: '', stderr: '', interrupted: false, isImage: false, backgroundTaskId: 'b0abc1234' } })
+    expect(claudeHook(start, env)).toBeUndefined()
+    const content = `${failingPytest}\n[exited with code 1]\n`
+    const lines = content.split('\n').length
+    const read = (file: Record<string, unknown>, extra: Record<string, unknown> = {}, path = `${tasks}/b0abc1234.output`) => claudeHook({ ...claudeEvent('PostToolUse', ''),
+      tool_name: 'Read', tool_input: { file_path: path, ...extra }, tool_use_id: 'toolu_02',
+      tool_response: { type: 'text', file: { filePath: path, content, numLines: lines, startLine: 1, totalLines: lines, ...file } } }, env)
+    const reply = JSON.parse(read({})!).hookSpecificOutput.updatedToolOutput
+    expect(reply.type).toBe('text')
+    expect(reply.file.content.length).toBeLessThan(content.length / 4)
+    expect(reply.file.content).toContain("E       AssertionError: assert '1.10.0' > '1.9.0'")
+    expect(reply.file.content).toMatch(/\n\[exited with code 1\]\n$/u)
+    expect(reply.file.numLines).toBe(reply.file.content.split('\n').length)
+    expect(reply.file.totalLines).toBe(reply.file.numLines)
+    // `cat` of the same file.
+    const cat = claudeEvent('PostToolUse', `cat ${tasks}/b0abc1234.output`, { tool_response: { stdout: content, stderr: '', interrupted: false, isImage: false } })
+    expect(JSON.parse(claudeHook(cat, env)!).hookSpecificOutput.updatedToolOutput.stdout).toBe(reply.file.content)
+    expect(records(home, 'claude')).toMatchObject([
+      { command: 'python3 -m pytest -v', exitCode: 1, tool: 'Bash', callId: 'toolu_02', outcome: 'projected', filter: 'pytest' },
+      { command: 'python3 -m pytest -v', outcome: 'projected' }])
+    // Still running, killed, read in part, a task never seen start, another conversation's task: left alone.
+    expect(read({ content: failingPytest })).toBeUndefined()
+    expect(read({ content: `${failingPytest}\n[killed]\n` })).toBeUndefined()
+    expect(read({}, { offset: 1, limit: 2000 })).toBeUndefined()
+    expect(read({ numLines: 40 })).toBeUndefined()
+    expect(read({}, {}, `${tasks}/b0zzz9999.output`)).toBeUndefined()
+    expect(read({}, {}, '/w/notes/tasks.output')).toBeUndefined()
+    expect(claudeHook({ ...JSON.parse(JSON.stringify(cat)), session_id: 'other' }, env)).toBeUndefined()
+  })
+
+  it('CodeBuddy: TaskOutput of a finished command, read from its start, has its stdout filtered and nothing else changed', () => {
+    const env = { TOKENWISE_HOME: temp() }
+    const notice = 'Background command \\"python3 -m pytest -v\\" failed with exit code 1\\nUse the TaskOutput tool with task_id=\\"Ab12Cd\\" to retrieve unread output'
+    const transcript = (withNotice: boolean) => {
+      const path = join(temp(), 'session.jsonl')
+      writeFileSync(path, [JSON.stringify({ type: 'function_call', name: 'TaskOutput', arguments: '{}', callId: 'call_t1' }),
+        ...withNotice ? [`{"type":"message","role":"user","content":[{"type":"input_text","text":"${notice}"}]}`] : []].join('\n') + '\n')
+      return path
+    }
+    const output = (status: string, body: string, label = `full snapshot; chars=0-${body.length}; caught_up=true; more_expected=false`, header = '') => [
+      'Shell ID: Ab12Cd', 'Command: python3 -m pytest -v', `Status: ${status}`, ...header ? [header] : [], 'Duration: 3s', 'Timestamp: 2026-11-16T09:00:00.000Z', '',
+      `Stdout (${label}):`, body, '', 'Stderr (full snapshot; chars=0-0; caught_up=true; more_expected=false):', '(no output)'].join('\n')
+    const event = (result: string, withNotice = true, input: Record<string, unknown> = { task_id: 'Ab12Cd', full: true }) => ({ session_id: 'cb',
+      hook_event_name: 'PostToolUse', tool_name: 'TaskOutput', tool_input: input, tool_response: result, tool_use_id: 'call_t1', cwd: '/w',
+      generation_id: 'g1', transcript_path: transcript(withNotice) })
+    const failed = output('failed', failingPytest)
+    const text = JSON.parse(codebuddyHook(event(failed), env)!).hookSpecificOutput.updatedToolOutput as string
+    expect(text.length).toBeLessThan(failed.length / 4)
+    expect(text.startsWith(failed.slice(0, failed.indexOf('Stdout (') + `Stdout (full snapshot; chars=0-${failingPytest.length}; caught_up=true; more_expected=false):\n`.length))).toBe(true)
+    expect(text).toContain("E       AssertionError: assert '1.10.0' > '1.9.0'")
+    expect(text.endsWith('\n\nStderr (full snapshot; chars=0-0; caught_up=true; more_expected=false):\n(no output)')).toBe(true)
+    expect(records(env.TOKENWISE_HOME, 'codebuddy')).toMatchObject([{ tool: 'TaskOutput', command: 'python3 -m pytest -v', exitCode: 1, streams: 'separate', outcome: 'projected' }])
+    // A completed one is exit 0 (its pytest output must then say so, or the filter declines).
+    const passing = failingPytest.replace(/FAILED/gu, 'PASSED')
+    expect(codebuddyHook(event(output('completed', passing), false), env)).toBeUndefined()
+    // A failure read before CodeBuddy sent its notice (the model waited with TaskOutput itself) is read as exit 1.
+    expect(JSON.parse(codebuddyHook(event(failed, false), env)!).hookSpecificOutput.updatedToolOutput).toBe(text)
+    expect(records(env.TOKENWISE_HOME, 'codebuddy').at(-1)).toMatchObject({ exitCode: 1, outcome: 'projected' })
+    // Left alone: a running task, a read that does not start at 0, a cut or filtered read, an exit status CodeBuddy
+    // did not capture, a regex-filtered call, TokenWise's own output.
+    expect(codebuddyHook(event(output('running', failingPytest, `delta; chars=0-${failingPytest.length}; caught_up=true; more_expected=true`)), env)).toBeUndefined()
+    expect(codebuddyHook(event(output('failed', failingPytest, `delta; chars=40-${40 + failingPytest.length}; caught_up=true; more_expected=false`)), env)).toBeUndefined()
+    expect(codebuddyHook(event(output('failed', failingPytest, `full snapshot; chars=0-${failingPytest.length}; caught_up=true; more_expected=false; omitted=900`)), env)).toBeUndefined()
+    expect(codebuddyHook(event(output('completed', passing, undefined, 'Exit code: unknown. The process has ended; successful execution is not confirmed.')), env)).toBeUndefined()
+    expect(codebuddyHook(event(failed, true, { task_id: 'Ab12Cd', filter: 'FAIL' }), env)).toBeUndefined()
+  })
+
+  it('Grok: a finished command\'s whole output in get_command_or_subagent_output is filtered, the rest of the result kept', () => {
+    const home = temp()
+    const env = { TOKENWISE_HOME: home }
+    const log = join(temp(), 'terminal', 'call-d75de844-39.log')
+    mkdirSync(join(log, '..'), { recursive: true })
+    writeFileSync(log, failingPytest)
+    const task = { task_id: 'call-d75de844-39', command: 'python3 -m pytest -v', status: 'completed', exit_code: 1, started: 'a', ended: 'b', duration_secs: 0.4,
+      output: failingPytest, output_file: log, truncated: false, truncation_hint: null, raw_output_bytes: Buffer.byteLength(failingPytest) }
+    const event = (result: unknown, extra: Record<string, unknown> = {}) => ({ hook_event_name: 'PostToolUse', hookEventName: 'post_tool_use', session_id: 'gk-1',
+      tool_name: 'get_command_or_subagent_output', tool_input: { task_ids: [task.task_id] }, tool_use_id: 'call_r1', toolResult: result, cwd: '/w', ...extra })
+    const reply = JSON.parse(grokHook(event({ type: 'TaskOutput', Result: task }), env)!).hookSpecificOutput.updatedToolOutput
+    expect(reply.type).toBe('TaskOutput')
+    expect({ ...reply.Result, output: 'x' }).toEqual({ ...task, output: 'x' })
+    expect(reply.Result.output.length).toBeLessThan(failingPytest.length / 4)
+    expect(reply.Result.output).toContain("E       AssertionError: assert '1.10.0' > '1.9.0'")
+    expect(records(home, 'grok')).toMatchObject([{ tool: 'get_command_or_subagent_output', command: 'python3 -m pytest -v', exitCode: 1, outcome: 'projected' }])
+    // Left alone: running, timed out, cut, not all its bytes, not what its log holds, a monitor, a log elsewhere, a result Grok sent as text.
+    for (const changed of [{ status: 'running', exit_code: null }, { status: 'timed_out' }, { truncated: true }, { raw_output_bytes: 10 },
+      { output: failingPytest.replace('PASSED', 'passed') }, { command: '[monitor] Watch the tests' }, { output_file: join(temp(), 'monitor-call-1.log') }]) {
+      expect(grokHook(event({ type: 'TaskOutput', Result: { ...task, ...changed } }), env), JSON.stringify(changed)).toBeUndefined()
+    }
+    expect(grokHook(event({ type: 'MultiResult', results: [] }), env)).toBeUndefined()
+    expect(grokHook(event('=== Task x ===', { toolResultTruncated: true }), env)).toBeUndefined()
+  })
+
+  it('Copilot: a read_bash of a finished shell is filtered as the command bash started there, status line kept', () => {
+    const home = temp()
+    const env = { TOKENWISE_HOME: home }
+    const event = (tool: string, args: Record<string, unknown>, text: string, sessionId = 'cp-1') => ({ sessionId, timestamp: 1, cwd: '/w', toolName: tool,
+      toolArgs: args, toolCallId: 'tc-2', toolResult: { resultType: 'success', textResultForLlm: text } })
+    // Started in the background: nothing to filter, the shell's command remembered.
+    expect(copilotHook(event('bash', { command: 'python3 -m pytest -v', mode: 'async' }, '<command started in background with shellId: 7>'), env)).toBeUndefined()
+    const done = `${failingPytest}\n<shellId: 7 completed with exit code 1>`
+    const text = JSON.parse(copilotHook(event('read_bash', { shellId: '7', delay: 10 }, done), env)!).modifiedResult.textResultForLlm as string
+    expect(text.length).toBeLessThan(done.length / 4)
+    expect(text.endsWith('\n<shellId: 7 completed with exit code 1>')).toBe(true)
+    expect(records(home, 'copilot')).toMatchObject([{ tool: 'read_bash', command: 'python3 -m pytest -v', exitCode: 1, outcome: 'projected' }])
+    // A detached shell's read keeps its `Output:` lead.
+    expect(copilotHook(event('bash', { command: 'python3 -m pytest -v', detach: true }, '<command started in detached background with shellId: d1>'), env)).toBeUndefined()
+    const detached = JSON.parse(copilotHook(event('read_bash', { shellId: 'd1', delay: 5 }, `Output:\n${failingPytest}\n<detached command with shellId: d1 completed with exit code 1>`), env)!)
+    expect(detached.modifiedResult.textResultForLlm.startsWith('Output:\n')).toBe(true)
+    // A command still running when bash returned is remembered too.
+    expect(copilotHook(event('bash', { command: 'python3 -m pytest -v' }, 'tests/a.py::t PASSED\n<command with shellId: 9 is still running after 30 seconds. The command is still running.>'), env)).toBeUndefined()
+    expect(copilotHook(event('read_bash', { shellId: '9', delay: 5 }, `${failingPytest}\n<shellId: 9 completed with exit code 1>`), env)).toBeDefined()
+    // Left alone: still running, another shell's status, an empty later read, a shell never seen start, another conversation, saved to a file.
+    expect(copilotHook(event('read_bash', { shellId: '7', delay: 5 }, `${failingPytest}\n<command with shellId: 7 is still running after 5 seconds.>`), env)).toBeUndefined()
+    expect(copilotHook(event('read_bash', { shellId: '8', delay: 5 }, done), env)).toBeUndefined()
+    expect(copilotHook(event('read_bash', { shellId: '7', delay: 5 }, '\n<shellId: 7 completed with exit code 1>'), env)).toBeUndefined()
+    expect(copilotHook(event('read_bash', { shellId: '5', delay: 5 }, `${failingPytest}\n<shellId: 5 completed with exit code 1>`), env)).toBeUndefined()
+    expect(copilotHook(event('read_bash', { shellId: '7', delay: 5 }, done, 'cp-other'), env)).toBeUndefined()
+    expect(copilotHook(event('read_bash', { shellId: '7', delay: 5 }, `Output too large to read at once (40 KB). Saved to: /tmp/x\n<shellId: 7 completed with exit code 1>`), env)).toBeUndefined()
+  })
+
+  it('Copilot: a read_bash Copilot compacted itself is filtered from the original it kept, when that is shorter', () => {
+    const home = temp()
+    const tmp = temp()
+    const original = join(tmp, 'original-output-1794844690409-2fc82fd831a24486aaa4d2a3ebbfb51a.txt')
+    writeFileSync(original, failingPytest)
+    const env = { TOKENWISE_HOME: home, TMPDIR: tmp }
+    const event = (tool: string, args: Record<string, unknown>, text: string) => ({ sessionId: 'cp-2', timestamp: 1, cwd: '/w', toolName: tool,
+      toolArgs: args, toolCallId: 'tc-3', toolResult: { resultType: 'success', textResultForLlm: text } })
+    expect(copilotHook(event('bash', { command: 'python3 -m pytest -v', mode: 'async' }, '<command started in background with shellId: 4>'), env)).toBeUndefined()
+    const header = `Shell output was automatically compacted. Compacted output below. Original at ${original}; only use if exact omitted lines are needed.\n\n`
+    const text = JSON.parse(copilotHook(event('read_bash', { shellId: '4', delay: 10 }, `${header}${'x\n'.repeat(2000)}\n<shellId: 4 completed with exit code 1>`), env)!).modifiedResult.textResultForLlm as string
+    expect(text).toContain("E       AssertionError: assert '1.10.0' > '1.9.0'")
+    expect(text).not.toContain('Shell output was automatically compacted')
+    expect(text.endsWith('\n<shellId: 4 completed with exit code 1>')).toBe(true)
+    // Copilot's own version is already shorter: it stays.
+    expect(copilotHook(event('read_bash', { shellId: '4', delay: 10 }, `${header}short\n<shellId: 4 completed with exit code 1>`), env)).toBeUndefined()
+    expect(records(home, 'copilot').map(record => [record.tool, record.outcome, record.reason])).toEqual([['read_bash', 'projected', undefined], ['read_bash', 'passed', 'over-host-inline-limit']])
+  })
+
+  it('Hermes: only the plugin\'s process_output is a background process\'s output; the tails Hermes also hands over are left alone', () => {
+    const home = temp()
+    const env = { TOKENWISE_HOME: home }
+    const event = (name: string, extra: Record<string, unknown> = {}) => ({ hook_event_name: name, command: 'python3 -m pytest -v', output: failingPytest,
+      returncode: 1, session_id: 'hm-1', tool_call_id: 'call_7', ...extra })
+    expect(hermesHook(event('transform_terminal_output', { env_type: '' }), env)).toBeUndefined()
+    const projected = JSON.parse(hermesHook(event('process_output'), env)!).output as string
+    expect(projected.length).toBeLessThan(failingPytest.length / 4)
+    expect(records(home, 'hermes')).toMatchObject([{ tool: 'process_manage', sessionId: 'hm-1', callId: 'call_7', exitCode: 1, outcome: 'projected' }])
+  })
+})
+
+describe('Every tool through TokenWise: a file read again, unchanged', () => {
+  const content = Array.from({ length: 80 }, (_, i) => `export const value${i} = ${i}`).join('\n')
+
+  it('Claude Code: a repeat of a read still in the transcript is a note once; compaction, clearing, a change or a subagent get the text', () => {
+    const home = temp()
+    const env = { TOKENWISE_HOME: home }
+    const transcript = join(temp(), 'session.jsonl')
+    const rows: string[] = []
+    const write = () => writeFileSync(transcript, rows.join('\n') + '\n')
+    const result = (id: string, body: string) => rows.push(JSON.stringify({ type: 'user', message: { role: 'user', content: [{ tool_use_id: id, type: 'tool_result', content: body }] } }))
+    let n = 0
+    const read = (body = content, extra: Record<string, unknown> = {}) => {
+      const id = `toolu_r${++n}`
+      write()
+      const reply = claudeHook({ ...claudeEvent('PostToolUse', ''), tool_name: 'Read', tool_use_id: id, transcript_path: transcript, tool_input: { file_path: '/w/a.ts' },
+        tool_response: { type: 'text', file: { filePath: '/w/a.ts', content: body, numLines: 80, startLine: 1, totalLines: 80 } }, ...extra }, env)
+      result(id, reply ? '1\t[TokenWise note]' : body)
+      return reply ? JSON.parse(reply).hookSpecificOutput.updatedToolOutput : undefined
+    }
+    expect(read()).toBeUndefined() // r1: whole
+    const note = read() // r2: repeats r1
+    expect(note.file).toEqual({ filePath: '/w/a.ts', content: expect.stringMatching(/^\[TokenWise: \/w\/a\.ts is unchanged since you read it earlier/u), numLines: 1, startLine: 1, totalLines: 80 })
+    expect(read()).toBeUndefined() // r3: asked again right after the note
+    rows.push(JSON.stringify({ type: 'system', subtype: 'compact_boundary', compactMetadata: { trigger: 'auto' } }))
+    expect(read()).toBeUndefined() // r4: r3 was compacted away
+    rows.push(JSON.stringify({ type: 'assistant', message: { context_management: { applied_edits: [{ type: 'clear_tool_uses_20250919', cleared_tool_uses: 3 }] } } }))
+    expect(read()).toBeUndefined() // r5: tool results were cleared after r4
+    expect(read()).toBeDefined() // r6: repeats r5, nothing taken away since
+    expect(read(`${content}\n// changed`)).toBeUndefined() // r7: the file changed
+    expect(read(`${content}\n// changed`, { agent_id: 'sub-1' })).toBeUndefined() // a subagent: its own context
+    expect(read(`${content}\n// changed`, { agent_id: 'sub-1' })).toBeUndefined()
+    expect(records(home, 'claude').filter(record => record.tool === 'Read').map(record => record.outcome))
+      .toEqual(['passed', 'projected', 'passed', 'passed', 'passed', 'projected', 'passed', 'passed', 'passed'])
+  })
+
+  it('Claude Code: other tools\' text is journaled unchanged; TokenWise\'s own recall is not counted', () => {
+    const home = temp()
+    const env = { TOKENWISE_HOME: home }
+    const event = (tool: string, response: unknown) => ({ ...claudeEvent('PostToolUse', ''), tool_name: tool, tool_input: { url: 'https://example.com' }, tool_response: response })
+    expect(claudeHook(event('WebFetch', { bytes: 9, code: 200, codeText: 'OK', result: 'page text', durationMs: 5, url: 'https://example.com' }), env)).toBeUndefined()
+    expect(claudeHook(event('mcp__docs__search', [{ type: 'text', text: 'found it' }]), env)).toBeUndefined()
+    expect(claudeHook(event('mcp__plugin_tokenwise_tokenwise__tokenwise_recall', [{ type: 'text', text: 'the original' }]), env)).toBeUndefined()
+    expect(claudeHook(event('Edit', null), env)).toBeUndefined()
+    expect(records(home, 'claude').map(record => [record.tool, record.outcome])).toEqual([['WebFetch', 'passed'], ['mcp__docs__search', 'passed']])
+  })
+
+  it('CodeBuddy: a repeat Read of one still in the transcript is a note once; a compaction gives the text again', () => {
+    const home = temp()
+    const env = { TOKENWISE_HOME: home }
+    const numbered = content.split('\n').map((line, i) => `${String(i + 1).padStart(4)}→${line}`).join('\n')
+    const transcript = join(temp(), 'session.jsonl')
+    const rows: string[] = []
+    let n = 0
+    const read = (extra: Record<string, unknown> = {}) => {
+      const id = `call_r${++n}`
+      rows.push(JSON.stringify({ type: 'function_call', name: 'Read', arguments: '{}', callId: id }))
+      writeFileSync(transcript, rows.join('\n') + '\n')
+      const reply = codebuddyHook({ session_id: 'cb', hook_event_name: 'PostToolUse', tool_name: 'Read', tool_input: { file_path: '/w/a.ts' }, tool_response: numbered,
+        tool_use_id: id, cwd: '/w', generation_id: 'g1', transcript_path: transcript, ...extra }, env)
+      // CodeBuddy's screen copy (providerData) of a long read is a saved-to-file preview; the model's copy is `output.text`.
+      rows.push(JSON.stringify({ type: 'function_call_result', name: 'Read', callId: id, status: 'completed', output: { type: 'text', text: reply ? 'note' : numbered },
+        providerData: { toolResult: { content: '<persisted-output>\nOutput too large (12.0KB). Full output saved to: /x' } } }))
+      return reply ? JSON.parse(reply).hookSpecificOutput.updatedToolOutput as string : undefined
+    }
+    expect(read()).toBeUndefined()
+    expect(read()).toMatch(/^\[TokenWise: \/w\/a\.ts is unchanged/u)
+    expect(read()).toBeUndefined()
+    rows.push(JSON.stringify({ type: 'message', role: 'user', providerData: { agent: 'compact', isSummary: true } }))
+    expect(read()).toBeUndefined()
+    expect(read()).toBeDefined()
+    expect(read({ agent_id: 'sub-1' })).toBeUndefined()
+    expect(read({ agent_id: 'sub-1' })).toBeUndefined()
+  })
+})
+
+describe('Every tool through TokenWise: Grok and Copilot reads', () => {
+  const content = Array.from({ length: 80 }, (_, i) => `${i + 1}→export const value${i} = ${i}`).join('\n')
+
+  it('Grok: a repeat read_file of one still in chat_history is a note; three prompts later, a compaction, or a subagent get the text', () => {
+    const home = temp()
+    const env = { TOKENWISE_HOME: home }
+    const session = temp()
+    const rows: unknown[] = [{ type: 'user', content: [{ type: 'text', text: 'q' }], prompt_index: 0 }]
+    let n = 0
+    const read = (extra: Record<string, unknown> = {}) => {
+      const id = `call-r${++n}`
+      rows.push({ type: 'assistant', content: '', tool_calls: [{ id, name: 'read_file', arguments: '{}' }] })
+      writeFileSync(join(session, 'chat_history.jsonl'), rows.map(row => JSON.stringify(row)).join('\n') + '\n')
+      const reply = grokHook({ hook_event_name: 'PostToolUse', hookEventName: 'post_tool_use', session_id: 'gk-2', tool_name: 'read_file', tool_use_id: id,
+        transcript_path: join(session, 'updates.jsonl'), tool_input: { target_file: 'a.ts' }, cwd: '/w',
+        toolResult: { type: 'ReadFile', FileContent: { content, content_concise: content, absolute_path: '/w/a.ts', offset: null, raw_output: 'x', total_lines: 80 } }, ...extra }, env)
+      const note = reply ? JSON.parse(reply).hookSpecificOutput.updatedToolOutput as string : undefined
+      rows.push({ type: 'tool_result', tool_call_id: id, content: note ?? content })
+      return note
+    }
+    const prompt = (i: number) => rows.push({ type: 'user', content: [{ type: 'text', text: 'next' }], prompt_index: i })
+    expect(read()).toBeUndefined()
+    expect(read()).toMatch(/^\[TokenWise: \/w\/a\.ts is unchanged/u)
+    expect(read()).toBeUndefined()
+    prompt(1); prompt(2)
+    expect(read()).toBeDefined() // two prompts since: Grok has not trimmed it
+    expect(read()).toBeUndefined()
+    prompt(3); prompt(4); prompt(5)
+    expect(read()).toBeUndefined() // three prompts since: Grok may have trimmed it
+    rows.splice(0, rows.length, { type: 'user', content: [{ type: 'text', text: 'summary' }], prompt_index: 6 }) // a compaction rewrote the history
+    expect(read()).toBeUndefined()
+    expect(read({ subagentType: 'explore' })).toBeUndefined()
+    expect(read({ subagentType: 'explore' })).toBeUndefined()
+  })
+
+  it('Copilot: a repeat view of one still in the session events is a note; old, compacted or a subagent\'s get the text', () => {
+    const home = temp()
+    const copilotHome = temp()
+    const env = { TOKENWISE_HOME: home, COPILOT_HOME: copilotHome }
+    mkdirSync(join(copilotHome, 'session-state', 'cp-3'), { recursive: true })
+    const events: unknown[] = []
+    let n = 0, clock = Date.now()
+    const view = (extra: { parent?: string; age?: number; sessionId?: string } = {}) => {
+      const id = `call_v${++n}`
+      events.push({ type: 'assistant.message', timestamp: new Date(clock).toISOString(), data: { toolRequests: [{ toolCallId: id, name: 'view' }] } })
+      writeFileSync(join(copilotHome, 'session-state', 'cp-3', 'events.jsonl'), events.map(event => JSON.stringify(event)).join('\n') + '\n')
+      const reply = copilotHook({ sessionId: extra.sessionId ?? 'cp-3', timestamp: clock, cwd: '/w', toolName: 'view', toolArgs: { path: '/w/a.ts' }, toolCallId: id,
+        toolResult: { resultType: 'success', textResultForLlm: content } }, env)
+      const note = reply ? JSON.parse(reply).modifiedResult.textResultForLlm as string : undefined
+      events.push({ type: 'tool.execution_complete', timestamp: new Date(clock - (extra.age ?? 0)).toISOString(),
+        data: { toolCallId: id, success: true, result: { content: note ?? content }, ...extra.parent ? { parentToolCallId: extra.parent } : {} } })
+      return note
+    }
+    expect(view()).toBeUndefined()
+    expect(view()).toMatch(/^\[TokenWise: \/w\/a\.ts is unchanged/u)
+    expect(view({ age: 10 * 60_000 })).toBeUndefined() // the note's next read: whole, and recorded as ten minutes old
+    expect(view()).toBeUndefined() // its earlier copy is too old to count on
+    events.push({ type: 'session.compaction_complete', timestamp: new Date(clock).toISOString(), data: {} })
+    expect(view()).toBeUndefined()
+    expect(view()).toBeDefined() // nothing taken away since the one before
+    // An earlier copy a subagent made (its events carry the parent's call) is not in this conversation's context.
+    expect(view({ parent: 'call_task' })).toBeUndefined()
+    expect(view()).toBeUndefined()
+    // A subagent's own session has no events of its own: never a repeat.
+    expect(view({ sessionId: 'cp-sub' })).toBeUndefined()
+    expect(view({ sessionId: 'cp-sub' })).toBeUndefined()
+  })
+})
+
+describe('Every tool through TokenWise: other tools journaled', () => {
+  it('Copilot journals any other tool\'s text, and Grok its list_dir listing, unchanged', () => {
+    const home = temp()
+    const env = { TOKENWISE_HOME: home }
+    expect(copilotHook({ sessionId: 'cp-4', timestamp: 1, cwd: '/w', toolName: 'web_fetch', toolArgs: { url: 'https://example.com' }, toolCallId: 'f1',
+      toolResult: { resultType: 'success', textResultForLlm: 'page text' } }, env)).toBeUndefined()
+    expect(grokHook({ hook_event_name: 'PostToolUse', hookEventName: 'post_tool_use', session_id: 'gk-4', tool_name: 'list_dir', tool_use_id: 'l1', tool_input: { target_directory: '.' },
+      toolResult: { type: 'ListDir', Content: { content: '- /w/\n  - a.ts', absolute_root_path: '/w' } } }, env)).toBeUndefined()
+    expect([...records(home, 'copilot'), ...records(home, 'grok')].map(record => [record.host, record.tool, record.outcome]))
+      .toEqual([['copilot', 'web_fetch', 'passed'], ['grok', 'list_dir', 'passed']])
   })
 })

@@ -7,9 +7,10 @@ import { cliContext } from './context.ts'
 import { savingsOf, type Period, type Savings, AGENT_NAMES } from './savings.ts'
 
 type Rgb = readonly [number, number, number]
-const C = { glass: [104, 136, 128] as Rgb, glint: [190, 216, 208] as Rgb, lid: [74, 104, 96] as Rgb, lidHi: [112, 146, 137] as Rgb,
-  rim: [[10, 92, 80], [15, 122, 106], [36, 150, 132]] as Rgb[], face: [[22, 153, 133], [45, 176, 155], [92, 200, 180]] as Rgb[],
-  shine: [226, 250, 243] as Rgb, accent: [61, 184, 162] as Rgb, soft: [128, 148, 142] as Rgb }
+// TokenWise's colours (Cyber Mint): a mint jar of gold coins, as in the logo.
+const C = { glass: [79, 227, 193] as Rgb, glint: [200, 255, 240] as Rgb, lid: [52, 160, 137] as Rgb, lidHi: [92, 206, 178] as Rgb,
+  rim: [[150, 100, 0], [196, 138, 0], [224, 165, 0]] as Rgb[], face: [[240, 180, 20], [255, 200, 50], [255, 222, 120]] as Rgb[],
+  shine: [255, 248, 220] as Rgb, accent: [79, 227, 193] as Rgb, soft: [128, 148, 142] as Rgb }
 const W = 32, H = 40
 type Grid = (Rgb | null)[][]
 
@@ -80,10 +81,6 @@ const TEXT = {
 
 export interface SavedOptions { readonly period?: Period; readonly language?: 'en' | 'zh'; readonly animate?: boolean; readonly color?: boolean; readonly json?: boolean }
 
-export function language(env: NodeJS.ProcessEnv = process.env): 'en' | 'zh' {
-  const tag = env.LC_ALL || env.LC_MESSAGES || env.LANG || Intl.DateTimeFormat().resolvedOptions().locale
-  return /^zh/iu.test(tag) ? 'zh' : 'en'
-}
 
 /** The jar and the words beside it, as text lines; `landed` coins of `slots` are drawn, and `flying` ones on their way. */
 export function frame(s: Savings, options: { language: 'en' | 'zh'; color: boolean; landed: number; shown: number; flying?: readonly { slot: number; t: number }[] }): string[] {
@@ -159,7 +156,8 @@ export async function saved(options: SavedOptions = {}): Promise<number> {
       buckets: s.buckets.map(b => ({ start: new Date(b.start).toISOString(), tokens: b.tokens })), since: s.since === null ? null : new Date(s.since).toISOString() }, null, 2) + '\n')
     return 0
   }
-  const lang = options.language ?? language()
+  // English unless asked for Chinese (`--lang zh`): TokenWise shows English whatever the locale.
+  const lang = options.language ?? 'en'
   const out = process.stdout
   const color = options.color ?? (out.isTTY === true && !process.env.NO_COLOR)
   const total = slots(fullRows(s)).length

@@ -1,12 +1,21 @@
 export { describeToolCall, EconomyEngine, evidenceAllowed, isPrepared, normalizeShellCommand } from './economy.ts'
 export type { CommandNormalizerOptions, EconomyEngineOptions, EconomyOutput, EconomyRequest, NativeEconomyRequest, Prepared } from './economy.ts'
 export { formatTokens, summarizeEconomy, summarizeShadow } from './receipts.ts'
+export { savedCard } from './card.ts'
+export type { CardStyle } from './card.ts'
 export type { EconomySummary, ShadowSummary } from './receipts.ts'
+export { markSavingsTold, toldSavings, untoldSavings } from './conversation.ts'
+export { contextOverheadTokens, overheadOf, recordCost, RECALL_PROMPT_SNIPPET, SKILL_DESCRIPTION } from './overhead.ts'
+export type { ConversationSavings } from './conversation.ts'
+export { backgroundCommand, rememberBackground } from './background.ts'
+export { passTool, rememberRead, repeatReadCandidate, repeatReadNote, repeatReadProjection, seenRead } from './repeat-read.ts'
+export type { SeenRead, ToolPass } from './repeat-read.ts'
+export type { BackgroundCommand } from './background.ts'
 export { collectSubagents, recordSubagent } from './subagents.ts'
 export type { Subagents } from './subagents.ts'
 export {
   boundedExcerpt, callLabel, catalogIds, checkpointAdmitted, checkpointRecord, cutNote, externalizeCut, fitCheckpoint, parseCheckpoint, planShadow, recallObservation,
-  economyReference, recallHint, recallIndex, referenceId, referenceIndex, renderCatalog, renderCheckpoint, renderRecall, serializeResidual,
+  economyReference, recallIndex, referenceId, referenceIndex, renderCatalog, renderCheckpoint, renderRecall,
   CATALOG_EXCERPTS, RECALL_TOOL_DESCRIPTION, RECALL_TOOL_NAME, SHADOW_ASSISTED_INSTRUCTION, SHADOW_EXCERPT_BYTES, SHADOW_RECALL_WINDOW_BYTES, SHADOW_SUMMARY_INSTRUCTION,
 } from './shadow.ts'
 export type { RecallArguments, RecallResult, ShadowMessage, ShadowOptions, ShadowPlan } from './shadow.ts'

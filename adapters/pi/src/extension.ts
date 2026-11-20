@@ -15,8 +15,9 @@ import { fileURLToPath } from 'node:url'
 import type { ExtensionAPI, ExtensionContext, ToolResultEvent, TurnEndEvent } from '@earendil-works/pi-coding-agent'
 import { sha256 } from '@tokenwise/core'
 import {
-  cancelEvolution, collectSubagents, describeToolCall, formatTokens, isPrepared, EconomyEngine, LEARNER_INSTRUCTION, nodeBinary, normalizeShellCommand, onPath,
-  outcomeSentence, readEvolveStatus, recordSubagent, RECALL_TOOL_NAME, refreshScan, startEvolution, summarizeEconomy, summarizeShadow, takeAnnouncement,
+  cancelEvolution, collectSubagents, describeToolCall, formatTokens, isPrepared, EconomyEngine, LEARNER_INSTRUCTION, markSavingsTold, nodeBinary,
+  normalizeShellCommand, onPath, outcomeSentence, overheadOf, readEvolveStatus, recordSubagent, refreshScan, startEvolution, summarizeEconomy, summarizeShadow,
+  repeatReadCandidate, savedCard, takeAnnouncement, untoldSavings,
 } from '@tokenwise/mechanisms'
 import type { BackgroundOptions, EvolveStatus, Prepared } from '@tokenwise/mechanisms'
 import { HOST_PROFILES, V0_2_SPECS, negotiate } from '@tokenwise/protocol'
@@ -27,11 +28,17 @@ import { bashShellResult } from './bash.ts'
 import { NATIVE_TOOLS, nativeResult } from './native.ts'
 import { evolveBadge, panelKey, renderPanel } from './panel.ts'
 import type { PanelData, PanelState } from './panel.ts'
+import { collapseRepeatReads, textOnly } from './repeat.ts'
 import { registerLightShadow } from './shadow.ts'
 import type { PiShadowOptions } from './shadow.ts'
 
 const HOST = 'pi'
 const STATUS_KEY = 'tokenwise'
+/** The card that says what a conversation saved, above the editor from the end of an answer to the next prompt. */
+const CARD_WIDGET = 'tokenwise-saved'
+/** How long the card fills: the coins drop in, the number counts up. */
+const CARD_FILL_MS = 1200
+const CARD_FRAME_MS = 60
 /**
  * Subagents run as `pi` processes started from this one (the subagent example
  * extension and packages built on it), so the session that starts them hands
@@ -93,8 +100,10 @@ interface SessionState {
   readonly pending: Map<string, Prepared>
   savedTokens: number
   projected: number
-  /** Saved in subagent sessions started from this one. */
+  /** Saved in subagent sessions started from this one, net of what TokenWise cost them. */
   subagentSavedTokens: number
+  /** What TokenWise put in front of the model in this session (`overheadOf`), as of the last turn with tool results. */
+  costTokens: number
 }
 
 export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
@@ -176,7 +185,7 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
       const stamp = sizes([sessionId, ...known])
       if (subagentCache?.root === sessionId && subagentCache.stamp === stamp) return subagentCache.saved
       const found = collectSubagents(read, sessionId)
-      const saved = summarizeEconomy(found.records).savedTokens
+      const saved = summarizeEconomy(found.records).savedTokens - overheadOf(found.records)
       // A newly found subagent changes the stamp's shape, so the next call reads once more.
       subagentCache = { root: sessionId, stamp, children: found.sessions, saved }
       return saved
@@ -195,10 +204,10 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
       })
       const mode = negotiated.find(item => item.mechanism === 'economy')!.mode
       const sessionId = ctx.sessionManager.getSessionId() || null
-      const shadowMode = negotiated.find(item => item.mechanism === 'lightshadow')!.mode
       const engine = mode === 'off' ? undefined : new EconomyEngine({ host: HOST, journal, artifacts, config: loaded.config.economy,
-        mode, delivery: 'in-process', streams: 'merged', learned: () => ruleStore.load(), recallHint: shadowMode === 'apply' })
-      const previous = sessionId ? summarizeEconomy(read(sessionId)) : undefined
+        mode, delivery: 'in-process', streams: 'merged', learned: () => ruleStore.load() })
+      const records = sessionId ? read(sessionId) : []
+      const previous = sessionId ? summarizeEconomy(records) : undefined
       try { collectDaily(dataDir, days => artifacts.prune(days), loaded.config.artifacts.retentionDays) } catch { /* Housekeeping only. */ }
       if (engine && sessionId) {
         if (inherited && inherited !== sessionId && !linked.has(sessionId)) {
@@ -212,7 +221,7 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
         normalize: negotiated.find(item => item.mechanism === 'command-normalization')!.mode === 'apply',
         shadow: negotiated.find(item => item.mechanism === 'lightshadow')!.mode,
         pending: new Map(), savedTokens: previous?.savedTokens ?? 0, projected: previous?.projected ?? 0,
-        subagentSavedTokens: engine ? subagentSaved(sessionId) : 0,
+        subagentSavedTokens: engine ? subagentSaved(sessionId) : 0, costTokens: overheadOf(records),
       }
     }
     const current = (ctx: ExtensionContext): SessionState => {
@@ -223,12 +232,12 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
     let lastEvolve: EvolveStatus | undefined
     const showStatus = (ctx: ExtensionContext, session: SessionState, evolve = lastEvolve) => {
       lastEvolve = evolve
-      const saved = session.savedTokens + session.subagentSavedTokens
+      const saved = session.savedTokens + session.subagentSavedTokens - session.costTokens
       if (!ctx.hasUI) return
       const badge = evolve ? evolveBadge(evolve, ctx.ui.theme, Date.now()) : ''
       // Nothing to show any more (a run ended, nothing saved yet): clear what was there.
       if (saved <= 0 && !badge) { ctx.ui.setStatus(STATUS_KEY, undefined); return }
-      ctx.ui.setStatus(STATUS_KEY, [saved > 0 ? `TokenWise −${formatTokens(saved)} tok` : 'TokenWise', badge].filter(Boolean).join(' · '))
+      ctx.ui.setStatus(STATUS_KEY, [saved > 0 ? `TokenWise saved ${formatTokens(saved)} tokens` : 'TokenWise', badge].filter(Boolean).join(' · '))
     }
 
     pi.on('session_start', (_event, ctx) => {
@@ -241,7 +250,36 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
       watch(ctx)
     })
 
+    // The end of an answer: what TokenWise saved in this conversation so far, when it grew since it was last said
+    // (kept on disk, so a restart, a resumed session or a switch back to this one does not say it again), as a card
+    // above the editor that fills in about a second and stays until the next prompt.
+    let cardTimer: ReturnType<typeof setInterval> | undefined
+    const stopCard = () => { if (cardTimer) clearInterval(cardTimer); cardTimer = undefined }
+    pi.on('agent_end', (_event, ctx) => {
+      const { engine, sessionId } = current(ctx)
+      if (!ctx.hasUI || !engine || !sessionId) return
+      try {
+        const savings = untoldSavings(read, readDirs, HOST, sessionId)
+        const frame = (progress: number) => savings && savedCard(savings, { color: !env.NO_COLOR, lines: true, progress })?.split('\n')
+        if (!savings || !frame(1)) return
+        markSavingsTold(dataDir, HOST, sessionId, savings.savedTokens)
+        stopCard()
+        const started = Date.now()
+        ctx.ui.setWidget(CARD_WIDGET, frame(0))
+        cardTimer = setInterval(() => {
+          const progress = Math.min(1, (Date.now() - started) / CARD_FILL_MS)
+          try { ctx.ui.setWidget(CARD_WIDGET, frame(progress)) } catch { stopCard() }
+          if (progress >= 1) stopCard()
+        }, CARD_FRAME_MS)
+      } catch { /* A courtesy. */ }
+    })
+    pi.on('agent_start', (_event, ctx) => {
+      stopCard()
+      if (ctx.hasUI) try { ctx.ui.setWidget(CARD_WIDGET, undefined) } catch { /* Already gone. */ }
+    })
+
     pi.on('session_shutdown', () => {
+      stopCard()
       if (watchTimer) clearTimeout(watchTimer)
       watchTimer = undefined
     })
@@ -279,12 +317,37 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
         const native = nativeResult(event)
         if (!native) return
         prepared = session.engine.prepare({ ...call, command: describeToolCall(event.toolName, event.input), native })
-      } else return
+      } else {
+        // A read is journaled when it is sent (context_with_system); any other tool's text as it is.
+        const text = event.toolName === 'read' || event.isError ? undefined : textOnly(event.content)
+        if (text) session.engine.process({ ...call, command: describeToolCall(event.toolName, event.input), native: { rendered: text, projection: undefined } })
+        return
+      }
       if (isPrepared(prepared)) {
         session.pending.set(event.toolCallId, prepared)
         if (session.pending.size > 256) session.pending.delete(session.pending.keys().next().value!)
       }
       // Return nothing: pi records the original result; the projection arrives at turn_end.
+    })
+
+    // Reads, decided anew for every request on the list pi is about to send (./repeat.ts): a repeat of a read still in
+    // that list goes as a note. Each read is journaled once, the first time it is sent.
+    const journaledReads = new Set<string>()
+    pi.on('context_with_system', (event, ctx) => {
+      try {
+        const session = current(ctx)
+        if (!session.engine || session.negotiated.find(item => item.mechanism === 'economy')?.mode !== 'apply') return undefined
+        const { messages, reads } = collapseRepeatReads(event.messages)
+        for (const read of reads) {
+          if (journaledReads.has(read.callId)) continue
+          journaledReads.add(read.callId)
+          if (journaledReads.size > 4096) journaledReads.delete(journaledReads.values().next().value!)
+          const what = (read.input as { path: string }).path
+          session.engine.process({ sessionId: session.sessionId, callId: read.callId, tool: 'read', command: describeToolCall('read', read.input),
+            native: { rendered: read.output, projection: read.collapsed ? repeatReadCandidate(read.output, what) : undefined } })
+        }
+        return messages ? { messages } : undefined
+      } catch { return undefined }
     })
 
     pi.on('turn_end', (event: TurnEndEvent, ctx) => {
@@ -296,7 +359,14 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
         try { session.subagentSavedTokens = subagentSaved(session.sessionId) } catch { /* Status only. */ }
         if (session.subagentSavedTokens !== before) showStatus(ctx, session)
       }
-      if (session.pending.size === 0) return
+      // Recalls and compactions are journaled as they happen, this turn's projections once committed below.
+      const refreshCost = (show: boolean) => {
+        if (event.toolResults.length === 0 || !session.sessionId) return
+        const before = session.costTokens
+        try { session.costTokens = overheadOf(read(session.sessionId)) } catch { /* Status only. */ }
+        if (show && session.costTokens !== before) showStatus(ctx, session)
+      }
+      if (session.pending.size === 0) { refreshCost(true); return }
       const drafts = []
       // Entry IDs are only trustworthy when pi resolved one for every tool result.
       const aligned = event.toolResultEntryIds.length === event.toolResults.length
@@ -312,11 +382,8 @@ export function createTokenWiseExtension(options: TokenWisePiOptions = {}) {
         session.projected++
         session.savedTokens += prepared.record.raw!.tokens - prepared.record.projected!.tokens
       }
+      refreshCost(drafts.length === 0)
       if (drafts.length === 0) return
-      // A shortened output names its original for tokenwise_recall: make sure the model can call it.
-      if (drafts.some(draft => draft.replacement.content[0]!.text.includes(RECALL_TOOL_NAME))) {
-        try { const active = pi.getActiveTools(); if (!active.includes(RECALL_TOOL_NAME)) pi.setActiveTools([...active, RECALL_TOOL_NAME]) } catch { /* Status only. */ }
-      }
       showStatus(ctx, session)
       // Keep entries other extensions added at this boundary.
       return { entries: [...event.entries, ...drafts] }

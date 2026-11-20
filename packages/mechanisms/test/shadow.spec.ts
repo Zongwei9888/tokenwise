@@ -198,6 +198,8 @@ describe('recall', () => {
     expect(Buffer.byteLength(window.text)).toBeLessThanOrEqual(8192)
     expect(big).toContain(window.text)
     expect(renderRecall(reference.id, window)).toMatch(/^\[o-[a-f0-9]{12}: lines \d+-\d+ of 2001\]/)
+    // Read in a shell, a window also says how to ask for another part.
+    expect(renderRecall(reference.id, window, 'command')).toMatch(/^\[o-[a-f0-9]{12}: lines \d+-\d+ of 2001; another part: tokenwise recall o-[a-f0-9]{12} --line N, or --query 'exact text'\]\n/)
     // A query in the wrong case still finds the line (agents lowercase what they search for); an exact match wins.
     const folded = recallObservation({ observation_id: reference.id, query: 'LINE 1000: VALUE' }, { lookup, artifacts })
     expect(folded).toMatchObject({ ok: true, text: expect.stringContaining('line 1000: value 7000') })

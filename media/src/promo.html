@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>TokenWise — works in every agent</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  /* The promo is the brand at night: deep teal ground, mint neon, the pixel jar everyone sees in `tokenwise saved`. */
+  :root { --night: #04110F; --deep: #071E1B; --neon: #4FE3C1; --neon2: #2FCFAA; --line: #4FE3C1; --soft: #9CC9C0; --white: #ECFDF8; }
+  body { background: radial-gradient(1200px 820px at 66% 50%, #0B2A26 0%, #071E1B 45%, var(--night) 100%); color: var(--white); }
+  .stage { position: absolute; inset: 0; overflow: hidden; }
+  .grid { position: absolute; inset: -40px; background-image: linear-gradient(rgba(79,227,193,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(79,227,193,.05) 1px, transparent 1px); background-size: 64px 64px; }
+  .scan { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.08) 0 2px, transparent 2px 4px); pointer-events: none; mix-blend-mode: multiply; }
+  .abs { position: absolute; }
+  #mark { left: 120px; top: 84px; font-size: 40px; color: var(--white); }
+  #copy { left: 120px; bottom: 112px; width: 820px; }
+  #copy .line { position: absolute; left: 0; bottom: 0; width: 820px; font-size: 96px; color: var(--white); }
+  #copy .line em { font-style: normal; color: var(--neon); text-shadow: 0 0 28px rgba(79,227,193,.45); }
+  #counter { right: 120px; top: 74px; text-align: right; }
+  #counter .lab { font-family: 'JetBrains Mono', monospace; font-size: 17px; letter-spacing: .14em; color: var(--soft); margin-top: 10px; text-transform: uppercase; }
+  .pix { filter: drop-shadow(0 0 10px rgba(79,227,193,.55)); }
+  .bar { position: absolute; height: 14px; border-radius: 7px; background: #2C5751; }
+  .coin { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; box-shadow: inset 0 0 0 4px rgba(0,0,0,.22), inset 0 -5px 0 rgba(0,0,0,.18), 0 0 14px var(--glow, rgba(79,227,193,.6)); }
+  .coin::after { content: ''; position: absolute; left: 7px; top: 6px; width: 8px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); }
+  .tile { position: absolute; width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 30px; background: #F3F4F6; box-shadow: 0 0 0 2px rgba(79,227,193,.0), 0 18px 40px rgba(0,0,0,.45); display: grid; place-items: center; }
+  .tile img { width: 100%; height: 100%; border-radius: 30px; }
+  .tile .name { position: absolute; top: 146px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-weight: 640; font-size: 22px; color: var(--white); }
+  .ring { position: absolute; border-radius: 50%; border: 3px solid var(--neon); }
+  /* agent windows */
+  .win { position: absolute; width: 1000px; height: 590px; margin: -295px 0 0 -500px; border-radius: 22px; background: #0F2624; border: 1px solid rgba(127,184,174,.28); box-shadow: 0 40px 90px rgba(0,0,0,.55); overflow: hidden; }
+  .win .top { height: 64px; display: flex; align-items: center; gap: 16px; padding: 0 22px; background: rgba(255,255,255,.04); border-bottom: 1px solid rgba(127,184,174,.16); }
+  .win .top img { width: 40px; height: 40px; border-radius: 10px; }
+  .win .top b { font-size: 24px; font-weight: 680; }
+  .win .top i { margin-left: auto; display: flex; gap: 9px; } .win .top i::before, .win .top i::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: rgba(236,253,248,.18); }
+  .win .body { padding: 30px 40px; position: relative; height: calc(100% - 64px); }
+  .win .ask { margin-left: auto; width: max-content; max-width: 70%; padding: 14px 22px; border-radius: 18px 18px 4px 18px; background: #1C4A45; font-size: 25px; }
+  .win .sk { height: 15px; border-radius: 8px; background: #23423F; margin-top: 18px; }
+  .card { position: absolute; left: 40px; right: 40px; bottom: 30px; padding: 18px 24px; border-radius: 16px; background: #071B1A; border: 1px solid rgba(79,227,193,.35);
+    font-family: 'JetBrains Mono', monospace; font-size: 23px; line-height: 1.32; white-space: pre; box-shadow: 0 0 34px rgba(79,227,193,.18); }
+  .card .f { color: #4A7D72; } .card .c1 { color: #FFD24A; } .card .c2 { color: #E0A500; } .card .b { color: #4FE3C1; } .card .e { color: #34423E; } .card .t { color: #4FE3C1; font-weight: 800; } .card .n { color: #A7FFE9; font-weight: 800; } .card .off { color: #46544F; }
+  /* weekly coins */
+  .day { position: absolute; bottom: 230px; width: 70px; margin-left: -35px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 19px; color: var(--soft); transform: translateY(44px); }
+  .badge { position: absolute; padding: 12px 22px; border-radius: 999px; background: #F2B705; color: #3D2E00; font-weight: 760; font-size: 26px; white-space: nowrap; box-shadow: 0 0 30px rgba(242,183,5,.5); }
+  /* end */
+  #end { inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  #end .big { font-size: 112px; color: var(--white); }
+  #end .tag { margin-top: 34px; font-size: 70px; color: var(--white); }
+  #end .tag em { font-style: normal; color: var(--neon); }
+  #end .cmd { margin-top: 46px; padding: 16px 34px; border-radius: 999px; border: 2px solid rgba(79,227,193,.6); font-family: 'JetBrains Mono', monospace; font-size: 32px; color: var(--neon); box-shadow: 0 0 30px rgba(79,227,193,.25); }
+  #end .row { margin-top: 44px; display: flex; gap: 16px; }
+  #end .row img { width: 54px; height: 54px; border-radius: 13px; }
+  #end .url { margin-top: 34px; font-size: 28px; color: var(--soft); font-weight: 520; }
+  #end .fine { position: absolute; bottom: 40px; font-size: 18px; color: rgba(156,201,192,.6); }
+</style></head>
+<body>
+<div class="stage">
+  <div class="grid" id="grid"></div>
+  <div class="abs" id="flood" style="inset:0"></div>
+  <div class="abs" id="layer" style="inset:0"></div>
+  <div class="abs" id="coins" style="inset:0"></div>
+  <div class="abs mark" id="mark"></div>
+  <div class="abs" id="counter"><div id="digits"></div><div class="lab">tokens saved</div></div>
+  <div class="abs" id="copy"></div>
+  <div class="abs" id="end"></div>
+  <div class="scan"></div>
+</div>
+<script type="module">
+import { LOGO } from './shared.js'
+
+// ---- timing: everything below is a pure function of t ----
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x))
+const outc = x => 1 - Math.pow(1 - x, 3)
+const inc = x => x * x * x
+const ease = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
+const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2) }
+const p = (t, a, b) => clamp((t - a) / (b - a))
+const lerp = (a, b, x) => a + (b - a) * x
+const win = (t, a, b, f = .45) => Math.min(outc(p(t, a, a + f)), 1 - p(t, b - f, b))
+const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let x = Math.imul(seed ^ seed >>> 15, 1 | seed); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x; return ((x ^ x >>> 14) >>> 0) / 4294967296 }
+const fmt = n => Math.round(n).toLocaleString('en-US')
+
+window.DURATION = 35.5
+// [from, to] of each part
+const S = { flood: [0, 7.6], ring: [7.2, 14.4], apps: [14, 23.7], week: [23.2, 27.8], jar: [27.4, 31.4], end: [31, 35.5] }
+
+// The agents, each with the colour its coins take (its own brand colour, or one that reads on the night ground).
+const AG = [
+  ['claude-code', 'Claude Code', '#D97757'], ['codex', 'Codex', '#7A9DFF'], ['copilot', 'GitHub Copilot', '#A371F7'],
+  ['hermes', 'Hermes Agent', '#F472B6'], ['opencode', 'OpenCode', '#CBD5E1'], ['codebuddy', 'CodeBuddy', '#2EA99D'],
+  ['grok', 'Grok Build', '#F8FAFC'], ['dsh', 'DeepSeek Harness', '#4D6BFE'], ['pi', 'pi', '#F1BE58'],
+]
+// TokenWise's own coins are gold, as in the logo.
+const TEAL = ['#FFD24A', '#FFC21A', '#FFE07A']
+
+// ---- pixel art: the jar `tokenwise saved` draws, and pixel digits ----
+const JAR = [
+  '.....############.....',
+  '.....############.....',
+  '......##########......',
+  '.......#........#.....',
+  '.......#........#.....',
+  '.....###........###...',
+  '...###............###.',
+  '..##................##',
+  '..#..................#',
+  '..#..................#',
+  '..#..................#',
+  '..#..................#',
+  '..#..................#',
+  '..#..................#',
+  '..#..................#',
+  '..#..................#',
+  '..#..................#',
+  '..##................##',
+  '...##################.',
+]
+const JAR_W = 22, JAR_H = JAR.length
+function jarSvg(px, color = '#4FE3C1') {
+  let rects = ''
+  JAR.forEach((row, y) => [...row].forEach((c, x) => { if (c === '#') rects += `<rect x="${x * px}" y="${y * px}" width="${px + .5}" height="${px + .5}"/>` }))
+  return `<svg width="${JAR_W * px}" height="${JAR_H * px}" fill="${color}" style="overflow:visible">${rects}</svg>`
+}
+const DIG = { 0: ['01110', '10001', '10011', '10101', '11001', '10001', '01110'], 1: ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
+  2: ['01110', '10001', '00001', '00110', '01000', '10000', '11111'], 3: ['11110', '00001', '00001', '01110', '00001', '00001', '11110'],
+  4: ['00010', '00110', '01010', '10010', '11111', '00010', '00010'], 5: ['11111', '10000', '11110', '00001', '00001', '10001', '01110'],
+  6: ['00110', '01000', '10000', '11110', '10001', '10001', '01110'], 7: ['11111', '00001', '00010', '00100', '01000', '01000', '01000'],
+  8: ['01110', '10001', '10001', '01110', '10001', '10001', '01110'], 9: ['01110', '10001', '10001', '01111', '00001', '00010', '01100'],
+  ',': ['000', '000', '000', '000', '011', '011', '010', '100'] }
+function digitsSvg(text, px = 7, color = '#4FE3C1') {
+  let x = 0, rects = ''
+  for (const ch of text) {
+    const g = DIG[ch]; if (!g) continue
+    g.forEach((row, y) => [...row].forEach((c, i) => { if (c === '1') rects += `<rect x="${x + i * px}" y="${y * px}" width="${px - 1}" height="${px - 1}"/>` }))
+    x += (g[0].length + 1) * px
+  }
+  return `<svg class="pix" width="${x}" height="${8 * px}" fill="${color}">${rects}</svg>`
+}
+
+// ---- static parts ----
+document.getElementById('mark').innerHTML = `${LOGO}<span>TokenWise</span>`
+const COPY = [
+  [0.5, 4.2, 'Your AI agents<br>read <em>a lot.</em>'],
+  [4.5, 7.4, 'TokenWise trims<br>the <em>noise.</em>'],
+  [7.6, 14.2, 'Works in the agents<br>you <em>already use.</em>'],
+  [14.4, 23.4, 'Every answer,<br>see what you <em>saved.</em>'],
+  [23.6, 27.6, 'It learns.<br>Saves <em>more</em> each week.'],
+  [27.8, 31.2, 'All in<br><em>one jar.</em>'],
+]
+const copyEl = document.getElementById('copy')
+copyEl.innerHTML = COPY.map(c => `<div class="line display">${c[2]}</div>`).join('')
+const copyLines = [...copyEl.children]
+const layer = document.getElementById('layer'), coinsEl = document.getElementById('coins'), floodEl = document.getElementById('flood')
+const el = (cls, html = '', parent = layer) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; parent.appendChild(d); return d }
+const coin = (color, parent = coinsEl) => { const c = el('coin', '', parent); c.style.background = color; c.style.setProperty('--glow', color + 'AA'); return c }
+
+// Scene 1: a flood of text the agents read (shapes of lines, not words).
+const r1 = rng(7)
+const BARS = Array.from({ length: 70 }, () => ({ x: 860 + r1() * 980, w: 80 + r1() * 360, v: 260 + r1() * 420, y0: -200 - r1() * 1500, c: r1() }))
+const bars = BARS.map(b => { const d = el('bar', '', floodEl); d.style.width = b.w + 'px'; d.style.left = b.x + 'px'; d.style.background = b.c > .85 ? '#3E7C73' : b.c > .5 ? '#2C5751' : '#1F403C'; return d })
+// The jar that drops in, and the coins the flood turns into.
+const CX = 1260, CY = 560
+const bigJar = el('abs', jarSvg(20)); bigJar.style.left = (CX - JAR_W * 10) + 'px'
+const jarInside = el('abs', '', layer)
+const FLOODCOINS = Array.from({ length: 26 }, (_, i) => ({ i, x: 900 + rng(40 + i)() * 900, y: 150 + rng(80 + i)() * 520, t: 4.7 + i * .085 }))
+const fc = FLOODCOINS.map((c, i) => coin(TEAL[i % 3]))
+
+// Scene 2: the ring of agents around the jar.
+const RING_R = 360
+const ring = AG.map(([id, name, color], i) => {
+  const a = -Math.PI / 2 + i * 2 * Math.PI / AG.length
+  const tile = el('tile', `<img src="agents/${id}.svg" alt=""><div class="name">${name}</div>`)
+  const halo = el('ring', '')
+  const c = coin(color)
+  return { id, name, color, x: CX + Math.cos(a) * RING_R, y: CY + Math.sin(a) * RING_R * .86, tile, halo, c, t: 7.9 + i * .52 }
+})
+
+// Scene 3: one agent window after another, each ending with the card TokenWise shows there.
+const CARDS = [['claude-code', 1999, 91], ['codex', 954, 83], ['pi', 3464, 96], ['opencode', 2077, 89], ['copilot', 1479, 98], ['grok', 2402, 78], ['codebuddy', 1583, 89], ['hermes', 1905, 88], ['dsh', 12297, 69]]
+const SLOTS = []
+{ let t = 14.4; CARDS.forEach((_, i) => { const d = i < 3 ? 1.9 : .55; SLOTS.push([t, t + d]); t += d }) }
+const cardHtml = (n, share, k) => {
+  const coins = Math.round(Math.max(1, Math.round(share / 100 * 6)) * k), on = Math.round(share / 10 * k)
+  const cell = (i, e) => i < coins ? `<span class="c${i % 2 + 1}">●</span>` : `<span class="e">${e}</span>`
+  return `<span class="f"> ▗▄▄▖</span>\n<span class="f">▗▛</span>${cell(4, '░')}${cell(5, '░')}<span class="f">▜▖</span> <span class="t">TokenWise</span> · saved <span class="n">${fmt(n * outc(k))}</span> tokens in this conversation\n<span class="f">▐</span>${[0, 1, 2, 3].map(i => cell(i, '·')).join('')}<span class="f">▌</span> <span class="b">${'▰'.repeat(on)}</span><span class="off">${'▱'.repeat(10 - on)}</span> tool output ${share}% shorter`
+}
+const ASKS = ['Fix the failing test', 'Why is the build red?', 'Clean up the search code', 'Add tests for the parser', 'Update the dependencies', 'Find where we log errors', 'Make the CLI faster', 'Review my last commit', 'Ship the 2048 game']
+const wins = CARDS.map(([id], i) => {
+  const [, name] = AG.find(a => a[0] === id)
+  const w = el('win', `<div class="top"><img src="agents/${id}.svg" alt=""><b>${name}</b><i></i></div><div class="body"><div class="ask">${ASKS[i]}</div>
+    ${[0.92, 0.78, 0.86, 0.55, 0.7].map(f => `<div class="sk" style="width:${f * 100}%"></div>`).join('')}<div class="card"></div></div>`)
+  return { w, card: w.querySelector('.card'), sks: [...w.querySelectorAll('.sk')], c: coin(AG.find(a => a[0] === id)[2]) }
+})
+
+// Scene 4: a week of savings, growing once TokenWise learns.
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], HEIGHTS = [4, 5, 5, 8, 10, 11, 13]
+const WX = i => 980 + i * 118
+const weekCoins = DAYS.map((d, i) => { const lab = el('day', d); lab.style.left = WX(i) + 'px'; return { lab, coins: Array.from({ length: HEIGHTS[i] }, (_, k) => coin(i >= 3 ? TEAL[k % 3] : '#3E7C73')) } })
+const badge = el('badge', '✦ New trick learned')
+
+// Scene 5: every agent pours its coins into one jar.
+const POUR = AG.flatMap(([, , color], i) => Array.from({ length: 6 }, (_, k) => ({ i, color, t: 27.7 + k * .42 + i * .045 })))
+POUR.sort((a, b) => a.t - b.t)
+const pourCoins = POUR.map(c => coin(c.color))
+const SLOT = n => { const col = n % 9, row = Math.floor(n / 9); return { x: CX - 176 + col * 44 + (row % 2) * 22, y: CY + 168 - row * 38 } }
+
+// End card.
+const end = document.getElementById('end')
+end.innerHTML = `<div class="big mark" id="endmark">${LOGO}<span>TokenWise</span></div>
+  <div class="tag display">Spend tokens on <em>thinking</em>, not reading.</div>
+  <div class="cmd">tokenwise setup</div>
+  <div class="row">${AG.map(([id]) => `<img src="agents/${id}.svg" alt="">`).join('')}</div>
+  <div class="url">github.com/HKUDS/TokenWise · stays on your machine · open source</div>
+  <div class="fine">Works with these agents. Logos belong to their owners.</div>`
+
+// Where the jar's centre goes as it becomes the end card's logo.
+const MORPH = { ox: CX, oy: CY - JAR_H * 10 + 10 + JAR_H * 20 * .6, dx: 683 - CX, dy: 348 - (CY - JAR_H * 10 + 10 + JAR_H * 20 * .6) }
+const set = (node, o, x, y, s = 1, extra = '') => { node.style.opacity = o.toFixed(3); node.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${s.toFixed(3)}) ${extra}` }
+const place = (node, x, y) => { node.style.left = x + 'px'; node.style.top = y + 'px' }
+const bez = (a, c, b, k) => ({ x: (1 - k) ** 2 * a.x + 2 * (1 - k) * k * c.x + k * k * b.x, y: (1 - k) ** 2 * a.y + 2 * (1 - k) * k * c.y + k * k * b.y })
+
+// The counter keeps counting whatever the scene: it follows you from agent to agent.
+const counterValue = t => {
+  const ring_ = AG.length * 380 * outc(p(t, 7.9, 13.2))
+  const apps = CARDS.reduce((s, [, n], i) => s + n * outc(p(t, SLOTS[i][1] - .5, SLOTS[i][1] + .25)), 0)
+  const week = 9800 * ease(p(t, 23.8, 27.4))
+  const jar = 61000 * ease(p(t, 27.8, 31.2))
+  return ring_ + apps + week + jar
+}
+
+window.render = t => {
+  // copy
+  copyLines.forEach((line, i) => { const [a, b] = COPY[i]; const o = win(t, a, b, .4); line.style.opacity = o.toFixed(3); line.style.transform = `translateY(${((1 - outc(p(t, a, a + .5))) * 26).toFixed(1)}px)` })
+  document.getElementById('grid').style.transform = `translateY(${(t * 10) % 64}px)`
+  const markO = 1 - p(t, 31.3, 31.7); document.getElementById('mark').style.opacity = markO
+  // counter: from the first agent to the end card
+  const cO = Math.min(outc(p(t, 7.7, 8.3)), 1 - p(t, 31.2, 31.7))
+  const ctr = document.getElementById('counter'); ctr.style.opacity = cO.toFixed(3)
+  if (cO > 0) document.getElementById('digits').innerHTML = digitsSvg(fmt(counterValue(t)), 8)
+
+  // ---- 1: the flood, then the jar ----
+  const floodO = 1 - p(t, 4.4, 5.6)
+  bars.forEach((b, i) => {
+    const B = BARS[i]; let y = (B.y0 + B.v * t) % 1300; if (y < -60) y += 1300
+    const k = p(t, 4.3 + (i % 9) * .05, 5.3 + (i % 9) * .05)
+    const tx = lerp(0, CX - B.x - B.w / 2, inc(k)), ty = lerp(y, 260, inc(k))
+    b.style.opacity = (floodO * (t < .2 ? t / .2 : 1)).toFixed(3)
+    b.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scaleX(${lerp(1, .08, inc(k)).toFixed(3)})`
+  })
+  // the jar drops in at 4.2 and stays to the end of the ring scene; it returns large for the pour
+  const drop = back(p(t, 4.1, 4.9))
+  const jarY = lerp(-500, CY - JAR_H * 10, drop)
+  const jarO = Math.min(p(t, 4.1, 4.3), 1 - p(t, 13.9, 14.4)) + Math.min(p(t, 27.4, 27.8), 1 - p(t, 31.0, 31.4))
+  const morph = ease(p(t, 30.55, 31.35))
+  const jarS = t < 20 ? (t < 7.2 ? 1 : lerp(1, .62, ease(p(t, 7.2, 8.0)))) : lerp(1.32, .3, morph)
+  bigJar.style.opacity = clamp(jarO).toFixed(3)
+  bigJar.style.top = (t < 20 ? jarY : CY - JAR_H * 10 + 10) + 'px'
+  bigJar.style.transform = `translate(${(MORPH.dx * (t < 20 ? 0 : morph)).toFixed(1)}px, ${(MORPH.dy * (t < 20 ? 0 : morph)).toFixed(1)}px) scale(${jarS.toFixed(3)})`; bigJar.style.transformOrigin = '50% 60%'
+  bigJar.style.filter = `drop-shadow(0 0 ${lerp(8, 26, p(t, 4.6, 5.2) * (1 - p(t, 6.5, 7.2))).toFixed(0)}px rgba(79,227,193,.7))`
+  fc.forEach((c, i) => {
+    const F = FLOODCOINS[i], k = p(t, F.t, F.t + .75)
+    const to = { x: CX + ((i % 7) - 3) * 30, y: CY + 120 - Math.floor(i / 7) * 32 }
+    const pos = bez({ x: F.x, y: F.y }, { x: (F.x + CX) / 2, y: 120 }, to, outc(k))
+    c.style.opacity = (k > 0 ? 1 : 0) * (1 - p(t, 7.0, 7.5))
+    place(c, pos.x, pos.y)
+  })
+
+  // ---- 2: the ring ----
+  ring.forEach((r, i) => {
+    const k = back(p(t, r.t, r.t + .5)), o = Math.min(p(t, r.t, r.t + .2), 1 - p(t, 13.9, 14.4))
+    set(r.tile, o, r.x - 66 + 66, r.y - 66 + 66, k)
+    place(r.tile, 0, 0)
+    const hk = p(t, r.t + .05, r.t + .7)
+    r.halo.style.width = r.halo.style.height = (132 + hk * 120) + 'px'
+    place(r.halo, r.x - (132 + hk * 120) / 2, r.y - (132 + hk * 120) / 2)
+    r.halo.style.opacity = (hk > 0 && hk < 1 ? (1 - hk) * .8 : 0).toFixed(3)
+    r.halo.style.borderColor = r.color
+    const ck = p(t, r.t + .25, r.t + 1.0)
+    const pos = bez({ x: r.x, y: r.y }, { x: (r.x + CX) / 2, y: Math.min(r.y, CY) - 220 }, { x: CX, y: CY - 30 }, ease(ck))
+    r.c.style.opacity = (ck > 0 && ck < 1 ? 1 : 0).toFixed(3)
+    place(r.c, pos.x, pos.y)
+  })
+
+  // ---- 3: agent windows, one after another ----
+  wins.forEach((w, i) => {
+    const [a, b] = SLOTS[i], center = i - (() => { let c = 0; SLOTS.forEach(([s, e], j) => { c += clamp((t - (e - (j < 3 ? .45 : .22))) / (j < 3 ? .45 : .22)) }); return c })()
+    const vis = Math.min(p(t, 14.0, 14.5), 1 - p(t, 23.3, 23.7))
+    // The window in front is solid; the ones beside it peek out, smaller and dim, behind it.
+    const ac = Math.abs(center)
+    const x = CX + center * 790, s = lerp(1, .7, clamp(ac)), o = vis * lerp(1, .28, clamp((ac - .25) / .75)) * (ac > 1.6 ? 0 : 1)
+    w.w.style.left = x + 'px'; w.w.style.top = (CY - 40) + 'px'; w.w.style.zIndex = String(100 - Math.round(Math.abs(center) * 10))
+    w.w.style.opacity = o.toFixed(3); w.w.style.transform = `scale(${s.toFixed(3)})`
+    w.sks.forEach((sk, j) => { sk.style.opacity = p(t, a - .3 + j * (i < 3 ? .12 : .03), a - .1 + j * (i < 3 ? .12 : .03)).toFixed(3) })
+    const ck = p(t, a + (i < 3 ? .75 : .05), a + (i < 3 ? 1.55 : .4))
+    w.card.style.opacity = (i < 3 ? outc(p(t, a + .7, a + .95)) : 1).toFixed(3)
+    w.card.innerHTML = cardHtml(CARDS[i][1], CARDS[i][2], i < 3 ? ck : 1)
+    // a coin from the card up to the counter
+    const fk = p(t, b - .5, b + .25)
+    const from = { x: x - 300, y: CY + 200 }, to = { x: 1700, y: 120 }
+    const pos = bez(from, { x: (from.x + to.x) / 2, y: 60 }, to, ease(fk))
+    w.c.style.opacity = (fk > 0 && fk < 1 && vis > 0 ? 1 : 0).toFixed(3)
+    place(w.c, pos.x, pos.y)
+  })
+
+  // ---- 4: the week ----
+  const weekO = Math.min(p(t, 23.3, 23.8), 1 - p(t, 27.3, 27.7))
+  weekCoins.forEach((d, i) => {
+    d.lab.style.opacity = weekO.toFixed(3)
+    d.coins.forEach((c, k) => {
+      const at = 23.7 + i * .38 + k * .045, ck = outc(p(t, at, at + .35))
+      c.style.opacity = (weekO * (ck > 0 ? 1 : 0)).toFixed(3)
+      place(c, WX(i), lerp(300, 850 - k * 30, ck))
+    })
+  })
+  const bk = back(p(t, 24.85, 25.3))
+  badge.style.opacity = (Math.min(p(t, 24.8, 25.0), 1 - p(t, 27.2, 27.6))).toFixed(3)
+  place(badge, WX(3) - 90, 850 - 9 * 30 - 70); badge.style.transform = `scale(${lerp(.4, 1, bk).toFixed(3)})`
+
+  // ---- 5: the pour ----
+  const pourO = Math.min(p(t, 27.4, 27.7), 1 - p(t, 30.6, 31.1))
+  ring.forEach((r, i) => {
+    if (t < 27.3) return
+    const a = Math.PI + (i + .5) * Math.PI / AG.length
+    const x = CX + Math.cos(a) * 560, y = CY + 40 + Math.sin(a) * 430
+    const k = back(p(t, 27.4 + i * .05, 27.9 + i * .05))
+    r.tile.style.opacity = pourO.toFixed(3); r.tile.style.transform = `translate(${x}px, ${y}px) scale(${(.78 * k).toFixed(3)})`
+    r.halo.style.opacity = 0; r.c.style.opacity = 0
+  })
+  pourCoins.forEach((c, n) => {
+    const P = POUR[n], k = p(t, P.t, P.t + .7)
+    if (t < 27.3) { c.style.opacity = 0; return }
+    const a = Math.PI + (P.i + .5) * Math.PI / AG.length
+    const from = { x: CX + Math.cos(a) * 560, y: CY + 40 + Math.sin(a) * 430 }
+    const slot = SLOT(n), pos = bez(from, { x: (from.x + CX) / 2, y: CY - 380 }, k < .7 ? { x: CX, y: CY - 230 } : slot, k < .7 ? ease(k / .7) : 1)
+    const fall = k < .7 ? pos : { x: lerp(CX, slot.x, outc((k - .7) / .3)), y: lerp(CY - 230, slot.y, outc((k - .7) / .3)) }
+    // The coins ride the jar as it shrinks into the logo.
+    const m = ease(p(t, 30.55, 31.35)), ks = lerp(1.32, .3, m) / 1.32
+    c.style.opacity = (k > 0 ? Math.min(1, 1 - p(t, 31.0, 31.4)) : 0).toFixed(3)
+    place(c, MORPH.ox + (fall.x - MORPH.ox) * ks + MORPH.dx * m, MORPH.oy + (fall.y - MORPH.oy) * ks + MORPH.dy * m)
+    c.style.transform = `scale(${ks.toFixed(3)})`
+  })
+
+  // ---- 6: end card ----
+  const eO = outc(p(t, 31.0, 31.7)); end.style.opacity = eO.toFixed(3)
+  end.style.transform = `translateY(${((1 - eO) * 24).toFixed(1)}px)`
+  const em = document.getElementById('endmark'); em.style.transform = `scale(${lerp(.4, 1, back(p(t, 31.0, 31.7))).toFixed(3)})`
+}
+window.render(0)
+await Promise.all([...document.images].map(img => img.complete ? null : new Promise(r => { img.onload = img.onerror = r })))
+window.ready = true
+</script></body></html>

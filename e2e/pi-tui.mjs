@@ -94,7 +94,7 @@ export async function runPiTui({ cache, root, registry, log }) {
   try {
     run(pi, ['install', 'npm:@tokenwise/pi'], { cwd: base, env })
 
-    // 1. A TUI session: the status bar shows the savings, the /tokenwise panel and report explain them.
+    // 1. A TUI session: the card above the editor and the status bar show the savings, the /tokenwise panel and report explain them.
     const session = terminal('tokenwise-pi-tui', { cwd: work, env: vars, command: [pi, '--provider', 'mock', '--model', 'mock-model'] })
     const shots = join(base, 'screens')
     mkdirSync(shots, { recursive: true })
@@ -103,7 +103,8 @@ export async function runPiTui({ cache, root, registry, log }) {
       await session.waitFor(/mock-model/, 'pi to start')
       session.keys('Run the fixture commands.', 'Enter')
       await session.waitFor(/^ ?done\s*$/m, 'the scripted turn to finish', 120_000)
-      await session.waitFor(/TokenWise −\d/, 'the TokenWise status')
+      await session.waitFor(/TokenWise · saved [\d,]+ tokens in this conversation/, 'the TokenWise card above the editor')
+      await session.waitFor(/TokenWise saved \d/, 'the TokenWise status')
       session.keys('/tokenwise')
       await session.waitFor(/tokenwise .*TokenWise: savings, learned rules and learning/, '/tokenwise in the command list')
       session.keys('Enter')
@@ -112,7 +113,7 @@ export async function runPiTui({ cache, root, registry, log }) {
       await session.closePanel()
       session.keys('/tokenwise status', 'Enter')
       await session.waitFor(/TokenWise output: 3 outputs filtered, ~\S+ tokens saved, 1 passed unchanged/, 'the /tokenwise status report')
-      log(`pi ${version} TUI: status bar ✓ /tokenwise panel ✓ /tokenwise status ✓`)
+      log(`pi ${version} TUI: card ✓ status bar ✓ /tokenwise panel ✓ /tokenwise status ✓`)
 
       // 1b. Learning from the panel: evidence from this session, "l" and "y", a learner (pi itself, on the
       // session's model) writes a rule in the background, the panel and footer follow it, and pi announces the
@@ -128,7 +129,7 @@ export async function runPiTui({ cache, root, registry, log }) {
         if (Date.now() > deadline) throw new Error(`pi TUI: the link runs were not recorded\n${session.screen()}`)
         await new Promise(resolve => setTimeout(resolve, 250))
       }
-      await session.waitFor(/TokenWise −\d/, 'the status after the link runs')
+      await session.waitFor(/TokenWise saved \d/, 'the status after the link runs')
       session.keys('/tokenwise', 'Enter')
       await session.waitFor(/✦ Ready to learn[\s\S]*Worth learning +\.\/link\.sh +3 outputs/, 'the panel to suggest learning', 60_000)
       keep('02-panel-ready')

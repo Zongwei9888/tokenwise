@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "TokenWise",
-    "description": "在模型读取前精简测试、构建、diff 和搜索输出，原文与失败信息全部保留。"
+    "description": "Shrinks test, build, diff and search output before the model reads it. Keeps the original and every failure."
   }
 }

@@ -68,7 +68,7 @@ describe('DSH plugin entry', () => {
     const { ctx, others, tools } = fakeContext()
     apply(ctx, { mode: live('apply'), inlineLimitChars: 48_000 })
     expect(tools.map(tool => tool.name)).toEqual(['tokenwise_recall'])
-    expect(others.map(item => [item.event, item.options])).toEqual([['agent/created', { global: true }], ['agent/pre-step', { global: true, prepend: true }]])
+    expect(others.map(item => [item.event, item.options])).toEqual([['agent/created', { global: true }], ['agent/pre-step', { global: true, prepend: true }], ['session/event', { global: true }]])
     // The pre-step listener only looks; it always hands on to DSH.
     await expect(others[1]!.listener({}, async () => 'continued')).resolves.toBe('continued')
     const output = await tools[0]!.execute({ observation_id: 'o-000000000000' }, { callId: 'c', agent: { session: { id: 's1' } } })

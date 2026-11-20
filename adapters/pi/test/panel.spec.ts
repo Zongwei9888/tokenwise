@@ -2,9 +2,10 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { visibleWidth } from '@earendil-works/pi-tui'
 import { sha256 } from '@tokenwise/core'
+import { contextOverheadTokens, savedCard } from '@tokenwise/mechanisms'
 import type { EvolveStatus } from '@tokenwise/mechanisms'
 import { FileArtifactStore, FileJournal, RuleStore, removeTree } from '@tokenwise/store'
 import { createTokenWiseExtension } from '../src/extension.ts'
@@ -99,12 +100,15 @@ function fakePi() {
   }
   const notes: { text: string; level: string }[] = []
   const statuses: string[] = []
+  /** Every widget content set, in order; undefined when one is taken away. */
+  const widgets: { key: string; lines: string[] | undefined }[] = []
   const ctx = {
     cwd: tmpdir(), hasUI: true, mode: 'rpc', model: { provider: 'faux', id: 'faux-model' },
     sessionManager: { getSessionId: () => 's1', getBranch: () => [] },
-    ui: { theme: plain, notify: (text: string, level = 'info') => notes.push({ text, level }), setStatus: (_key: string, text: string) => statuses.push(text), confirm: async () => true },
+    ui: { theme: plain, notify: (text: string, level = 'info') => notes.push({ text, level }), setStatus: (_key: string, text: string) => statuses.push(text), confirm: async () => true,
+      setWidget: (key: string, lines: string[] | undefined) => { widgets.push({ key, lines }) } },
   }
-  return { api, handlers, commands, ctx, notes, statuses }
+  return { api, handlers, commands, ctx, notes, statuses, widgets }
 }
 
 const progress = (seed: number) => Array.from({ length: 120 }, (_, i) => `[${String(i + 1).padStart(3)}/120] Compiling crate_${seed}_${i}`).join('\n') + '\nFinished\n'
@@ -157,4 +161,49 @@ JS
     expect(new RuleStore(home).state().active).toMatch(/^[a-f0-9]{64}$/)
     await pi.handlers.get('session_shutdown')!({}, pi.ctx)
   }, 60_000)
+})
+
+describe('what a pi conversation saved', () => {
+  it('is said when an answer ends, and again only once it grew, also across a restart', async () => {
+    const home = temp()
+    const decision = (raw: number, read: number) => new FileJournal(home).append({ schemaVersion: 1, type: 'economy/decision', time: new Date().toISOString(),
+      host: 'pi', sessionId: 's1', callId: `c${raw}`, tool: 'bash', command: 'pytest', exitCode: 1, delivery: 'in-process', streams: 'merged', mode: 'apply',
+      outcome: 'projected', runtimeVersion: 'v', policyHash: 'p', raw: { sha256: 'a', bytes: raw * 4, tokens: raw, stored: true }, projected: { sha256: 'b', bytes: read * 4, tokens: read } } as never)
+    decision(3000, 300)
+    const pi = fakePi()
+    createTokenWiseExtension({ dataDir: home, env: { ...process.env, TOKENWISE_HOME: home, LANG: 'en_US.UTF-8' } })(pi.api as never)
+    await pi.handlers.get('session_start')!({}, pi.ctx)
+    // The card fills on a timer: run it with fake time.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    try {
+      await pi.handlers.get('agent_end')!({}, pi.ctx)
+      await pi.handlers.get('agent_end')!({}, pi.ctx)
+      // Net of what TokenWise's own text cost the conversation: nothing here, since pi shows the recall tool only after a compaction.
+      const cost = contextOverheadTokens('pi', false)
+      expect(cost).toBe(0)
+      const card = (saved: number, seen: number, progress = 1) => savedCard({ savedTokens: saved - cost, seenTokens: seen }, { color: true, lines: true, progress })!.split('\n')
+      const cards = () => pi.widgets.filter(widget => widget.key === 'tokenwise-saved')
+      // It starts empty, fills, and stays; the second agent_end, with nothing more saved, adds nothing.
+      expect(cards()[0]!.lines).toEqual(card(2700, 3000, 0))
+      vi.advanceTimersByTime(1500)
+      expect(cards().at(-1)!.lines).toEqual(card(2700, 3000))
+      expect(cards().length).toBeGreaterThan(5)
+      const shown = cards().length
+      vi.advanceTimersByTime(1500)
+      expect(cards()).toHaveLength(shown)
+      // The next prompt takes it away; an answer that saved more brings it back with the new number.
+      await pi.handlers.get('agent_start')!({}, pi.ctx)
+      expect(cards().at(-1)!.lines).toBeUndefined()
+      decision(1000, 100)
+      await pi.handlers.get('agent_end')!({}, pi.ctx)
+      vi.advanceTimersByTime(1500)
+      expect(cards().at(-1)!.lines).toEqual(card(3600, 4000))
+      // pi restarted on the same session (`pi -c`): the number is kept on disk, so it is not said again.
+      const again = fakePi()
+      createTokenWiseExtension({ dataDir: home, env: { ...process.env, TOKENWISE_HOME: home, LANG: 'en_US.UTF-8' } })(again.api as never)
+      await again.handlers.get('session_start')!({}, again.ctx)
+      await again.handlers.get('agent_end')!({}, again.ctx)
+      expect(again.widgets.filter(widget => widget.key === 'tokenwise-saved')).toEqual([])
+    } finally { vi.useRealTimers() }
+  })
 })

@@ -26,12 +26,6 @@ function send(response: ServerResponse, status: number, body: string, type = 'ap
 
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b))
 
-/** The language to start in: the browser's first choice, else this machine's. */
-export function startLanguage(acceptLanguage: string | undefined, locale = Intl.DateTimeFormat().resolvedOptions().locale): 'en' | 'zh' {
-  const first = acceptLanguage?.split(',')[0]?.trim() || locale
-  return /^zh\b/iu.test(first) ? 'zh' : 'en'
-}
-
 export async function startDashboard(options: { port?: number; env?: NodeJS.ProcessEnv; now?: () => number } = {}): Promise<DashboardServer> {
   const env = options.env ?? process.env
   const dirs = cliContext({ env }).dataDirs
@@ -49,7 +43,7 @@ export async function startDashboard(options: { port?: number; env?: NodeJS.Proc
       const saved = readSavings(dirs), at = now()
       if (url.pathname === '/') {
         const nonce = randomBytes(16).toString('base64')
-        send(response, 200, dashboardPage({ nonce, token, language: startLanguage(request.headers['accept-language']),
+        send(response, 200, dashboardPage({ nonce, token, language: 'en',
           week: summarize(saved, 'week', at), all: summarize(saved, 'all', at) }), 'text/html; charset=utf-8', {
           'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; img-src data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
         })

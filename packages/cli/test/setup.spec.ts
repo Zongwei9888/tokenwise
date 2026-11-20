@@ -115,6 +115,10 @@ describe('tokenwise setup', () => {
     expect(setup({ action: 'setup', agents: ['opencode'], env, sources: s })).toBe(0)
     expect(readFileSync(join(home, '.config/opencode/plugins/tokenwise.js'), 'utf8')).toBe('export {}\n')
     expect(readFileSync(join(home, '.config/opencode/skills/tokenwise/SKILL.md'), 'utf8')).toContain('name: tokenwise')
+    // Setting up again replaces a directory of TokenWise's: a file an earlier version left there goes.
+    writeFileSync(join(home, '.config/opencode/skills/tokenwise/old.md'), 'stale')
+    expect(setup({ action: 'setup', agents: ['opencode'], env, sources: s })).toBe(0)
+    expect(existsSync(join(home, '.config/opencode/skills/tokenwise/old.md'))).toBe(false)
     expect(setup({ action: 'uninstall', agents: ['opencode'], env, sources: s })).toBe(0)
     expect(existsSync(join(home, '.config/opencode/plugins/tokenwise.js'))).toBe(false)
     expect(existsSync(join(home, '.config/opencode/skills/tokenwise'))).toBe(false)
