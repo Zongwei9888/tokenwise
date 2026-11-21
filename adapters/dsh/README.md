@@ -168,7 +168,7 @@ compactions, cut results and recalls.
 In a session, `/tokenwise learn | cancel | rules | rollback | off | on` do
 the same, and `tokenwise evolve --learner dsh` (from `@tokenwise/cli`) runs it from
 a terminal. Running sessions use adopted rules from their next output on. See
-the [main README](https://github.com/HKUDS/TokenWise#-self-evolving).
+the [architecture notes](https://github.com/HKUDS/TokenWise/blob/main/docs/architecture.md#self-evolution).
 
 ## Remove
 

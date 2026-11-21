@@ -8,77 +8,35 @@
 <p>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-0A7A69?style=flat-square&labelColor=071E1B"></a>
   <img alt="Agents: 9 and any shell" src="https://img.shields.io/badge/agents-9_%2B_any_shell-0A7A69?style=flat-square&labelColor=071E1B">
-  <img alt="Runtime dependencies: 0" src="https://img.shields.io/badge/runtime_deps-0-0A7A69?style=flat-square&labelColor=071E1B">
 </p>
 
 **English** · [简体中文](docs/zh/README.md)
 
 ### The self-evolving token layer for AI agents
 
-**Context on demand. Savings that grow with use. One install for every agent.**
-
 </div>
 
 <p align="center"><a href="https://youtu.be/9p36ZR2rNtE"><img src="media/video/promo.gif" alt="TokenWise in nine agents: noise turns into coins, every answer ends with what was saved, and the savings grow through the week" width="100%"></a></p>
 <p align="center"><sub>▶ <a href="https://youtu.be/9p36ZR2rNtE">Watch the video on YouTube</a> · 35 seconds</sub></p>
 
-## Why TokenWise
+## Why TokenWise?
 
-**Cut your agent's token bill by up to half. It saves more the longer you use it, and one install covers every agent.**
+**Your agent pays for every token it reads, and much of it is noise.**
 
-<p align="center"><img src="media/images/savings.png" alt="Same tasks, up to half the tokens; 12 comparisons, 12 times cheaper. Fixing bugs and building features: up to 38% fewer tokens (DeepSeek V4 38%, MiniMax-M3 23%, GLM-5.3 20%, Qwen3.8 14%). Long jobs in the terminal: up to 50% fewer (27%, 42%, 50%, 25%). Very long sessions: up to 45% fewer (21%, 22%, 45%, 40%). Saves more as it learns: on tasks it has never seen, up to 27% fewer than before learning (15%, 27%, 25%, 12%)." width="100%"></p>
+Test logs, install progress, build output and long searches go straight into
+the model's context, on every call, in every agent you use.
 
-<sub>From our paper's evaluation: DeepSeek V4 Flash, MiniMax-M3, GLM-5.3 Flash and Qwen3.8 Flash in DeepSeek Harness, against the harness's own context management, counting every token including cache reads. Paper coming soon.</sub>
+**TokenWise keeps the noise out, so the model reads only what it needs.**
 
-**How it does it:** one layer between your agents and the model, shared by all of them.
+- **Visible savings.** Shows the tokens saved in every conversation, live.
+- **Saves more the longer you use it.** It learns new ways to optimize.
+- **Cross-platform.** Works across many agent platforms.
 
-<p align="center"><img src="media/images/story-how.png" alt="Your agents send everything they read through TokenWise, one layer shared by every agent. Context on demand: what the model needs stays in context, everything else stays on your machine, one call back. Self-evolving: use, learn, verify, every agent; saves more each round. The model reads only what it needs." width="100%"></p>
+## 📊 Results
 
-## 🧬 Self-evolving
+<p align="center"><img src="media/images/savings.png" alt="Same tasks, up to half the tokens: fixing bugs and building features up to 38% fewer, long jobs in the terminal up to 50%, very long sessions up to 45%, and up to 27% more as it learns." width="100%"></p>
 
-Built-in rules know the common tools. Your project has its own. When you ask,
-the agent you already use studies what your sessions recorded and writes a rule
-for the noise it finds — in the background, without interrupting your work.
-
-TokenWise adopts a rule only if it saves more on **every** recorded run, drops no
-error and also works on runs it has not seen. From the next command on, every
-agent uses it. If an agent keeps having to look past a rule, the rule switches
-itself off, and any adoption can be undone.
-On tasks it has never seen, the learned rules save another 12–27% of tokens.
-
-**Teach it yourself.** Type `/tokenwise` in your agent (`$tokenwise` in Codex,
-`@tokenwise` in OpenCode and DeepSeek Harness, `/skill:tokenwise` in pi) and it
-shows which of your commands still print long output. Pick one: your
-agent writes the rule, shows you what the model would read before and after on
-your own recorded output, and keeps it only when you say so. Your agents also
-tell you when a command keeps coming back long.
-
-Or let it learn in the background: `/tokenwise:learn` in Claude Code, CodeBuddy
-and Grok, `$tokenwise learn` in Codex, the TokenWise panel in pi and DeepSeek
-Harness, or `tokenwise learn` in any terminal.
-
-## 💾 Context on demand
-
-Think of it as virtual memory for your agent's context. What the model needs now
-stays in context; the rest is set aside on your machine. When the agent compacts
-a long conversation, every tool result it drops comes back with one call,
-exactly as it was, so the agent never has to run the tests again to see one
-line. In most agents, a file read again, unchanged, while the first read is
-still in context, comes back as one line pointing to it.
-
-<p align="center"><img src="media/video/fold.gif" alt="A 260-line pytest run folds into the 17 lines the model reads; the failure stays" width="100%"></p>
-
-## 🪙 See what it saved
-
-When an answer ends and the conversation saved more, your agent says so: a
-small jar filling with coins, how many tokens TokenWise saved, and how much
-shorter the tool output got. In pi the card fills as you watch. `tokenwise
-saved` draws the same jar in your terminal, and `tokenwise dashboard` in your
-browser, dropping a coin in whenever an agent saves more.
-
-<p align="center"><img src="media/images/cards.png" alt="The card at the end of an answer in Claude Code, Codex, GitHub Copilot CLI, Hermes Agent, OpenCode, CodeBuddy, Grok Build, DeepSeek Harness and pi" width="100%"></p>
-
-<sub>Each agent ran `pytest -v` once in the same small project; the numbers are from that one run.</sub>
+<sub>From our paper's evaluation; the paper is coming soon.</sub>
 
 ## 🤖 Supported agents
 
@@ -103,11 +61,21 @@ browser, dropping a coin in whenever an agent saves more.
 macOS and Linux. Each agent connects through what its own plugin interface
 allows, so the depth varies a little; the details are under [How each agent is connected](#how-each-agent-is-connected).
 
+## 🪙 See what it saved
+
+<p align="center"><img src="media/images/cards.png" alt="The card at the end of an answer in Claude Code, Codex, GitHub Copilot CLI, Hermes Agent, OpenCode, CodeBuddy, Grok Build, DeepSeek Harness and pi" width="100%"></p>
+
+<sub>Each agent ran `pytest -v` once in the same small project; the numbers are from that one run.</sub>
+
 ## 🚀 Get started
 
 Give your agent this repository and ask:
 
 > Install TokenWise for every agent on this machine, and check each one uses it.
+
+It works from the next command, with nothing to configure. To teach it your own
+commands, type `/tokenwise` in your agent (`$tokenwise` in Codex, `@tokenwise`
+in OpenCode and DeepSeek Harness, `/skill:tokenwise` in pi).
 
 Or do it yourself (Node.js 22 and pnpm; TokenWise is not on npm yet):
 
@@ -119,40 +87,12 @@ tokenwise setup        # finds your agents and adds TokenWise to each
 tokenwise doctor --probe   # asks each agent to run one command and checks TokenWise saw it
 ```
 
-There is nothing to configure: it works from the next command. To see what it
-does for you, or to teach it one of your commands, type `/tokenwise` in your
-agent (`$tokenwise` in Codex, `@tokenwise` in OpenCode and DeepSeek Harness,
-`/skill:tokenwise` in pi).
-`tokenwise saved` and `tokenwise dashboard` show what it saved you.
-`tokenwise doctor` shows, for each agent, whether TokenWise is on and when it last
-saw a command; `tokenwise uninstall` takes it out again.
-
-## ✨ Technical highlights
-
-- **Nothing is invented.** Every character the model reads comes from the real
-  output; every cut is counted, and the original stays on your machine.
-- **Errors are never cut.** Failures, warnings and totals always stay; anything
-  TokenWise does not recognize passes through untouched.
-- **Deterministic.** The same output always reads the same, so prompt caches keep
-  hitting.
-- **Fails open.** Any error delivers the original.
-- **Every tool.** Shell commands, the agents' own search tools and commands
-  left running in the background are shortened; file reads, web pages and MCP
-  tools are counted as they are, so the share you see is of everything the
-  model read.
-- **Local.** Originals stay on your machine, readable only by you. TokenWise makes
-  no network requests of its own.
-- **Tested on real agents.** Unit tests, a byte-for-byte conformance corpus of
-  real tool outputs, and rounds with real models on all nine agents.
-- **MIT, zero runtime dependencies.**
-
 ## 📰 News
 
 - **2026-11** · Every answer ends with what TokenWise saved, in all nine agents;
-  a file read again comes back as one line; every tool's output is counted; a
-  new logo, and a 35-second video.
+  a new logo, and a 35-second video.
 - **2026-10** · TokenWise is open source: self-evolution reachable from every agent,
-  one-command setup, and every filter rewritten as TokenWise code.
+  and one-command setup.
 
 ## What's next
 
