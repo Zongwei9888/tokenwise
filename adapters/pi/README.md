@@ -129,7 +129,7 @@ result when it ends, and the running session uses adopted rules from its next
 output on. Runs need Node.js (pi's own, or `node` on PATH) and stop after 20
 minutes. `tokenwise evolve --learner pi` (from `@tokenwise/cli`) does the same in a
 terminal. See the
-[main README](https://github.com/HKUDS/TokenWise#-self-evolving).
+[architecture notes](https://github.com/HKUDS/TokenWise/blob/main/docs/architecture.md#self-evolution).
 
 ## Subagents
 

@@ -8,55 +8,34 @@
 <p>
   <a href="../../LICENSE"><img alt="许可证：MIT" src="https://img.shields.io/badge/license-MIT-0A7A69?style=flat-square&labelColor=071E1B"></a>
   <img alt="支持 9 个 agent 和任意 shell" src="https://img.shields.io/badge/agents-9_%2B_any_shell-0A7A69?style=flat-square&labelColor=071E1B">
-  <img alt="零运行时依赖" src="https://img.shields.io/badge/runtime_deps-0-0A7A69?style=flat-square&labelColor=071E1B">
 </p>
 
 [English](../../README.md) · **简体中文**
 
 ### 给 AI agent 用的自进化省 token 层
 
-**上下文按需读取，越用越省，所有 agent 共用。**
-
 </div>
 
 <p align="center"><a href="https://youtu.be/9p36ZR2rNtE"><img src="../../media/video/promo.gif" alt="TokenWise 在 9 个 agent 里：噪音变成硬币，每次回答结束都显示省了多少，一周下来越省越多" width="100%"></a></p>
 <p align="center"><sub>▶ <a href="https://youtu.be/9p36ZR2rNtE">在 YouTube 上观看宣传视频</a> · 35 秒</sub></p>
 
-## 为什么需要 TokenWise
+## 为什么需要 TokenWise？
 
-**agent 的 token 账单最多砍掉一半，用得越久省得越多，装一次所有 agent 都受益。**
+**agent 读进去的每个 token 都要花钱，而其中很多是噪音。**
 
-<p align="center"><img src="../../media/images/savings-zh.png" alt="同样的任务，token 最多省一半；12 组对比，12 次都更省。修 bug、写功能：最多省 38%（DeepSeek V4 38%、MiniMax-M3 23%、GLM-5.3 20%、Qwen3.8 14%）。在终端里连跑几十步：最多省 50%（27%、42%、50%、25%）。聊到上下文装不下：最多省 45%（21%、22%、45%、40%）。越用越省：学会项目后，没见过的任务也比学习前最多再省 27%（15%、27%、25%、12%）。" width="100%"></p>
+测试日志、安装进度、构建输出、长长的搜索结果，每次调用都原样塞进模型的上下文，你用的每个 agent 都是如此。
 
-<sub>数据来自我们论文的评测：在 DeepSeek Harness 里用 DeepSeek V4 Flash、MiniMax-M3、GLM-5.3 Flash、Qwen3.8 Flash 四个模型，和它自带的上下文管理对比，统计全部 token（含缓存读取）。论文即将公开。</sub>
+**TokenWise 把噪音挡在外面，模型只读它需要的部分。**
 
-**怎么做到的：** 在你的 agent 和模型之间加一层，所有 agent 共用。
+- **节省可视化**：实时展示每次对话节省的 token。
+- **越用越省**：学习出新的优化机制。
+- **跨平台适配**：适用于多个 agent 平台。
 
-<p align="center"><img src="../../media/images/story-how-zh.png" alt="你的 agent 要读的一切都经过 TokenWise，一套机制所有 agent 共用。按需读取：模型现在需要的留在上下文里，其余原样留在你的电脑上，一次调用取回。自进化：使用、学习、验证、所有 agent 生效，每一轮都更省。模型只读它需要的部分。" width="100%"></p>
+## 📊 效果
 
-## 🧬 自进化
+<p align="center"><img src="../../media/images/savings-zh.png" alt="同样的任务，token 最多省一半：修 bug、写功能最多省 38%，终端里的长任务最多省 50%，超长对话最多省 45%，越用越省最多再省 27%。" width="100%"></p>
 
-内置规则认识常用工具，而你的项目有它自己的东西。你发起学习后，你正在用的 agent 会在后台研究会话里记录下的内容，为其中的噪音写出规则，不打断你手上的工作。
-
-一条规则必须在**每一次**历史记录上都更省、一条报错都不丢，在没见过的记录上也成立，TokenWise 才会采用。从下一条命令起，所有 agent 都用上它。如果某个 agent 总要绕开一条规则去看原文，这条规则会自己关掉；任何一次采用都可以撤回。学到的规则在从没见过的任务上，还能再省 12–27% 的 token。
-
-**亲手教它。** 在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`，OpenCode 和 DeepSeek Harness 里是 `@tokenwise`，pi 里是 `/skill:tokenwise`），它会告诉你哪些命令的输出还很长。挑一个，agent 当场写好规则，拿你自己的真实输出给你看模型读到的前后对比，你同意了才生效。某条命令的输出一直很长时，agent 也会主动提醒你。
-
-也可以让它在后台自己学：Claude Code、CodeBuddy 和 Grok 里用 `/tokenwise:learn`，Codex 里用 `$tokenwise learn`，pi 和 DeepSeek Harness 里用 TokenWise 面板，任何终端里都可以运行 `tokenwise learn`。
-
-## 💾 按需读取
-
-可以把它理解成 agent 上下文的"虚拟内存"：模型现在需要的留在上下文里，其余的暂放到你的电脑上。agent 压缩长对话时，被压掉的工具结果一次调用就能原样取回，所以 agent 不必为了看一行内容把测试再跑一遍。在大多数 agent 里，同一个文件原样再读一次、而上一次读到的内容还在上下文里时，只回一行，指向上一次读到的内容。
-
-<p align="center"><img src="../../media/video/fold-zh.gif" alt="260 行的 pytest 输出折叠成模型实际读到的 17 行，失败信息完整保留" width="100%"></p>
-
-## 🪙 看到省了多少
-
-每轮回答结束时，如果这次对话又省下了 token，agent 会显示一张小卡片：一个装着硬币的小罐子、TokenWise 省了多少 token，以及工具输出短了多少。pi 里会看着它装满。`tokenwise saved` 在终端里画出同一个存钱罐，`tokenwise dashboard` 在浏览器里显示它，agent 每省下一笔就落进一枚硬币。TokenWise 显示的文字一律是英文。
-
-<p align="center"><img src="../../media/images/cards-zh.png" alt="Claude Code、Codex、GitHub Copilot CLI、Hermes Agent、OpenCode、CodeBuddy、Grok Build、DeepSeek Harness 和 pi 里回答结束时的卡片" width="100%"></p>
-
-<sub>每个 agent 都在同一个小项目里跑了一次 `pytest -v`，数字只代表那一次运行。</sub>
+<sub>数据来自我们论文的评测，论文即将公开。</sub>
 
 ## 🤖 支持的 agent
 
@@ -80,11 +59,19 @@
 
 支持 macOS 和 Linux。每个 agent 按它的插件接口允许的方式接入，深度略有不同，详见下方的[各 agent 的接入方式](#各-agent-的接入方式)。
 
+## 🪙 看到省了多少
+
+<p align="center"><img src="../../media/images/cards-zh.png" alt="Claude Code、Codex、GitHub Copilot CLI、Hermes Agent、OpenCode、CodeBuddy、Grok Build、DeepSeek Harness 和 pi 里回答结束时的卡片" width="100%"></p>
+
+<sub>每个 agent 都在同一个小项目里跑了一次 `pytest -v`，数字只代表那一次运行。</sub>
+
 ## 🚀 开始使用
 
 把这个仓库交给你的 agent，说：
 
 > 帮我给这台电脑上所有的 agent 装上 TokenWise，并确认每个都在用它。
+
+装好就生效，不用任何配置。想教它处理你自己的命令，在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`，OpenCode 和 DeepSeek Harness 里是 `@tokenwise`，pi 里是 `/skill:tokenwise`）。
 
 也可以自己装（需要 Node.js 22 和 pnpm；TokenWise 还没发布到 npm）：
 
@@ -96,23 +83,10 @@ tokenwise setup        # 自动找到本机的 agent，逐个装好
 tokenwise doctor --probe   # 让每个 agent 跑一条命令，确认 TokenWise 看到了
 ```
 
-不用任何配置，下一条命令就生效。想看它为你做了什么，或者教它处理你的某条命令，在 agent 里输入 `/tokenwise`（Codex 里是 `$tokenwise`，OpenCode 和 DeepSeek Harness 里是 `@tokenwise`，pi 里是 `/skill:tokenwise`）。`tokenwise saved` 和 `tokenwise dashboard` 显示它为你省了多少；`tokenwise doctor` 列出每个 agent 里 TokenWise 是否开着、最近一次看到它跑命令是什么时候；`tokenwise uninstall` 可以卸载。
-
-## ✨ 技术要点
-
-- **不编造内容**：模型读到的每个字都来自真实输出；删减都有计数，原文保存在你的电脑上。
-- **报错一行不丢**：失败、警告和总数一律保留；认不出的内容原样放过。
-- **结果确定**：同样的输出永远得到同样的结果，prompt cache 照常命中。
-- **出错就给原文**：任何环节出错，模型拿到的都是原始内容。
-- **所有工具都算**：shell 命令、agent 自带的搜索工具、放在后台跑的命令会被缩短；读文件、网页和 MCP 工具原样计数，所以你看到的比例是模型读到的全部内容里省掉的那部分。
-- **只在本机**：原文只存在你的电脑上，只有你能读；TokenWise 自己不发任何网络请求。
-- **在真实 agent 上测试**：单元测试、由真实工具输出组成的逐字节一致性语料，以及在全部 9 个 agent 上用真实模型跑的测试。
-- **MIT 许可，零运行时依赖。**
-
 ## 📰 动态
 
-- **2026-11** · 9 个 agent 每次回答结束都显示 TokenWise 省了多少；同一个文件再读一次只回一行；所有工具的输出都计入；新 logo，以及一段 35 秒的视频。
-- **2026-10** · TokenWise 开源：每个 agent 里都能发起自进化，一条命令完成安装，所有过滤规则都改为 TokenWise 自己的代码。
+- **2026-11** · 9 个 agent 每次回答结束都显示 TokenWise 省了多少；新 logo，以及一段 35 秒的视频。
+- **2026-10** · TokenWise 开源：每个 agent 里都能发起自进化，一条命令完成安装。
 
 ## 接下来
 
