@@ -23,8 +23,14 @@
 
 **Your agent pays for every token it reads, and much of it is noise.**
 
-Test logs, install progress, build output and long searches go straight into
-the model's context, on every call, in every agent you use.
+Today's agents face:
+- 🗑️ **Redundant context:** repeated and irrelevant information crowds the
+  context and drives up the cost.
+- 📈 **Growing context:** the longer the conversation, the more every turn pays
+  again for everything piled up before it.
+- 🔒 **Rigid rules:** existing optimizations rely on fixed rules that don't fit
+  your project.
+- 🧩 **Siloed agents:** each agent handles it on its own, and nothing is shared.
 
 **TokenWise keeps the noise out, so the model reads only what it needs.**
 
