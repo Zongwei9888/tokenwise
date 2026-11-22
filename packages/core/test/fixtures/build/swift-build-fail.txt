@@ -1,0 +1,21 @@
+[0/1] Planning build
+Building for debugging...
+[0/6] Write sources
+[2/6] Write swift-version--1AB21518FC5DEDBE.txt
+[4/8] Emitting module Core
+[5/8] Compiling Core Extra.swift
+/repo/Sources/Core/Extra.swift:7:16: error: value of type 'String' has no member 'trimmingCharacters'
+ 5 | }
+ 6 | public func trimmed(_ text: String) -> String {
+ 7 |   var t = text.trimmingCharacters(in: .whitespaces)
+   |                `- error: value of type 'String' has no member 'trimmingCharacters'
+ 8 |   return t
+ 9 | }
+
+/repo/Sources/Core/Extra.swift:7:40: error: cannot infer contextual base in reference to member 'whitespaces'
+ 5 | }
+ 6 | public func trimmed(_ text: String) -> String {
+ 7 |   var t = text.trimmingCharacters(in: .whitespaces)
+   |                                        `- error: cannot infer contextual base in reference to member 'whitespaces'
+ 8 |   return t
+ 9 | }

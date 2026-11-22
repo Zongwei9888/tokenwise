@@ -22,6 +22,17 @@ import { searchContextFilter } from './search-context.ts'
 import { pipInstallFilter } from './pip-install.ts'
 import { yarnInstallFilter } from './yarn-install.ts'
 import { terraformFilter } from './terraform.ts'
+import { goBuildFilter } from './go-build.ts'
+import { ccFilter } from './cc.ts'
+import { swiftBuildFilter } from './swift-build.ts'
+import { xcodebuildFilter } from './xcodebuild.ts'
+import { pioRunFilter } from './pio-run.ts'
+import { trunkBuildFilter } from './trunk-build.ts'
+import { springBootFilter } from './spring-boot.ts'
+import { gradleFilter } from './gradle.ts'
+import { liquibaseFilter } from './liquibase.ts'
+import { dotnetBuildFilter } from './dotnet-build.ts'
+import { mixCompileFilter } from './mix-compile.ts'
 import type { EconomyFilter, FilterCandidate, FilterInput } from '../types.ts'
 
 export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
@@ -29,6 +40,9 @@ export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
   ruffJsonFilter, goTestJsonFilter, gitStatusFilter, searchContextFilter, searchLayoutFilter, pathListFilter, testProgressFilter, lsListingFilter, testReportFilter, cargoBuildFilter, gitShowFilter,
   gitLogFilter, gitBlameFilter, dockerBuildFilter, containerLogsFilter, makeFilter, mavenFilter,
   terraformFilter,
+  // After maven, so `mvn spring-boot:run` keeps Maven's projection; before gradle, so `gradle bootRun` gets both folds.
+  goBuildFilter, ccFilter, swiftBuildFilter, xcodebuildFilter, pioRunFilter, trunkBuildFilter, springBootFilter, gradleFilter,
+  liquibaseFilter, dotnetBuildFilter, mixCompileFilter,
 ])
 
 /** Some filter reads this command's output (see `EconomyFilter.commands`). */
