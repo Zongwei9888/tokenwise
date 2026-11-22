@@ -67,7 +67,7 @@
 
 <p align="center"><img src="../../media/images/cards-zh.png" alt="Claude Code、Codex、GitHub Copilot CLI、Hermes Agent、OpenCode、CodeBuddy、Grok Build、DeepSeek Harness 和 pi 里回答结束时的卡片" width="100%"></p>
 
-<sub>每个 agent 都在空目录里从零写了同一个记账工具，测试用 `pytest -v` 原样运行；数字只代表那一次运行。</sub>
+<sub>数字来自每个 agent 的一次真实运行。</sub>
 
 ## 🚀 开始使用
 

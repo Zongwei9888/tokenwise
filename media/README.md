@@ -15,7 +15,7 @@ pytest log through the real filter (260 lines → 17, 19.0 KB → 852 bytes).
 | `images/story-how.png`, `-zh` | 2400 wide | the README's overview: one layer, context on demand, self-evolving |
 | `images/story-evolve.png`, `-zh` | 2400 wide | self-evolution in four steps (for posts and talks) |
 | `images/before-after.png`, `-zh` | 3200×1800 | the one-image demo: same run, 17 lines instead of 260 |
-| `images/cards.png`, `-zh` | 3120 wide | the README's card wall: real screenshots of the card at the end of an answer in all nine agents (each built the same small ledger tool from scratch, tests run as plain `pytest -v`) |
+| `images/cards.png`, `-zh` | 3120 wide | the README's card wall: real screenshots of the card at the end of an answer in all nine agents (one real coding task each, tests run as plain `pytest -v`) |
 | `images/icons/agent-*.png` | 128 px | the README's agent-wall badges for any shell and more agents |
 | `video/tokenwise-en.mp4`, `-zh.mp4` | 1920×1080, 53 s | the explainer, in three chapters: context on demand, self-evolving, cross-platform |
 | `video/tokenwise-promo-en.mp4` | 1920×1080, 35 s | the promo: TokenWise in every agent, saving into one jar, with a synthesized soundtrack cued to its scenes (`promo.html`, `music.mjs`; `node render.mjs video en promo`) |
