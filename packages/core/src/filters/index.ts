@@ -34,6 +34,12 @@ import { pnpmListFilter, pnpmOutdatedFilter } from './pnpm-deps.ts'
 import { turboFilter } from './turbo.ts'
 import { prismaMigrateFilter } from './prisma-migrate.ts'
 import { prettierFilter } from './prettier.ts'
+import { dockerImagesFilter, dockerPsFilter, kubectlGetFilter } from './containers.ts'
+import { awsFilter, gcloudFilter, helmFilter, skopeoFilter } from './cloud-cli.ts'
+import { terraformInitFilter } from './terraform-init.ts'
+import { pulumiFilter } from './pulumi.ts'
+import { ansiblePlaybookFilter } from './ansible.ts'
+import { psqlFilter } from './psql.ts'
 import type { EconomyFilter, FilterCandidate, FilterInput } from '../types.ts'
 
 export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
@@ -44,6 +50,8 @@ export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
   gitStashListFilter, gitLsTreeFilter, ghFilter, gtFilter, yadmFilter, jjFilter, diffFilter,
   // After test-progress and test-report, which keep the Jest and Vitest output they already condense.
   jsTestFilter, playwrightFilter, nextBuildFilter, ngBuildFilter, pnpmOutdatedFilter, pnpmListFilter, turboFilter, prismaMigrateFilter, prettierFilter,
+  dockerPsFilter, dockerImagesFilter, kubectlGetFilter, helmFilter, awsFilter, gcloudFilter, skopeoFilter, terraformInitFilter, pulumiFilter,
+  ansiblePlaybookFilter, psqlFilter,
 ])
 
 /** Some filter reads this command's output (see `EconomyFilter.commands`). */
