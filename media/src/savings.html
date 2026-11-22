@@ -9,6 +9,8 @@
   .card { background: #fff; border: 1px solid var(--rule); border-radius: 20px; padding: 24px 24px 22px; display: flex; flex-direction: column; }
   .card h3 { font-weight: 780; font-stretch: 84%; font-size: 28px; line-height: 1.15; color: var(--ink); }
   .zh .card h3 { font-stretch: 100%; font-size: 27px; }
+  /* English titles may wrap to two lines: give every title two, so the numbers line up. */
+  body:not(.zh) .card h3 { min-height: 2.3em; }
   .card p { margin-top: 8px; color: #4F6B66; font-size: 16px; line-height: 1.4; font-stretch: 96%; min-height: 2.8em; }
   .hero { margin-top: 18px; display: flex; flex-direction: column; gap: 4px; color: var(--teal); }
   .hero small { font-size: 17px; font-weight: 650; font-stretch: 90%; color: #3D5A55; }
@@ -52,7 +54,7 @@ const T = zh ? {
 } : {
   upto: 'up to',
   cards: [['everyday', 'Algorithm Development & Maintenance', 'Bug fixing and algorithm improvement'],
-    ['longHorizon', 'Systems Engineering', 'Long-horizon, multi-module system development'],
+    ['longHorizon', 'Systems Software Engineering', 'Long-horizon, multi-module system development'],
     ['qa', 'Large-Context Q&A', 'In-depth Q&A over a large context']],
   learn: 'Saves more over time',
   learnText: 'TokenWise adaptively learns its optimization strategy from how you work.',
