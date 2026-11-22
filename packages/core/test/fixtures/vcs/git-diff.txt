@@ -1,0 +1,171 @@
+diff --git a/src/cmds/alpha.ts b/src/cmds/alpha.ts
+index fae9d3c..b11f230 100644
+--- a/src/cmds/alpha.ts
++++ b/src/cmds/alpha.ts
+@@ -1,2 +1,3 @@
+ init src/cmds/alpha.ts
+ a
++change
+diff --git a/src/cmds/gamma.ts b/src/cmds/gamma.ts
+index c0f7df1..bd9bd6c 100644
+--- a/src/cmds/gamma.ts
++++ b/src/cmds/gamma.ts
+@@ -1 +1,2 @@
+ init src/cmds/gamma.ts
++change
+diff --git a/src/core/render.ts b/src/core/render.ts
+index 7f6dbfa..529153a 100644
+--- a/src/core/render.ts
++++ b/src/core/render.ts
+@@ -1 +1,150 @@
+-init src/core/render.ts
++export const row1 = 1
++export const row2 = 2
++export const row3 = 3
++export const row4 = 4
++export const row5 = 5
++export const row6 = 6
++export const row7 = 7
++export const row8 = 8
++export const row9 = 9
++export const row10 = 10
++export const row11 = 11
++export const row12 = 12
++export const row13 = 13
++export const row14 = 14
++export const row15 = 15
++export const row16 = 16
++export const row17 = 17
++export const row18 = 18
++export const row19 = 19
++export const row20 = 20
++export const row21 = 21
++export const row22 = 22
++export const row23 = 23
++export const row24 = 24
++export const row25 = 25
++export const row26 = 26
++export const row27 = 27
++export const row28 = 28
++export const row29 = 29
++export const row30 = 30
++export const row31 = 31
++export const row32 = 32
++export const row33 = 33
++export const row34 = 34
++export const row35 = 35
++export const row36 = 36
++export const row37 = 37
++export const row38 = 38
++export const row39 = 39
++export const row40 = 40
++export const row41 = 41
++export const row42 = 42
++export const row43 = 43
++export const row44 = 44
++export const row45 = 45
++export const row46 = 46
++export const row47 = 47
++export const row48 = 48
++export const row49 = 49
++export const row50 = 50
++export const row51 = 51
++export const row52 = 52
++export const row53 = 53
++export const row54 = 54
++export const row55 = 55
++export const row56 = 56
++export const row57 = 57
++export const row58 = 58
++export const row59 = 59
++export const row60 = 60
++export const row61 = 61
++export const row62 = 62
++export const row63 = 63
++export const row64 = 64
++export const row65 = 65
++export const row66 = 66
++export const row67 = 67
++export const row68 = 68
++export const row69 = 69
++export const row70 = 70
++export const row71 = 71
++export const row72 = 72
++export const row73 = 73
++export const row74 = 74
++export const row75 = 75
++export const row76 = 76
++export const row77 = 77
++export const row78 = 78
++export const row79 = 79
++export const row80 = 80
++export const row81 = 81
++export const row82 = 82
++export const row83 = 83
++export const row84 = 84
++export const row85 = 85
++export const row86 = 86
++export const row87 = 87
++export const row88 = 88
++export const row89 = 89
++export const row90 = 90
++export const row91 = 91
++export const row92 = 92
++export const row93 = 93
++export const row94 = 94
++export const row95 = 95
++export const row96 = 96
++export const row97 = 97
++export const row98 = 98
++export const row99 = 99
++export const row100 = 100
++export const row101 = 101
++export const row102 = 102
++export const row103 = 103
++export const row104 = 104
++export const row105 = 105
++export const row106 = 106
++export const row107 = 107
++export const row108 = 108
++export const row109 = 109
++export const row110 = 110
++export const row111 = 111
++export const row112 = 112
++export const row113 = 113
++export const row114 = 114
++export const row115 = 115
++export const row116 = 116
++export const row117 = 117
++export const row118 = 118
++export const row119 = 119
++export const row120 = 120
++export const row121 = 121
++export const row122 = 122
++export const row123 = 123
++export const row124 = 124
++export const row125 = 125
++export const row126 = 126
++export const row127 = 127
++export const row128 = 128
++export const row129 = 129
++export const row130 = 130
++export const row131 = 131
++export const row132 = 132
++export const row133 = 133
++export const row134 = 134
++export const row135 = 135
++export const row136 = 136
++export const row137 = 137
++export const row138 = 138
++export const row139 = 139
++export const row140 = 140
++export const row141 = 141
++export const row142 = 142
++export const row143 = 143
++export const row144 = 144
++export const row145 = 145
++export const row146 = 146
++export const row147 = 147
++export const row148 = 148
++export const row149 = 149
++export const row150 = 150

@@ -22,6 +22,10 @@ import { searchContextFilter } from './search-context.ts'
 import { pipInstallFilter } from './pip-install.ts'
 import { yarnInstallFilter } from './yarn-install.ts'
 import { terraformFilter } from './terraform.ts'
+import { gitLsTreeFilter, gitStashListFilter } from './git-listings.ts'
+import { ghFilter } from './gh.ts'
+import { gtFilter, yadmFilter } from './git-wrappers.ts'
+import { diffFilter, jjFilter } from './unified-diff.ts'
 import type { EconomyFilter, FilterCandidate, FilterInput } from '../types.ts'
 
 export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
@@ -29,6 +33,7 @@ export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
   ruffJsonFilter, goTestJsonFilter, gitStatusFilter, searchContextFilter, searchLayoutFilter, pathListFilter, testProgressFilter, lsListingFilter, testReportFilter, cargoBuildFilter, gitShowFilter,
   gitLogFilter, gitBlameFilter, dockerBuildFilter, containerLogsFilter, makeFilter, mavenFilter,
   terraformFilter,
+  gitStashListFilter, gitLsTreeFilter, ghFilter, gtFilter, yadmFilter, jjFilter, diffFilter,
 ])
 
 /** Some filter reads this command's output (see `EconomyFilter.commands`). */

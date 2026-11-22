@@ -1,13 +1,17 @@
 import { inspectShell } from '../shell-inspection.ts'
 import { ProjectionBuilder, sourceLines } from '../projection-map.ts'
+import type { MappedProjection } from '../projection-map.ts'
 import type { EconomyFilter, FilterInput } from '../types.ts'
 
-function projectMapped(input: FilterInput) {
-  const shell = inspectShell(input.command)
-  if (!shell?.heads.includes('find') || input.exitCode !== 0
-    || /[\u001b\0]|\r(?!\n)/.test(input.stdout)) return undefined
-  const lines = sourceLines(input.stdout)
-  const builder = new ProjectionBuilder(input.stdout)
+/**
+ * Runs of three or more consecutive path rows in one directory become a
+ * `[paths in <dir>/; original order]` header and the rows' names under it.
+ * Every path stays, in order; metadata, headings and every other line stay
+ * verbatim. Undefined when nothing was grouped.
+ */
+export function groupPathRuns(raw: string): MappedProjection | undefined {
+  const lines = sourceLines(raw)
+  const builder = new ProjectionBuilder(raw)
   let grouped = false
   // Complete path rows only; metadata, headings and every other line stay verbatim.
   const directoryOf = (text: string): string | undefined => {
@@ -32,6 +36,13 @@ function projectMapped(input: FilterInput) {
     grouped = true
   }
   return grouped ? builder.finish() : undefined
+}
+
+function projectMapped(input: FilterInput) {
+  const shell = inspectShell(input.command)
+  if (!shell?.heads.includes('find') || input.exitCode !== 0
+    || /[\u001b\0]|\r(?!\n)/.test(input.stdout)) return undefined
+  return groupPathRuns(input.stdout)
 }
 
 export const pathListFilter: EconomyFilter = {

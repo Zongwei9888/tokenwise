@@ -24,7 +24,7 @@ function projectMapped(input: FilterInput): MappedProjection | undefined {
     || /[\u001b\0]/.test(input.stdout) || limitedToPaths(argv)) return undefined
   const lines = sourceLines(input.stdout)
   if (!lines[0]?.text.startsWith('diff --git ')) return undefined
-  return previewPatch(input.stdout, lines, options['git-diff'].maxHunkLines, false)
+  return previewPatch(input.stdout, lines, options['git-diff'].maxHunkLines, 'git')
 }
 
 /** A commit header line of the default `git show` / `git log` format: `commit <sha>` and optional decorations. */
@@ -48,16 +48,33 @@ function projectCommitPatches(input: FilterInput): MappedProjection | undefined 
   if (argv[1] === 'show' && limitedToPaths(argv)) return undefined
   const lines = sourceLines(input.stdout)
   if (!COMMIT.test(lines[0]?.text ?? '')) return undefined
-  return previewPatch(input.stdout, lines, options['git-diff'].maxHunkLines, true)
+  return previewPatch(input.stdout, lines, options['git-diff'].maxHunkLines, 'commits')
 }
 
 /**
- * Keep every line of a unified git patch except the middle of hunks longer
- * than `maxHunkLines`, which becomes a counted omission; undefined for
- * anything not recognized. With `commits`, `commit <sha>` blocks (header and
- * message, kept verbatim) may precede each commit's patch.
+ * The lines plain `diff` prints about a pair of directories in place of a
+ * patch, each one a whole file-level entry: `Only in a: x`, `Common
+ * subdirectories: a/s and b/s`, `Binary files a/x and b/x differ`, `File a/x
+ * is a directory while file b/x is a regular file`, `Symbolic links … differ`.
  */
-function previewPatch(raw: string, lines: readonly SourceLine[], maxHunkLines: number, commits: boolean): MappedProjection | undefined {
+const PLAIN_ENTRY = /^(?:Only in .+: .+|Common subdirectories: .+ and .+|(?:Binary files|Files|Symbolic links) .+ and .+ differ|File .+ is a .+ while file .+ is a .+)$/u
+
+/**
+ * Patch layouts `previewPatch` reads: `git` (`diff --git` sections),
+ * `commits` (`commit <sha>` blocks, header and message kept verbatim, before
+ * each commit's patch) and `plain` (POSIX `diff -u` / `diff -ru` of two
+ * directories: `diff <options> a/x b/x` sections and PLAIN_ENTRY lines).
+ */
+export type PatchLayout = 'git' | 'commits' | 'plain'
+
+/**
+ * Keep every line of a unified patch except the middle of hunks longer than
+ * `maxHunkLines`, which becomes a counted omission; undefined for anything
+ * not recognized.
+ */
+export function previewPatch(raw: string, lines: readonly SourceLine[], maxHunkLines: number, layout: PatchLayout): MappedProjection | undefined {
+  const commits = layout === 'commits'
+  const plain = layout === 'plain'
   const builder = new ProjectionBuilder(raw)
   let inHeader = false
   let oldRemaining = 0
@@ -111,7 +128,7 @@ function previewPatch(raw: string, lines: readonly SourceLine[], maxHunkLines: n
       fileSummary()
       inHeader = true
       builder.keep(line.start, line.end)
-    } else if (value.startsWith('diff --git ')) {
+    } else if (value.startsWith('diff --git ') || plain && (value.startsWith('diff ') || PLAIN_ENTRY.test(value))) {
       fileSummary()
       inHeader = false
       builder.keep(line.start, line.end)
