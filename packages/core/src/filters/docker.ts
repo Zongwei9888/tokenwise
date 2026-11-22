@@ -73,7 +73,7 @@ function projectBuild(input: FilterInput): MappedProjection | undefined {
 }
 
 export const dockerBuildFilter: EconomyFilter = {
-  name: 'docker-build', transformation: 'noise-removal', projectMapped: projectBuild,
+  name: 'docker-build', transformation: 'noise-removal', projectMapped: projectBuild, commands: buildCommand,
   project: input => projectBuild(input)?.text,
 }
 
@@ -124,6 +124,6 @@ function projectLogs(input: FilterInput): MappedProjection | undefined {
 }
 
 export const containerLogsFilter: EconomyFilter = {
-  name: 'container-logs', transformation: 'preview', projectMapped: projectLogs,
+  name: 'container-logs', transformation: 'preview', projectMapped: projectLogs, commands: logsCommand,
   project: input => projectLogs(input)?.text,
 }

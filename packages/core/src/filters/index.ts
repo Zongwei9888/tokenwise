@@ -21,13 +21,20 @@ import { mavenFilter } from './maven.ts'
 import { searchContextFilter } from './search-context.ts'
 import { pipInstallFilter } from './pip-install.ts'
 import { yarnInstallFilter } from './yarn-install.ts'
+import { terraformFilter } from './terraform.ts'
 import type { EconomyFilter, FilterCandidate, FilterInput } from '../types.ts'
 
 export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
   pytestFilter, grepFilter, gitDiffFilter, tscFilter, eslintJsonFilter, viteBuildFilter, pnpmInstallFilter, pipInstallFilter, yarnInstallFilter,
   ruffJsonFilter, goTestJsonFilter, gitStatusFilter, searchContextFilter, searchLayoutFilter, pathListFilter, testProgressFilter, lsListingFilter, testReportFilter, cargoBuildFilter, gitShowFilter,
   gitLogFilter, gitBlameFilter, dockerBuildFilter, containerLogsFilter, makeFilter, mavenFilter,
+  terraformFilter,
 ])
+
+/** Some filter reads this command's output (see `EconomyFilter.commands`). */
+export function filterCoversCommand(command: string): boolean {
+  return STATIC_FILTERS.some(filter => filter.commands?.(command) === true)
+}
 
 export function projectStaticFilter(input: FilterInput): FilterCandidate | undefined {
   for (const filter of STATIC_FILTERS) {

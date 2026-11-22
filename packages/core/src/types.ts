@@ -22,6 +22,13 @@ export interface FilterCandidate extends MappedProjection {
 export interface EconomyFilter {
   readonly name: EconomyFilterName
   readonly transformation: EconomyTransformation
+  /**
+   * The commands whose output this filter reads (the same check `projectMapped`
+   * makes on the command). Agents that decide before a command runs (Codex,
+   * CodeBuddy, a wrapped Claude Code call) route a command through TokenWise
+   * only when some filter claims it, so a filter without this is never reached there.
+   */
+  readonly commands?: (command: string) => boolean
   project(input: FilterInput): string | undefined
   projectMapped(input: FilterInput): MappedProjection | undefined
 }

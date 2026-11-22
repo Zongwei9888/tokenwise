@@ -53,5 +53,6 @@ function projectMapped(input: FilterInput): MappedProjection | undefined {
 
 export const makeFilter: EconomyFilter = {
   name: 'make', transformation: 'noise-removal', projectMapped,
+  commands: command => ['make', 'gmake'].includes(toolArgv(command)?.[0] ?? ''),
   project: input => projectMapped(input)?.text,
 }

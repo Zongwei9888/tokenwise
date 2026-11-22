@@ -1,5 +1,5 @@
 /** Host-neutral Token Economy decision for one shell execution. No I/O, no host types. */
-import { projectStaticFilter } from './filters/index.ts'
+import { filterCoversCommand, projectStaticFilter } from './filters/index.ts'
 import { ProjectionBuilder } from './projection-map.ts'
 import type { MappedProjection, SourceMap } from './projection-map.ts'
 import { hasBuiltinCommand, inspectShell } from './shell-inspection.ts'
@@ -149,7 +149,7 @@ export function classifyMiss(command: string): EconomyMatchDetail {
   const shell = inspectShell(command)
   return shell === undefined ? 'unsupported-shell-syntax'
     : shell.compound ? 'compound-output-unrecognized'
-    : hasBuiltinCommand(command) ? 'output-format-unrecognized' : 'command-not-covered'
+    : hasBuiltinCommand(command) || filterCoversCommand(command) ? 'output-format-unrecognized' : 'command-not-covered'
 }
 
 /**
@@ -264,7 +264,7 @@ const SEARCH_AND_LISTING_HEADS = new Set(['grep', 'rg', 'ripgrep', 'find', 'ls',
  * only cost savings; a true result does not promise a projection.
  */
 export function mayProject(command: string): boolean {
-  if (hasBuiltinCommand(command)) return true
+  if (hasBuiltinCommand(command) || filterCoversCommand(command)) return true
   const shell = inspectShell(command)
   return shell !== undefined && shell.heads.some(head => SEARCH_AND_LISTING_HEADS.has(head))
 }
