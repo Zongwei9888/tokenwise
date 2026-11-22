@@ -47,6 +47,6 @@ function projectMapped(input: FilterInput): MappedProjection | undefined {
 }
 
 export const jsTestFilter: EconomyFilter = {
-  name: 'js-test', transformation: 'noise-removal', projectMapped, commands: testCommand,
+  name: 'js-test', transformation: 'noise-removal', projectMapped, commands: testCommand, stderr: true,
   project: input => projectMapped(input)?.text,
 }

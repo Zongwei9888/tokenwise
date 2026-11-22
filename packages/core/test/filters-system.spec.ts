@@ -228,7 +228,7 @@ describe('ps', () => {
     // A row that mentions a problem is kept, and as printed.
     expect(projected).toContain(`\n${rows[70]}\n`)
     const notes = lines.filter(line => line.startsWith('['))
-    expect(notes).toEqual(['[29 process rows omitted; narrow with grep or pgrep]', '[10 process rows omitted; narrow with grep or pgrep]', '[40 process rows omitted; narrow with grep or pgrep]'])
+    expect(notes).toEqual(['[29 process rows omitted]', '[10 process rows omitted]', '[40 process rows omitted]'])
     expect(lines.length - 1 - notes.length + 29 + 10 + 40).toBe(raw.split('\n').length - 1)
     // Every row kept has its words in order.
     const words = new Set(raw.split('\n').map(line => line.split(/\s+/u).filter(Boolean).join(' ')))

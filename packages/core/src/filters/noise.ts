@@ -67,6 +67,8 @@ export interface NoiseFilterSpec {
   /** The output must contain a line this matches, so it is the tool's own report. */
   readonly recognize?: RegExp
   readonly fold: Omit<FoldRunsOptions, 'label'>
+  /** The tool prints this report on stderr (see `EconomyFilter.stderr`). */
+  readonly stderr?: boolean
 }
 
 /** A filter that only folds runs of recognized noise lines; every other line stays as it is. */
@@ -79,6 +81,7 @@ export function noiseFilter(spec: NoiseFilterSpec): EconomyFilter {
   }
   return {
     name: spec.name, transformation: spec.transformation ?? 'noise-removal', commands: spec.commands,
+    ...spec.stderr ? { stderr: true } : {},
     projectMapped, project: input => projectMapped(input)?.text,
   }
 }

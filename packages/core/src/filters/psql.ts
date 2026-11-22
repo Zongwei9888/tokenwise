@@ -7,6 +7,8 @@ import { NOT_PLAIN, PROBLEM } from './noise.ts'
 /** The rule under an aligned table's header: `----+-------+----`. */
 const RULE = /^-+(?:\+-+)*$/u
 const FOOTER = /^\(\d+ rows?\)$/u
+/** A value psql right-aligns: an integer, decimal or float. */
+const NUMBER = /^[-+]?(?:\d[\d,]*(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/u
 const EXEC_VALUED = ['-u', '--user', '-e', '--env', '-w', '--workdir', '--env-file', '--index']
 
 /** `psql …`, also run in a container: `docker exec -i db psql …`, `docker compose exec -T db psql …`. */
@@ -20,7 +22,8 @@ function psqlCommand(command: string): boolean {
   return argv[i + 1] === 'psql'
 }
 
-interface Cell { readonly start: number; readonly end: number }
+/** A cell's value, and how many spaces stood before it in its slot (one is psql's margin). */
+interface Cell { readonly start: number; readonly end: number; readonly lead: number }
 
 /**
  * The cells of an aligned row whose separators sit under the rule's `+`:
@@ -36,8 +39,8 @@ function cellsUnder(text: string, rule: string, bars: readonly number[]): Cell[]
   return edges.slice(1).map((to, k) => {
     const from = edges[k]! + 1
     const value = text.slice(from, to)
-    const start = from + value.length - value.trimStart().length
-    return { start, end: start + value.trim().length }
+    const lead = value.length - value.trimStart().length
+    return { start: from + lead, end: from + lead + value.trim().length, lead }
   })
 }
 
@@ -57,7 +60,15 @@ function alignedTable(lines: readonly SourceLine[], at: number): { header: Cell[
     if (cells === undefined) break
     rows.push({ line: lines[end]!, cells })
   }
-  return rows.length > 0 && FOOTER.test(lines[end]?.text ?? '') ? { header, rows, end } : undefined
+  if (rows.length === 0 || !FOOTER.test(lines[end]?.text ?? '')) return undefined
+  // psql right-aligns numbers and left-aligns everything else. In a column that is not all numbers, a cell
+  // with more than the one-space margin before it holds a value that starts with spaces: keep the table as printed.
+  for (let k = 0; k < header.length; k++) {
+    const values = rows.map(row => row.line.text.slice(row.cells[k]!.start, row.cells[k]!.end)).filter(value => value !== '')
+    if (values.every(value => NUMBER.test(value))) continue
+    if (rows.some(row => row.cells[k]!.lead > 1 && row.cells[k]!.end > row.cells[k]!.start)) return undefined
+  }
+  return { header, rows, end }
 }
 
 function writeCells(builder: ProjectionBuilder, line: SourceLine, cells: readonly Cell[]): void {
@@ -73,8 +84,8 @@ function writeCells(builder: ProjectionBuilder, line: SourceLine, cells: readonl
  * its `(N rows)` footer, becomes tab-separated cells without their padding,
  * and the `---+---` rule under the header goes. Every column name, row,
  * value (an empty one stays an empty field) and footer stays; a row that may
- * report a problem keeps its layout. A value's own leading or trailing spaces
- * cannot be told from padding and are not kept. Notices, errors, command tags
+ * report a problem keeps its layout. A table where a text value starts with
+ * spaces of its own passes through, since they would read as padding. Notices, errors, command tags
  * (`INSERT 0 1`), timing and any table psql wrapped, split over lines or
  * printed in another format pass through verbatim.
  */

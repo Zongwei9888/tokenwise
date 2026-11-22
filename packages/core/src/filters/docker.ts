@@ -73,7 +73,7 @@ function projectBuild(input: FilterInput): MappedProjection | undefined {
 }
 
 export const dockerBuildFilter: EconomyFilter = {
-  name: 'docker-build', transformation: 'noise-removal', projectMapped: projectBuild, commands: buildCommand,
+  name: 'docker-build', transformation: 'noise-removal', projectMapped: projectBuild, commands: buildCommand, stderr: true,
   project: input => projectBuild(input)?.text,
 }
 

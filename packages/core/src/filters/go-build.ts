@@ -11,6 +11,8 @@ const MODULE = /^go: (?:downloading \S+ v\S+|extracting \S+ v\S+|finding module 
  */
 export const goBuildFilter = noiseFilter({
   name: 'go-build',
+  // The go command prints module downloads and compiler diagnostics on stderr.
+  stderr: true,
   commands: command => commandIs(command, ['go'], [['build'], ['install'], ['vet']]),
   fold: {
     kind: text => MODULE.test(text) ? 'module' : undefined,

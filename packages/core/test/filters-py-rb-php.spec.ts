@@ -304,7 +304,7 @@ describe('uv-sync', () => {
       ' + ast-serialize==0.13.1',
       ' + cfgv==3.5.0',
       ' + distlib==0.4.4',
-      '[13 more "+" rows of installed packages omitted; `uv pip list` lists every installed package]',
+      '[13 more "+" rows of installed packages omitted]',
       ' + typing-extensions==4.16.0',
       ' + virtualenv==21.14.12',
       '',
@@ -343,7 +343,7 @@ describe('uv-sync', () => {
     const projected = project(uvSyncFilter, 'uv sync', sync)!
     expect(projected).toContain('Resolved 22 packages in 1.21s\n[6 download progress rows omitted]\nPrepared 21 packages in 2.31s\n')
     // Seven rows before the upgrade: kept. The upgrade pair, then twelve new rows: previewed.
-    expect(projected).toContain(' + httpcore==1.0.0\n - httpx==0.27.0\n + httpx==0.28.1\n + idna==1.0.0\n + iniconfig==1.0.0\n + mypy==1.0.0\n[7 more "+" rows of installed packages omitted; `uv pip list` lists every installed package]\n + sniffio==1.0.0\n + typing-extensions==1.0.0\n + demo==0.1.0 (from file:///Users/demo/app)\nwarning:')
+    expect(projected).toContain(' + httpcore==1.0.0\n - httpx==0.27.0\n + httpx==0.28.1\n + idna==1.0.0\n + iniconfig==1.0.0\n + mypy==1.0.0\n[7 more "+" rows of installed packages omitted]\n + sniffio==1.0.0\n + typing-extensions==1.0.0\n + demo==0.1.0 (from file:///Users/demo/app)\nwarning:')
     keepsAllBut(sync, projected, /^ \+ \S+==1\.0\.0$|Download/u)
   })
 
@@ -375,7 +375,7 @@ describe('poetry-install', () => {
   it('previews a long Installing list, keeping updates, removals and counts', () => {
     const result = poetryInstallFilter.projectMapped({ command: 'poetry install --no-root', stdout: out, exitCode: 0 })!
     copiedExactly(out, result)
-    expect(result.text).toContain('  - Removing six (1.16.0)\n  - Updating gunicorn (22.0.0 -> 23.0.0)\n  - Installing asgiref (3.8.1)\n  - Installing certifi (2024.8.30)\n  - Installing charset-normalizer (3.4.0)\n[9 more "Installing" rows omitted; `poetry show` lists every installed package]\n  - Installing requests (2.32.3)\n  - Installing whitenoise (6.8.2)\n\nInstalling the current project: shop (0.1.0)\n')
+    expect(result.text).toContain('  - Removing six (1.16.0)\n  - Updating gunicorn (22.0.0 -> 23.0.0)\n  - Installing asgiref (3.8.1)\n  - Installing certifi (2024.8.30)\n  - Installing charset-normalizer (3.4.0)\n[9 more "Installing" rows omitted]\n  - Installing requests (2.32.3)\n  - Installing whitenoise (6.8.2)\n\nInstalling the current project: shop (0.1.0)\n')
     keepsAllBut(out, result.text, /^ {2}- Installing /u)
     expect(projectStaticFilter({ command: 'poetry sync', stdout: out, exitCode: 0 })?.filter).toBe('poetry-install')
   })
@@ -383,7 +383,7 @@ describe('poetry-install', () => {
   // Adapted from RTK's poetry-install filter tests (Apache-2.0, see third-party/rtk).
   it('keeps named packages and short lists, and leaves other commands alone', () => {
     // The named package's row stays after a preview of the thirteen before it.
-    expect(project(poetryInstallFilter, 'poetry update whitenoise', out)).toContain('[8 more "Installing" rows omitted; `poetry show` lists every installed package]\n  - Installing urllib3 (2.2.3)\n  - Installing requests (2.32.3)\n  - Installing whitenoise (6.8.2)\n')
+    expect(project(poetryInstallFilter, 'poetry update whitenoise', out)).toContain('[8 more "Installing" rows omitted]\n  - Installing urllib3 (2.2.3)\n  - Installing requests (2.32.3)\n  - Installing whitenoise (6.8.2)\n')
     expect(project(poetryInstallFilter, 'poetry update django pytest', out)).toBeUndefined()
     const rtk = 'Installing dependencies from lock file\n\n  - Downloading requests-2.31.0-py3-none-any.whl (62.6 kB)\n  - Installing certifi (2023.11.17)\n  - Installing charset-normalizer (3.3.2)\n  - Installing idna (3.6)\n  - Installing urllib3 (2.1.0)\n  - Installing requests (2.31.0)\n\nWriting lock file\n'
     expect(project(poetryInstallFilter, 'poetry install', rtk)).toBeUndefined()
@@ -426,7 +426,7 @@ describe('bundle-install', () => {
       'Installing base64 0.2.0',
       'Installing bigdecimal 3.1.8 with native extensions',
       'Installing concurrent-ruby 1.3.4',
-      '[8 more "Installing" rows, 1 "Using" rows of gems already installed, 13 "Fetching" rows of gems installed in this run omitted; `bundle list` lists every gem in the bundle]',
+      '[8 more "Installing" rows, 1 "Using" rows of gems already installed, 13 "Fetching" rows of gems installed in this run omitted]',
       'Installing nokogiri 1.16.7 (arm64-darwin)',
       'Installing rack 3.1.8',
       'Bundle complete! 4 Gemfile dependencies, 14 gems now installed.',
@@ -477,7 +477,7 @@ describe('composer-install', () => {
       '  - Installing psr/container (2.0.2): Extracting archive',
       '  - Installing psr/log (3.0.2): Extracting archive',
       '  - Installing symfony/event-dispatcher (v7.1.6): Extracting archive',
-      '[8 more "Installing" rows omitted; `composer show` lists every installed package]',
+      '[8 more "Installing" rows omitted]',
       '  - Installing sebastian/diff (5.1.1): Extracting archive',
       '  - Installing doctrine/instantiator (2.0.0): Extracting archive',
       'Package doctrine/instantiator is abandoned, you should avoid using it. No replacement was suggested.',

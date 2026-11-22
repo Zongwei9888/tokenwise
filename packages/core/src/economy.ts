@@ -1,5 +1,5 @@
 /** Host-neutral Token Economy decision for one shell execution. No I/O, no host types. */
-import { filterCoversCommand, projectStaticFilter } from './filters/index.ts'
+import { STATIC_FILTERS, filterCoversCommand, projectStaticFilter } from './filters/index.ts'
 import { ProjectionBuilder } from './projection-map.ts'
 import type { MappedProjection, SourceMap } from './projection-map.ts'
 import { hasBuiltinCommand, inspectShell } from './shell-inspection.ts'
@@ -192,6 +192,7 @@ export function decideShellProjection(result: ShellResult, options: EconomyDecis
       const candidate = projectStaticFilter({ command: result.command, stdout: result.stderr.text, exitCode: result.exitCode, options: filterOptions })
       if (candidate !== undefined) {
         const approved = candidate.filter === 'cargo-build'
+          || STATIC_FILTERS.find(filter => filter.name === candidate.filter)?.stderr === true
           || candidate.transformation === 'diagnostic-deduplication' && exactDiagnosticDeduplication(result.stderr.text, candidate.text)
         if (!approved) {
           return pass('stream-policy-rejected', { filter: candidate.filter, transformation: candidate.transformation,

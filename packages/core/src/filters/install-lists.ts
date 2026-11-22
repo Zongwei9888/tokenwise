@@ -17,7 +17,6 @@ interface InstallSpec {
   /** The packages the command line names, normalized as `classify` compares them. */
   readonly named: (args: readonly string[]) => readonly string[]
   readonly addedRows: string
-  readonly listHint: string
   readonly quietRows: Readonly<Record<string, string>>
 }
 
@@ -57,7 +56,7 @@ function foldInstallRuns(stdout: string, spec: InstallSpec, named: ReadonlySet<s
       continue
     }
     const parts = [cut > 0 ? `${cut} more ${spec.addedRows}` : '', ...[...quiet].map(([label, count]) => `${count} ${spec.quietRows[label]}`)]
-    const note = `[${parts.filter(Boolean).join(', ')} omitted${cut > 0 ? `; ${spec.listHint}` : ''}]\n`
+    const note = `[${parts.filter(Boolean).join(', ')} omitted]\n`
     const head = cut > 0 ? added.slice(0, HEAD) : added
     for (const k of head) builder.keep(lines[k]!.start, lines[k]!.end)
     builder.newline()
@@ -115,7 +114,6 @@ export const uvSyncFilter = installFilter({
     }
   },
   addedRows: '"+" rows of installed packages',
-  listHint: '`uv pip list` lists every installed package',
   quietRows: { download: 'download progress rows' },
 })
 
@@ -141,7 +139,6 @@ export const poetryInstallFilter = installFilter({
     return name !== undefined && !named.has(pythonName(name)) ? { kind: 'added' } : undefined
   },
   addedRows: '"Installing" rows',
-  listHint: '`poetry show` lists every installed package',
   quietRows: {},
 })
 
@@ -178,7 +175,6 @@ export const composerInstallFilter = installFilter({
     }
   },
   addedRows: '"Installing" rows',
-  listHint: '`composer show` lists every installed package',
   quietRows: { Downloading: '"Downloading" rows of packages installed in this run', Locking: '"Locking" rows of packages installed in this run' },
 })
 
@@ -218,6 +214,5 @@ export const bundleInstallFilter = installFilter({
     }
   },
   addedRows: '"Installing" rows',
-  listHint: '`bundle list` lists every gem in the bundle',
   quietRows: { using: '"Using" rows of gems already installed', fetching: '"Fetching" rows of gems installed in this run' },
 })

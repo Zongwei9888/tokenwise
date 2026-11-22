@@ -241,7 +241,7 @@ function projectPs(input: FilterInput): MappedProjection | undefined {
   let omitted = 0
   const flush = () => {
     if (omitted === 0) return
-    builder.generate(`[${omitted} process rows omitted; narrow with grep or pgrep]\n`, 'ps-omitted-rows')
+    builder.generate(`[${omitted} process rows omitted]\n`, 'ps-omitted-rows')
     omitted = 0
   }
   for (const [index, line] of lines.entries()) {

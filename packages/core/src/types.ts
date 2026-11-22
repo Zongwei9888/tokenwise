@@ -29,6 +29,13 @@ export interface EconomyFilter {
    * only when some filter claims it, so a filter without this is never reached there.
    */
   readonly commands?: (command: string) => boolean
+  /**
+   * The tool prints the report this filter reads on stderr (compilers, Docker
+   * BuildKit, Jest), so where a host keeps stderr apart the filter may read it
+   * there. Without this, stderr is only folded by the Cargo filter and by an
+   * exact duplicate fold.
+   */
+  readonly stderr?: boolean
   project(input: FilterInput): string | undefined
   projectMapped(input: FilterInput): MappedProjection | undefined
 }

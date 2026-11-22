@@ -71,6 +71,18 @@ describe('decideShellProjection', () => {
       stdout: { start: 0, text: '' }, stderr: { start: 0, text: grep(200) } }, { policy })
     expect(grepOnStderr).toMatchObject({ kind: 'pass', reason: 'stream-policy-rejected', matchDetail: 'stderr-transformation-not-approved' })
   })
+  it('filters the stderr report of a tool that prints it there (go build, compilers, BuildKit, Jest)', () => {
+    const stderr = Array.from({ length: 60 }, (_, i) => `go: downloading github.com/acme/mod${i} v1.${i}.0\n`).join('')
+      + '# example.com/app\n./main.go:7:2: undefined: missing\n'
+    const rendered = `[stderr]\n${stderr}`
+    const decision = decideShellProjection({ command: 'go build ./...', exitCode: 1, rendered,
+      stdout: { start: 0, text: '' }, stderr: { start: 9, text: stderr } }, { policy })
+    expect(decision).toMatchObject({ kind: 'project', filter: 'go-build', stream: 'stderr' })
+    if (decision.kind === 'project') {
+      expect(decision.text).toContain('[60 Go module download lines omitted]\n# example.com/app\n./main.go:7:2: undefined: missing\n')
+      expectCopiedSpansMatch(rendered, decision)
+    }
+  })
   it('pins decisions to the policy hash and honours its filter options', () => {
     const narrow = createPolicy({ grep: { maxPerFile: 2 } })
     expect(narrow.policyHash).not.toBe(policy.policyHash)

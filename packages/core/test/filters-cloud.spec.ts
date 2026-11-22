@@ -621,6 +621,15 @@ describe('psql', () => {
     expect(projectStaticFilter({ command: 'docker compose exec -T db psql -U app -c "select 1"', stdout: psqlSelect, exitCode: 0 })?.filter).toBe('psql')
   })
 
+  it('keeps a table as printed when a text value starts with spaces of its own', () => {
+    // `select '  indented' as note`: in a left-aligned (text) column those spaces would read as padding.
+    const spaced = psqlSelect.replace('  2 | bob@example.org   | free |', '  2 | bob@example.org   |   ab |')
+    expect(psqlFilter.project({ command: 'psql -c "select 1"', stdout: spaced, exitCode: 0 })).toBeUndefined()
+    // Numbers are right-aligned: the spaces before them are padding, so that table still compacts.
+    const numbers = '  n  \n-----\n   1\n  22\n 333\n(3 rows)\n'
+    expect(psqlFilter.project({ command: 'psql -c "select 1"', stdout: numbers, exitCode: 0 })).toBe('n\n1\n22\n333\n(3 rows)\n')
+  })
+
   // Adapted from RTK's psql_cmd.rs tests (Apache-2.0, see third-party/rtk).
   it('reads RTK\'s sample and several result sets among command tags', () => {
     const rtk = ' id | name  | email\n----+-------+---------\n  1 | alice | a@b.com\n  2 | bob   | b@b.com\n(2 rows)\n'

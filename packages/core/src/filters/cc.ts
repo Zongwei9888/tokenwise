@@ -71,6 +71,6 @@ function projectMapped(input: FilterInput): MappedProjection | undefined {
 }
 
 export const ccFilter: EconomyFilter = {
-  name: 'cc', transformation: 'diagnostic-deduplication', commands: compilerCommand, projectMapped,
+  name: 'cc', transformation: 'diagnostic-deduplication', commands: compilerCommand, projectMapped, stderr: true,
   project: input => projectMapped(input)?.text,
 }
