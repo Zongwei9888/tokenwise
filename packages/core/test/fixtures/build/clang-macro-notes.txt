@@ -1,0 +1,37 @@
+m.c:5:11: warning: format specifies type 'char *' but the argument has type 'int' [-Wformat]
+    5 |   LOG_INT(a);
+      |   ~~~~~~~~^~
+m.c:2:35: note: expanded from macro 'LOG_INT'
+    2 | #define LOG_INT(v) printf("%s\n", v)
+      |                            ~~     ^
+m.c:6:11: warning: format specifies type 'char *' but the argument has type 'int' [-Wformat]
+    6 |   LOG_INT(b);
+      |   ~~~~~~~~^~
+m.c:2:35: note: expanded from macro 'LOG_INT'
+    2 | #define LOG_INT(v) printf("%s\n", v)
+      |                            ~~     ^
+m.c:7:11: warning: format specifies type 'char *' but the argument has type 'int' [-Wformat]
+    7 |   LOG_INT(c);
+      |   ~~~~~~~~^~
+m.c:2:35: note: expanded from macro 'LOG_INT'
+    2 | #define LOG_INT(v) printf("%s\n", v)
+      |                            ~~     ^
+m.c:8:11: warning: division by zero is undefined [-Wdivision-by-zero]
+    8 |   int r = HALF(a) + HALF(b) + HALF(c);
+      |           ^~~~~~~
+m.c:3:22: note: expanded from macro 'HALF'
+    3 | #define HALF(x) ((x) / 0)
+      |                      ^ ~
+m.c:8:21: warning: division by zero is undefined [-Wdivision-by-zero]
+    8 |   int r = HALF(a) + HALF(b) + HALF(c);
+      |                     ^~~~~~~
+m.c:3:22: note: expanded from macro 'HALF'
+    3 | #define HALF(x) ((x) / 0)
+      |                      ^ ~
+m.c:8:31: warning: division by zero is undefined [-Wdivision-by-zero]
+    8 |   int r = HALF(a) + HALF(b) + HALF(c);
+      |                               ^~~~~~~
+m.c:3:22: note: expanded from macro 'HALF'
+    3 | #define HALF(x) ((x) / 0)
+      |                      ^ ~
+6 warnings generated.

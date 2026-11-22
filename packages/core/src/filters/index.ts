@@ -40,6 +40,17 @@ import { terraformInitFilter } from './terraform-init.ts'
 import { pulumiFilter } from './pulumi.ts'
 import { ansiblePlaybookFilter } from './ansible.ts'
 import { psqlFilter } from './psql.ts'
+import { goBuildFilter } from './go-build.ts'
+import { ccFilter } from './cc.ts'
+import { swiftBuildFilter } from './swift-build.ts'
+import { xcodebuildFilter } from './xcodebuild.ts'
+import { pioRunFilter } from './pio-run.ts'
+import { trunkBuildFilter } from './trunk-build.ts'
+import { springBootFilter } from './spring-boot.ts'
+import { gradleFilter } from './gradle.ts'
+import { liquibaseFilter } from './liquibase.ts'
+import { dotnetBuildFilter } from './dotnet-build.ts'
+import { mixCompileFilter } from './mix-compile.ts'
 import type { EconomyFilter, FilterCandidate, FilterInput } from '../types.ts'
 
 export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
@@ -52,6 +63,9 @@ export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
   jsTestFilter, playwrightFilter, nextBuildFilter, ngBuildFilter, pnpmOutdatedFilter, pnpmListFilter, turboFilter, prismaMigrateFilter, prettierFilter,
   dockerPsFilter, dockerImagesFilter, kubectlGetFilter, helmFilter, awsFilter, gcloudFilter, skopeoFilter, terraformInitFilter, pulumiFilter,
   ansiblePlaybookFilter, psqlFilter,
+  // After maven, so `mvn spring-boot:run` keeps Maven's projection; before gradle, so `gradle bootRun` gets both folds.
+  goBuildFilter, ccFilter, swiftBuildFilter, xcodebuildFilter, pioRunFilter, trunkBuildFilter, springBootFilter, gradleFilter,
+  liquibaseFilter, dotnetBuildFilter, mixCompileFilter,
 ])
 
 /** Some filter reads this command's output (see `EconomyFilter.commands`). */

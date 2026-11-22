@@ -1,0 +1,13 @@
+In file included from a.c:1:
+./h.h:2:32: warning: unused variable 'unused' [-Wunused-variable]
+    2 | static int helper(int a) { int unused = a; return 0; }
+      |                                ^~~~~~
+a.c:6:7: warning: unused variable 'y' [-Wunused-variable]
+    6 |   int y;
+      |       ^
+2 warnings generated.
+In file included from b.c:1:
+./h.h:2:32: warning: unused variable 'unused' [-Wunused-variable]
+    2 | static int helper(int a) { int unused = a; return 0; }
+      |                                ^~~~~~
+1 warning generated.
