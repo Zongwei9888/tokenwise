@@ -22,6 +22,12 @@ import { searchContextFilter } from './search-context.ts'
 import { pipInstallFilter } from './pip-install.ts'
 import { yarnInstallFilter } from './yarn-install.ts'
 import { terraformFilter } from './terraform.ts'
+import { dockerImagesFilter, dockerPsFilter, kubectlGetFilter } from './containers.ts'
+import { awsFilter, gcloudFilter, helmFilter, skopeoFilter } from './cloud-cli.ts'
+import { terraformInitFilter } from './terraform-init.ts'
+import { pulumiFilter } from './pulumi.ts'
+import { ansiblePlaybookFilter } from './ansible.ts'
+import { psqlFilter } from './psql.ts'
 import type { EconomyFilter, FilterCandidate, FilterInput } from '../types.ts'
 
 export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
@@ -29,6 +35,8 @@ export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
   ruffJsonFilter, goTestJsonFilter, gitStatusFilter, searchContextFilter, searchLayoutFilter, pathListFilter, testProgressFilter, lsListingFilter, testReportFilter, cargoBuildFilter, gitShowFilter,
   gitLogFilter, gitBlameFilter, dockerBuildFilter, containerLogsFilter, makeFilter, mavenFilter,
   terraformFilter,
+  dockerPsFilter, dockerImagesFilter, kubectlGetFilter, helmFilter, awsFilter, gcloudFilter, skopeoFilter, terraformInitFilter, pulumiFilter,
+  ansiblePlaybookFilter, psqlFilter,
 ])
 
 /** Some filter reads this command's output (see `EconomyFilter.commands`). */

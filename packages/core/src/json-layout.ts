@@ -22,3 +22,16 @@ export function compactJsonLayout(raw: string, preserveNewlines = false): Mapped
   builder.keep(start, raw.length)
   return builder.finish()
 }
+
+/**
+ * A whole JSON object or array, as cloud CLIs print it (`aws`, `kubectl get -o
+ * json`, `gcloud --format=json`, `skopeo inspect`), without its layout
+ * whitespace. Undefined when the text is not one JSON document or has no
+ * layout to remove.
+ */
+export function compactJsonDocument(raw: string): MappedProjection | undefined {
+  if (!/^\s*[[{]/u.test(raw)) return undefined
+  try { JSON.parse(raw) } catch { return undefined }
+  const projection = compactJsonLayout(raw)
+  return projection.text.length < raw.trimEnd().length ? projection : undefined
+}
