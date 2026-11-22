@@ -2,7 +2,7 @@
 
 <h1>
   <img src="docs/assets/logo.svg" width="48" height="48" align="absmiddle" alt="">
-  TokenWise: Make every token count for your agent
+  TokenWise: Self-Evolving Context for Agents with <br> Up to 50% Token Savings
 </h1>
 
 <p>
@@ -15,9 +15,6 @@
 ### The self-evolving token layer for AI agents
 
 </div>
-
-<p align="center"><a href="https://youtu.be/9p36ZR2rNtE"><img src="media/video/promo.gif" alt="TokenWise in nine agents: noise turns into coins, every answer ends with what was saved, and the savings grow through the week" width="100%"></a></p>
-<p align="center"><sub>▶ <a href="https://youtu.be/9p36ZR2rNtE">Watch the video on YouTube</a> · 35 seconds</sub></p>
 
 ## Why TokenWise?
 
@@ -43,6 +40,9 @@ Today's agents face:
 <p align="center"><img src="media/images/savings.png" alt="Algorithm development and maintenance (bug fixing and algorithm improvement): up to 38% fewer tokens. Systems software engineering (long-horizon, multi-module system development): up to 50%. Large-context Q&amp;A (in-depth Q&amp;A over a large context): up to 45%. Saves more over time: TokenWise adaptively learns its optimization strategy; after learning, up to 27% fewer tokens than before." width="100%"></p>
 
 <sub>From our paper's evaluation; the paper is coming soon.</sub>
+
+<p align="center"><a href="https://youtu.be/9p36ZR2rNtE"><img src="media/video/promo.gif" alt="TokenWise in nine agents: noise turns into coins, every answer ends with what was saved, and the savings grow through the week" width="100%"></a></p>
+<p align="center"><sub>▶ <a href="https://youtu.be/9p36ZR2rNtE">Watch the video on YouTube</a> · 35 seconds</sub></p>
 
 ## 🤖 Supported agents
 
@@ -71,7 +71,7 @@ allows, so the depth varies a little; the details are under [How each agent is c
 
 <p align="center"><img src="media/images/cards.png" alt="The card at the end of an answer in Claude Code, Codex, GitHub Copilot CLI, Hermes Agent, OpenCode, CodeBuddy, Grok Build, DeepSeek Harness and pi" width="100%"></p>
 
-<sub>Each agent built the same small ledger tool from scratch in an empty folder, running its tests as plain `pytest -v`; the numbers are from that one run.</sub>
+<sub>Numbers are from one real run in each agent.</sub>
 
 ## 🚀 Get started
 
