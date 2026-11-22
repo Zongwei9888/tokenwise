@@ -1,32 +1,35 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><link rel="stylesheet" href="brand.css">
 <style>
-  /* The README's savings figure: three kinds of work, each with its best saving across the four models,
-     and a band for what learning adds on top. */
+  /* The README's savings figure: three kinds of work, each with its best saving across the four models
+     (evolved rules against DeepSeek Harness's own context management), and a band for what
+     self-evolution adds (evolved against initial rules). */
   body { display: block; }
-  .d { width: 1200px; padding: 34px 36px 34px; background: var(--paper); border-radius: 26px; }
+  .d { width: 1200px; padding: 30px 32px 32px; background: var(--paper); border-radius: 26px; }
   .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  .card { background: #fff; border: 1px solid var(--rule); border-radius: 20px; padding: 24px 24px 22px; display: flex; flex-direction: column; }
-  .card h3 { font-weight: 780; font-stretch: 84%; font-size: 28px; line-height: 1.15; color: var(--ink); }
-  .zh .card h3 { font-stretch: 100%; font-size: 27px; }
-  /* English titles may wrap to two lines: give every title two, so the numbers line up. */
-  body:not(.zh) .card h3 { min-height: 2.3em; }
-  .card p { margin-top: 8px; color: #4F6B66; font-size: 16px; line-height: 1.4; font-stretch: 96%; min-height: 2.8em; }
-  .hero { margin-top: 18px; display: flex; flex-direction: column; gap: 4px; color: var(--teal); }
-  .hero small { font-size: 17px; font-weight: 650; font-stretch: 90%; color: #3D5A55; }
-  .hero strong { font-size: 84px; font-weight: 820; font-stretch: 66%; line-height: .95; letter-spacing: -.02em; }
+  .card { background: #fff; border: 1px solid var(--rule); border-radius: 20px; padding: 26px 26px 24px; display: flex; flex-direction: column; }
+  .card h3 { font-weight: 800; font-stretch: 86%; font-size: 30px; line-height: 1.12; color: var(--ink); min-height: 2.24em; }
+  .zh .card h3 { font-stretch: 100%; font-size: 28px; min-height: 0; }
+  .card p { margin-top: 10px; color: #3D5A55; font-size: 16.5px; line-height: 1.4; font-stretch: 96%; min-height: 2.8em; }
+  .zh .card p { min-height: 1.4em; }
+  .lab { margin-top: 18px; font-size: 17px; font-weight: 800; letter-spacing: .02em; color: var(--ink); }
+  .zh .lab { letter-spacing: 0; }
+  .num + .lab { margin-top: 6px; }
+  .num { font-size: 96px; font-weight: 850; font-stretch: 70%; line-height: .95; letter-spacing: -.02em; color: var(--teal); margin: 4px 0 2px; }
 
-  .learn { margin-top: 18px; background: var(--teal); border-radius: 20px; padding: 22px 26px; display: grid; grid-template-columns: 1fr 360px; gap: 30px; align-items: center; color: #fff; }
-  .learn h3 { font-weight: 780; font-stretch: 84%; font-size: 28px; }
-  .zh .learn h3 { font-stretch: 100%; font-size: 27px; }
-  .learn p { margin-top: 8px; color: #D9FFF4; font-size: 17px; line-height: 1.45; font-stretch: 96%; }
-  .learn p b { color: #fff; }
-  .bars { display: grid; gap: 12px; }
-  .bar { display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 12px; font-size: 15px; font-weight: 650; color: #D9FFF4; font-stretch: 92%; }
-  .bar .t { position: relative; height: 22px; }
-  .bar .f { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: rgba(255,255,255,.28); }
+  .learn { margin-top: 18px; background: var(--teal); border-radius: 22px; padding: 22px 28px; display: grid; grid-template-columns: 1fr 620px; gap: 28px; align-items: center; color: #fff; }
+  .learn h3 { font-weight: 820; font-stretch: 84%; font-size: 28px; line-height: 1.1; white-space: nowrap; }
+  .zh .learn h3 { font-stretch: 100%; font-size: 28px; }
+  .learn h3 small { font-size: .74em; font-weight: 760; margin-left: 8px; }
+  .zh .learn h3 small { margin-left: 4px; }
+  .learn p { margin-top: 8px; color: #D9FFF4; font-size: 16px; line-height: 1.45; font-stretch: 96%; }
+  .bars { display: grid; gap: 14px; }
+  .bar { display: grid; grid-template-columns: 160px 1fr; align-items: center; gap: 12px; font-size: 15.5px; font-weight: 700; color: #fff; font-stretch: 90%; }
+  .zh .bar { grid-template-columns: 80px 1fr; }
+  .bar .t { position: relative; height: 24px; }
+  .bar .f { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px; background: #7FE8CF; }
   .bar.after .f { background: var(--kept); }
-  .bar .v { position: absolute; top: -4px; font-size: 26px; font-weight: 820; font-stretch: 70%; color: #fff; }
+  .bar .v { position: absolute; top: 50%; transform: translateY(-50%); font-size: 19px; font-weight: 850; font-stretch: 74%; color: #fff; white-space: nowrap; letter-spacing: .01em; }
 </style></head>
 <body>
 <div class="d" id="d"></div>
@@ -35,40 +38,42 @@ const zh = new URLSearchParams(location.search).get('lang') === 'zh'
 if (zh) document.body.classList.add('zh')
 
 // From the paper's evaluation (total tokens per task or question, cache reads included), against
-// DeepSeek Harness's own context management, for DeepSeek V4, MiniMax-M3, GLM-5.3 and Qwen3.8.
-// Each card shows the best of the four; pass rates held or improved on every backbone.
+// DeepSeek Harness's own context management, for DeepSeek V4, MiniMax-M3, GLM-5.3 and Qwen3.8,
+// with the frozen evolved rules. Each card shows the best of the four; pass rates held or improved.
 const SAVED = {
-  everyday: [38.2, 22.5, 20.3, 13.8],  // EvoAgentBench-SE (SWE-bench issues), Table 1
-  longHorizon: [27.4, 41.6, 50.2, 25.3], // LongCLI-Bench, Table 2 (evolved policy)
+  algorithm: [38.2, 22.5, 20.3, 13.8],  // EvoAgentBench-SE (SWE-bench issues), Table 1
+  software: [27.4, 41.6, 50.2, 25.3],   // LongCLI-Bench, Table 2 (evolved policy)
   qa: [21.1, 22.1, 44.6, 39.7],         // MemoryAgentBench, Table 3
-  learned: [15.0, 27.2, 24.7, 12.0],    // LongCLI-Bench, evolved vs initial rules (tasks never seen while learning)
+  evolution: [15.0, 27.2, 24.7, 12.0],  // LongCLI-Bench, evolved vs initial rules (tasks never seen while learning)
 }
 const T = zh ? {
-  upto: '最多',
-  cards: [['everyday', '算法维护与研发', '问题修复与算法改进'],
-    ['longHorizon', '系统工程开发', '长周期、多模块的复杂系统开发'],
-    ['qa', '海量资料问答', '上下文深度问答任务']],
-  learn: '越用越省',
-  learnText: 'TokenWise 根据你的使用，自适应地学习优化策略。',
-  before: '学习前', after: '学习后',
+  upto: '最多', fewer: '节省 token',
+  cards: [['algorithm', '算法开发与调试', '迭代式的问题修复与算法改进'],
+    ['software', '长程软件工程', '跨大型多模块代码库的系统级工程'],
+    ['qa', '海量资料问答', '对长文档与长历史的深度推理']],
+  learn: '自进化<small>释放更多节省</small>',
+  learnText: 'TokenWise 从真实工作流中学习，随着使用，token 消耗再额外减少 27%。',
+  before: '自进化前', after: '自进化后', extra: '额外节省 27%', scale: 75, afterScale: 30,
 } : {
-  upto: 'up to',
-  cards: [['everyday', 'Algorithm Development & Maintenance', 'Bug fixing and algorithm improvement'],
-    ['longHorizon', 'Systems Software Engineering', 'Long-horizon, multi-module system development'],
-    ['qa', 'Large-Context Q&A', 'In-depth Q&A over a large context']],
-  learn: 'Saves more over time',
-  learnText: 'TokenWise adaptively learns its optimization strategy from how you work.',
-  before: 'Before', after: 'After',
+  upto: 'UP TO', fewer: 'FEWER TOKENS',
+  cards: [['algorithm', 'Algorithm Development & Debugging', 'Iterative bug fixing and algorithm improvement'],
+    ['software', 'Long-Horizon Software Engineering', 'System-level engineering across large multi-module codebases'],
+    ['qa', 'Large-Context Q&A', 'Deep reasoning over long documents and histories']],
+  learn: 'Self-Evolution<small>Unlocks More Savings</small>',
+  learnText: 'TokenWise learns from real workflows and cuts token usage by up to an additional 27% over time.',
+  before: 'Before Self-Evolution', after: 'After Self-Evolution', extra: 'UP TO 27% ADDITIONAL SAVINGS', scale: 46,
 }
-const pct = v => `−${Math.round(v)}%`
-const best = k => Math.max(...SAVED[k])
+const best = k => Math.round(Math.max(...SAVED[k]))
+// The bars are to scale: the after bar is (100 − 27)% of the before bar.
+const before = T.scale, after = T.afterScale ?? T.scale * (100 - best('evolution')) / 100
 
 document.getElementById('d').innerHTML = `<div class="grid">${T.cards.map(([k, h, sub]) => `<div class="card"><h3>${h}</h3><p>${sub}</p>
-    <div class="hero"><small>${T.upto}</small><strong>${pct(best(k))}</strong></div></div>`).join('')}</div>
+    <div class="lab">${T.upto}</div><div class="num">${best(k)}%</div><div class="lab">${T.fewer}</div></div>`).join('')}</div>
   <div class="learn"><div><h3>${T.learn}</h3><p>${T.learnText}</p></div>
     <div class="bars">
-      <div class="bar"><span>${T.before}</span><span class="t"><span class="f" style="width:100%"></span></span></div>
-      <div class="bar after"><span>${T.after}</span><span class="t"><span class="f" style="width:${100 - best('learned')}%"></span><span class="v" style="left:calc(${100 - best('learned')}% + 10px)">${pct(best('learned'))}</span></span></div>
+      <div class="bar"><span>${T.before}</span><span class="t"><span class="f" style="width:${before}%"></span></span></div>
+      <div class="bar after"><span>${T.after}</span><span class="t"><span class="f" style="width:${after}%"></span>
+        <span class="v" style="left:calc(${after}% + 12px)">${T.extra}</span></span></div>
     </div></div>`
 
 await document.fonts.ready
