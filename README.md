@@ -40,7 +40,7 @@ Today's agents face:
 
 ## 📊 Results
 
-<p align="center"><img src="media/images/savings.png" alt="Everyday coding (resolving an issue in a real project): up to 38% fewer tokens. Long-horizon coding (hours of autonomous development): up to 50%. Large-context Q&A (in-depth Q&A over a large context): up to 45%. Saves more over time: TokenWise adaptively learns its optimization strategy; after learning, up to 27% fewer tokens than before." width="100%"></p>
+<p align="center"><img src="media/images/savings.png" alt="Algorithm development and maintenance (bug fixing and algorithm improvement): up to 38% fewer tokens. Systems engineering (long-running, multi-module system development): up to 50%. Large-context Q&amp;A (in-depth Q&amp;A over a large context): up to 45%. Saves more over time: TokenWise adaptively learns its optimization strategy; after learning, up to 27% fewer tokens than before." width="100%"></p>
 
 <sub>From our paper's evaluation; the paper is coming soon.</sub>
 

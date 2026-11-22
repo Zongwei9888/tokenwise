@@ -37,7 +37,7 @@
 
 ## 📊 效果
 
-<p align="center"><img src="../../media/images/savings-zh.png" alt="日常开发（在真实项目里解决一个 issue）最多省 38% token；长程编码（连续数小时的自主开发）最多省 50%；海量资料问答（上下文深度问答任务）最多省 45%。越用越省：TokenWise 自适应地学习优化策略，学习后比学习前最多再省 27%。" width="100%"></p>
+<p align="center"><img src="../../media/images/savings-zh.png" alt="算法维护与研发（问题修复与算法改进）最多省 38% token；系统工程开发（长周期、多模块的复杂系统开发）最多省 50%；海量资料问答（上下文深度问答任务）最多省 45%。越用越省：TokenWise 自适应地学习优化策略，学习后比学习前最多再省 27%。" width="100%"></p>
 
 <sub>数据来自我们论文的评测，论文即将公开。</sub>
 
