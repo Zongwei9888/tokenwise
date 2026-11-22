@@ -22,6 +22,13 @@ import { searchContextFilter } from './search-context.ts'
 import { pipInstallFilter } from './pip-install.ts'
 import { yarnInstallFilter } from './yarn-install.ts'
 import { terraformFilter } from './terraform.ts'
+import { dfFilter, duFilter, iptablesFilter, psFilter, statFilter, wcFilter } from './system-tables.ts'
+import { astGrepFilter } from './ast-grep.ts'
+import { pingFilter, rsyncFilter } from './network.ts'
+import { systemctlStatusFilter } from './systemctl.ts'
+import { brewInstallFilter, goTaskFilter, quartoRenderFilter } from './task-tools.ts'
+import { jqFilter } from './json-output.ts'
+import { hadolintFilter, shellcheckFilter, yamllintFilter } from './linters.ts'
 import type { EconomyFilter, FilterCandidate, FilterInput } from '../types.ts'
 
 export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
@@ -29,6 +36,8 @@ export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
   ruffJsonFilter, goTestJsonFilter, gitStatusFilter, searchContextFilter, searchLayoutFilter, pathListFilter, testProgressFilter, lsListingFilter, testReportFilter, cargoBuildFilter, gitShowFilter,
   gitLogFilter, gitBlameFilter, dockerBuildFilter, containerLogsFilter, makeFilter, mavenFilter,
   terraformFilter,
+  wcFilter, astGrepFilter, dfFilter, duFilter, psFilter, statFilter, pingFilter, rsyncFilter, systemctlStatusFilter, iptablesFilter,
+  brewInstallFilter, goTaskFilter, jqFilter, quartoRenderFilter, hadolintFilter, shellcheckFilter, yamllintFilter,
 ])
 
 /** Some filter reads this command's output (see `EconomyFilter.commands`). */

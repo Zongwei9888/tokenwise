@@ -1,0 +1,75 @@
+
+In deploy.sh line 4:
+for f in $(ls $src); do
+         ^--------^ SC2045 (error): Iterating over ls output is fragile. Use globs.
+              ^--^ SC2086 (info): Double quote to prevent globbing and word splitting.
+
+Did you mean:
+for f in $(ls "$src"); do
+
+
+In deploy.sh line 5:
+  cp $src/$f $dest
+     ^--^ SC2086 (info): Double quote to prevent globbing and word splitting.
+          ^-- SC2086 (info): Double quote to prevent globbing and word splitting.
+             ^---^ SC2086 (info): Double quote to prevent globbing and word splitting.
+
+Did you mean:
+  cp "$src"/"$f" "$dest"
+
+
+In deploy.sh line 7:
+if [ $count == 3 ]; then echo ok; fi
+     ^----^ SC2154 (warning): count is referenced but not assigned.
+     ^----^ SC2086 (info): Double quote to prevent globbing and word splitting.
+
+Did you mean:
+if [ "$count" == 3 ]; then echo ok; fi
+
+
+In deploy.sh line 8:
+cd $dest
+^------^ SC2164 (warning): Use 'cd ... || exit' or 'cd ... || return' in case cd fails.
+   ^---^ SC2086 (info): Double quote to prevent globbing and word splitting.
+
+Did you mean:
+cd "$dest" || exit
+
+
+In deploy.sh line 9:
+echo `date`
+     ^----^ SC2046 (warning): Quote this to prevent word splitting.
+     ^----^ SC2005 (style): Useless echo? Instead of 'echo $(cmd)', just use 'cmd'.
+     ^----^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
+
+Did you mean:
+echo $(date)
+
+
+In deploy.sh line 10:
+read name
+^--^ SC2162 (info): read without -r will mangle backslashes.
+     ^--^ SC2034 (warning): name appears unused. Verify use (or export if used externally).
+
+
+In build.sh line 2:
+echo $HOME/$1
+     ^---^ SC2086 (info): Double quote to prevent globbing and word splitting.
+           ^-- SC2086 (info): Double quote to prevent globbing and word splitting.
+
+Did you mean:
+echo "$HOME"/"$1"
+
+
+In build.sh line 3:
+x=`pwd`
+^-- SC2034 (warning): x appears unused. Verify use (or export if used externally).
+  ^---^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
+
+Did you mean:
+x=$(pwd)
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2045 -- Iterating over ls output is fragi...
+  https://www.shellcheck.net/wiki/SC2034 -- name appears unused. Verify use (...
+  https://www.shellcheck.net/wiki/SC2046 -- Quote this to prevent word splitt...

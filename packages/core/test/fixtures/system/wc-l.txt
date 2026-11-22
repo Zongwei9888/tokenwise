@@ -1,0 +1,13 @@
+       2 src/a/file1.txt
+       2 src/a/file10.txt
+       2 src/a/file11.txt
+       2 src/a/file12.txt
+       2 src/a/file2.txt
+       2 src/a/file3.txt
+       2 src/a/file4.txt
+       2 src/a/file5.txt
+       2 src/a/file6.txt
+       2 src/a/file7.txt
+       2 src/a/file8.txt
+       2 src/a/file9.txt
+      24 total

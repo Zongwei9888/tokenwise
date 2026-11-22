@@ -1,0 +1,32 @@
+{
+  "name": "@tokenwise/core",
+  "version": "0.3.0",
+  "description": "Host-independent TokenWise logic: deterministic tool-output filters, source maps, admission rules and the learned-rule sandbox.",
+  "license": "MIT",
+  "type": "module",
+  "homepage": "https://github.com/HKUDS/TokenWise#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HKUDS/TokenWise.git",
+    "directory": "packages/core"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib",
+    "src",
+    "!lib/.tsbuildinfo"
+  ],
+  "scripts": {
+    "test": "vitest run"
+  },
+  "sideEffects": false
+}
