@@ -22,6 +22,14 @@ import { searchContextFilter } from './search-context.ts'
 import { pipInstallFilter } from './pip-install.ts'
 import { yarnInstallFilter } from './yarn-install.ts'
 import { terraformFilter } from './terraform.ts'
+import { jsTestFilter } from './js-test.ts'
+import { playwrightFilter } from './playwright.ts'
+import { nextBuildFilter } from './next-build.ts'
+import { ngBuildFilter } from './ng-build.ts'
+import { pnpmListFilter, pnpmOutdatedFilter } from './pnpm-deps.ts'
+import { turboFilter } from './turbo.ts'
+import { prismaMigrateFilter } from './prisma-migrate.ts'
+import { prettierFilter } from './prettier.ts'
 import type { EconomyFilter, FilterCandidate, FilterInput } from '../types.ts'
 
 export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
@@ -29,6 +37,8 @@ export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
   ruffJsonFilter, goTestJsonFilter, gitStatusFilter, searchContextFilter, searchLayoutFilter, pathListFilter, testProgressFilter, lsListingFilter, testReportFilter, cargoBuildFilter, gitShowFilter,
   gitLogFilter, gitBlameFilter, dockerBuildFilter, containerLogsFilter, makeFilter, mavenFilter,
   terraformFilter,
+  // After test-progress and test-report, which keep the Jest and Vitest output they already condense.
+  jsTestFilter, playwrightFilter, nextBuildFilter, ngBuildFilter, pnpmOutdatedFilter, pnpmListFilter, turboFilter, prismaMigrateFilter, prettierFilter,
 ])
 
 /** Some filter reads this command's output (see `EconomyFilter.commands`). */

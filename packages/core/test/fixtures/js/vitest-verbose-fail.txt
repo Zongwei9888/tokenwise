@@ -1,0 +1,69 @@
+
+ RUN  v5.0.4 /repo
+
+ ✓ src/arrays.test.ts > arrays > adds one 1ms
+ ✓ src/arrays.test.ts > arrays > handles empty input 0ms
+ ✓ src/arrays.test.ts > arrays > keeps order 0ms
+ ✓ src/dates.test.ts > dates > adds one 1ms
+ ✓ src/dates.test.ts > dates > handles empty input 0ms
+ ✓ src/dates.test.ts > dates > keeps order 0ms
+ ✓ src/broken.test.ts > broken > passes first 1ms
+ × src/broken.test.ts > broken > compares totals 4ms
+   → expected { total: 3 } to deeply equal { total: 4 }
+ ↓ src/broken.test.ts > broken > is skipped
+ × src/broken.test.ts > broken > throws 0ms
+   → boom: cannot parse config
+ ✓ src/format.test.ts > format > adds one 3ms
+ ✓ src/format.test.ts > format > handles empty input 0ms
+ ✓ src/format.test.ts > format > keeps order 1ms
+ ✓ src/strings.test.ts > strings > adds one 1ms
+ ✓ src/strings.test.ts > strings > handles empty input 0ms
+ ✓ src/strings.test.ts > strings > keeps order 0ms
+ ✓ src/parse.test.ts > parse > adds one 1ms
+ ✓ src/parse.test.ts > parse > handles empty input 0ms
+ ✓ src/parse.test.ts > parse > keeps order 0ms
+ ✓ src/math.test.ts > math > adds one 1ms
+ ✓ src/math.test.ts > math > handles empty input 0ms
+ ✓ src/math.test.ts > math > keeps order 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/broken.test.ts > broken > compares totals
+AssertionError: expected { total: 3 } to deeply equal { total: 4 }
+
+- Expected
++ Received
+
+  {
+-   "total": 4,
++   "total": 3,
+  }
+
+ ❯ src/broken.test.ts:4:54
+      2| describe('broken', () => {
+      3|   it('passes first', () => { expect(true).toBe(true) })
+      4|   it('compares totals', () => { expect({ total: 3 }).toEqual({ total: …
+       |                                                      ^
+      5|   it.skip('is skipped', () => {})
+      6|   it('throws', () => { throw new Error('boom: cannot parse config') })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/broken.test.ts > broken > throws
+Error: boom: cannot parse config
+ ❯ src/broken.test.ts:6:30
+      4|   it('compares totals', () => { expect({ total: 3 }).toEqual({ total: …
+      5|   it.skip('is skipped', () => {})
+      6|   it('throws', () => { throw new Error('boom: cannot parse config') })
+       |                              ^
+      7| })
+      8|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  2 failed | 19 passed | 1 skipped (22)
+   Start at  17:28:51
+   Duration  214ms (import 43%, transform 28%, worker 15%, tests 14%)
+
