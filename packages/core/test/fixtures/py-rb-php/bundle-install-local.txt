@@ -1,0 +1,24 @@
+Resolving dependencies...
+Using rake 12.3.3
+Following files may not be writable, so sudo is needed:
+  /Library/Ruby/Gems/2.6.0
+  /Library/Ruby/Gems/2.6.0/build_info
+  /Library/Ruby/Gems/2.6.0/cache
+  /Library/Ruby/Gems/2.6.0/doc
+  /Library/Ruby/Gems/2.6.0/extensions
+  /Library/Ruby/Gems/2.6.0/gems
+  /Library/Ruby/Gems/2.6.0/specifications
+  /usr/local/bin
+Using CFPropertyList 2.3.6
+Using bundler 1.17.2
+Using did_you_mean 1.3.0
+Using libxml-ruby 3.2.1
+Using mini_portile2 2.8.0
+Using minitest 5.11.3
+Using net-telnet 0.2.0
+Using nokogiri 1.13.8
+Using power_assert 1.1.3
+Using sqlite3 1.3.13
+Using test-unit 3.2.9
+Bundle complete! 10 Gemfile dependencies, 12 gems now installed.
+Use `bundle info [gemname]` to see where a bundled gem is installed.

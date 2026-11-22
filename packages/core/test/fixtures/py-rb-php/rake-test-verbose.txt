@@ -1,0 +1,75 @@
+Run options: -v --seed 64309
+
+# Running:
+
+MoreTest#test_more_6 = 0.00 s = .
+MoreTest#test_more_2 = 0.00 s = .
+MoreTest#test_more_8 = 0.00 s = .
+MoreTest#test_more_11 = 0.00 s = .
+MoreTest#test_more_9 = 0.00 s = .
+MoreTest#test_more_12 = 0.00 s = .
+MoreTest#test_more_3 = 0.00 s = .
+MoreTest#test_more_4 = 0.00 s = .
+MoreTest#test_more_7 = 0.00 s = .
+MoreTest#test_more_1 = 0.00 s = .
+MoreTest#test_more_5 = 0.00 s = .
+MoreTest#test_more_10 = 0.00 s = .
+CalcTest#test_add_14 = 0.00 s = .
+CalcTest#test_add_26 = 0.00 s = .
+CalcTest#test_add_23 = 0.00 s = .
+CalcTest#test_add_30 = 0.00 s = .
+CalcTest#test_add_19 = 0.00 s = .
+CalcTest#test_add_18 = 0.00 s = .
+CalcTest#test_add_17 = 0.00 s = .
+CalcTest#test_add_4 = 0.00 s = .
+CalcTest#test_add_11 = 0.00 s = .
+CalcTest#test_add_15 = 0.00 s = .
+CalcTest#test_add_24 = 0.00 s = .
+CalcTest#test_add_9 = 0.00 s = .
+CalcTest#test_add_6 = 0.00 s = .
+CalcTest#test_add_21 = 0.00 s = .
+CalcTest#test_add_8 = 0.00 s = .
+CalcTest#test_add_16 = 0.00 s = .
+CalcTest#test_add_10 = 0.00 s = .
+CalcTest#test_add_27 = 0.00 s = .
+CalcTest#test_add_13 = 0.00 s = .
+CalcTest#test_add_3 = 0.00 s = .
+CalcTest#test_add_28 = 0.00 s = .
+CalcTest#test_add_25 = 0.00 s = .
+CalcTest#test_add_1 = 0.00 s = .
+CalcTest#test_add_5 = 0.00 s = .
+CalcTest#test_skip = 0.00 s = S
+CalcTest#test_add_22 = 0.00 s = .
+CalcTest#test_wrong = 0.00 s = F
+CalcTest#test_add_2 = 0.00 s = .
+CalcTest#test_add_29 = 0.00 s = .
+CalcTest#test_div = 0.00 s = .
+CalcTest#test_add_7 = 0.00 s = .
+CalcTest#test_add_12 = 0.00 s = .
+CalcTest#test_div_zero = 0.00 s = E
+CalcTest#test_add_20 = 0.00 s = .
+
+Finished in 0.003172s, 14501.8913 runs/s, 13871.3743 assertions/s.
+
+  1) Skipped:
+CalcTest#test_skip [/Users/demo/calc/test/calc_test.rb:26]:
+not yet
+
+  2) Failure:
+CalcTest#test_wrong [/Users/demo/calc/test/calc_test.rb:22]:
+Expected: 5
+  Actual: 4
+
+  3) Error:
+CalcTest#test_div_zero:
+ZeroDivisionError: divided by 0
+    /Users/demo/calc/lib/calc.rb:7:in `/'
+    /Users/demo/calc/lib/calc.rb:7:in `div'
+    /Users/demo/calc/test/calc_test.rb:18:in `test_div_zero'
+
+46 runs, 44 assertions, 1 failures, 1 errors, 1 skips
+rake aborted!
+Command failed with status (1)
+/Library/Ruby/Gems/2.6.0/gems/rake-12.3.3/exe/rake:27:in `<top (required)>'
+Tasks: TOP => test
+(See full trace by running task with --trace)

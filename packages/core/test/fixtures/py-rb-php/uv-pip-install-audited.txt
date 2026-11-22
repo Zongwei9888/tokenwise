@@ -1,0 +1,2 @@
+Using Python 3.12.9 environment at: /Users/demo/app/.venv
+Audited 3 packages in 22ms

@@ -51,6 +51,15 @@ import { gradleFilter } from './gradle.ts'
 import { liquibaseFilter } from './liquibase.ts'
 import { dotnetBuildFilter } from './dotnet-build.ts'
 import { mixCompileFilter } from './mix-compile.ts'
+import { mypyFilter } from './mypy.ts'
+import { pyrightFilter } from './pyright.ts'
+import { tyFilter } from './ty.ts'
+import { ruffTextFilter } from './ruff-text.ts'
+import { preCommitFilter } from './pre-commit.ts'
+import { bundleInstallFilter, composerInstallFilter, poetryInstallFilter, uvSyncFilter } from './install-lists.ts'
+import { rubocopFilter } from './rubocop.ts'
+import { minitestFilter } from './minitest.ts'
+import { phpunitFilter } from './phpunit.ts'
 import type { EconomyFilter, FilterCandidate, FilterInput } from '../types.ts'
 
 export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
@@ -66,6 +75,8 @@ export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
   // After maven, so `mvn spring-boot:run` keeps Maven's projection; before gradle, so `gradle bootRun` gets both folds.
   goBuildFilter, ccFilter, swiftBuildFilter, xcodebuildFilter, pioRunFilter, trunkBuildFilter, springBootFilter, gradleFilter,
   liquibaseFilter, dotnetBuildFilter, mixCompileFilter,
+  mypyFilter, pyrightFilter, tyFilter, ruffTextFilter, preCommitFilter, uvSyncFilter, poetryInstallFilter, bundleInstallFilter,
+  composerInstallFilter, rubocopFilter, minitestFilter, phpunitFilter,
 ])
 
 /** Some filter reads this command's output (see `EconomyFilter.commands`). */
