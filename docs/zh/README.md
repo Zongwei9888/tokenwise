@@ -37,7 +37,7 @@
 
 ## 📊 效果
 
-<p align="center"><img src="../../media/images/savings-zh.png" alt="同样的任务，token 最多省一半：修 bug、写功能最多省 38%，终端里的长任务最多省 50%，超长对话最多省 45%，越用越省最多再省 27%。" width="100%"></p>
+<p align="center"><img src="../../media/images/savings-zh.png" alt="日常开发（在真实项目里解决一个 issue）最多省 38% token；长程编码（连续数小时的自主开发）最多省 50%；海量资料问答（上下文深度问答任务）最多省 45%。越用越省：TokenWise 自适应地学习优化策略，学习后比学习前最多再省 27%。" width="100%"></p>
 
 <sub>数据来自我们论文的评测，论文即将公开。</sub>
 
@@ -67,7 +67,7 @@
 
 <p align="center"><img src="../../media/images/cards-zh.png" alt="Claude Code、Codex、GitHub Copilot CLI、Hermes Agent、OpenCode、CodeBuddy、Grok Build、DeepSeek Harness 和 pi 里回答结束时的卡片" width="100%"></p>
 
-<sub>每个 agent 都在同一个小项目里跑了一次 `pytest -v`，数字只代表那一次运行。</sub>
+<sub>每个 agent 都在空目录里从零写了同一个记账工具，测试用 `pytest -v` 原样运行；数字只代表那一次运行。</sub>
 
 ## 🚀 开始使用
 

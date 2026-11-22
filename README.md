@@ -40,7 +40,7 @@ Today's agents face:
 
 ## 📊 Results
 
-<p align="center"><img src="media/images/savings.png" alt="Same tasks, up to half the tokens: fixing bugs and building features up to 38% fewer, long jobs in the terminal up to 50%, very long sessions up to 45%, and up to 27% more as it learns." width="100%"></p>
+<p align="center"><img src="media/images/savings.png" alt="Everyday coding (resolving an issue in a real project): up to 38% fewer tokens. Long-horizon coding (hours of autonomous development): up to 50%. Large-context Q&A (in-depth Q&A over a large context): up to 45%. Saves more over time: TokenWise adaptively learns its optimization strategy; after learning, up to 27% fewer tokens than before." width="100%"></p>
 
 <sub>From our paper's evaluation; the paper is coming soon.</sub>
 
@@ -71,7 +71,7 @@ allows, so the depth varies a little; the details are under [How each agent is c
 
 <p align="center"><img src="media/images/cards.png" alt="The card at the end of an answer in Claude Code, Codex, GitHub Copilot CLI, Hermes Agent, OpenCode, CodeBuddy, Grok Build, DeepSeek Harness and pi" width="100%"></p>
 
-<sub>Each agent ran `pytest -v` once in the same small project; the numbers are from that one run.</sub>
+<sub>Each agent built the same small ledger tool from scratch in an empty folder, running its tests as plain `pytest -v`; the numbers are from that one run.</sub>
 
 ## 🚀 Get started
 

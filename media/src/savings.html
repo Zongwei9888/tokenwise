@@ -1,21 +1,30 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><link rel="stylesheet" href="brand.css">
 <style>
-  /* The README's savings figure: one tile per kind of work, its best saving across the four models. */
+  /* The README's savings figure: three kinds of work, each with its best saving across the four models,
+     and a band for what learning adds on top. */
   body { display: block; }
-  .d { width: 1200px; padding: 34px 36px 36px; background: var(--paper); border-radius: 26px; }
-  .d h2 { font-size: 52px; color: var(--ink); margin-bottom: 24px; }
-  .zh .d h2 { font-size: 44px; }
-  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
-  .card { background: #fff; border: 1px solid var(--rule); border-radius: 20px; padding: 24px 24px 20px; display: flex; flex-direction: column; gap: 18px; }
-  .card h3 { font-weight: 760; font-stretch: 84%; font-size: 24px; line-height: 1.2; min-height: 2.4em; color: var(--ink); }
-  .zh .card h3 { font-stretch: 100%; font-size: 23px; }
-  .hero { display: flex; flex-direction: column; gap: 6px; color: var(--teal); }
-  .hero small { font-size: 18px; font-weight: 650; font-stretch: 90%; color: #3D5A55; white-space: nowrap; }
+  .d { width: 1200px; padding: 34px 36px 34px; background: var(--paper); border-radius: 26px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .card { background: #fff; border: 1px solid var(--rule); border-radius: 20px; padding: 24px 24px 22px; display: flex; flex-direction: column; }
+  .card h3 { font-weight: 780; font-stretch: 84%; font-size: 28px; line-height: 1.15; color: var(--ink); }
+  .zh .card h3 { font-stretch: 100%; font-size: 27px; }
+  .card p { margin-top: 8px; color: #4F6B66; font-size: 16px; line-height: 1.4; font-stretch: 96%; min-height: 2.8em; }
+  .hero { margin-top: 18px; display: flex; flex-direction: column; gap: 4px; color: var(--teal); }
+  .hero small { font-size: 17px; font-weight: 650; font-stretch: 90%; color: #3D5A55; }
   .hero strong { font-size: 84px; font-weight: 820; font-stretch: 66%; line-height: .95; letter-spacing: -.02em; }
-  .card.learn { background: var(--teal); border-color: var(--teal); }
-  .card.learn h3, .card.learn .hero { color: #fff; }
-  .card.learn .hero small { color: #D9FFF4; }
+
+  .learn { margin-top: 18px; background: var(--teal); border-radius: 20px; padding: 22px 26px; display: grid; grid-template-columns: 1fr 360px; gap: 30px; align-items: center; color: #fff; }
+  .learn h3 { font-weight: 780; font-stretch: 84%; font-size: 28px; }
+  .zh .learn h3 { font-stretch: 100%; font-size: 27px; }
+  .learn p { margin-top: 8px; color: #D9FFF4; font-size: 17px; line-height: 1.45; font-stretch: 96%; }
+  .learn p b { color: #fff; }
+  .bars { display: grid; gap: 12px; }
+  .bar { display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 12px; font-size: 15px; font-weight: 650; color: #D9FFF4; font-stretch: 92%; }
+  .bar .t { position: relative; height: 22px; }
+  .bar .f { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: rgba(255,255,255,.28); }
+  .bar.after .f { background: var(--kept); }
+  .bar .v { position: absolute; top: -4px; font-size: 26px; font-weight: 820; font-stretch: 70%; color: #fff; }
 </style></head>
 <body>
 <div class="d" id="d"></div>
@@ -25,25 +34,40 @@ if (zh) document.body.classList.add('zh')
 
 // From the paper's evaluation (total tokens per task or question, cache reads included), against
 // DeepSeek Harness's own context management, for DeepSeek V4, MiniMax-M3, GLM-5.3 and Qwen3.8.
-// Each tile shows the best of the four.
+// Each card shows the best of the four; pass rates held or improved on every backbone.
 const SAVED = {
-  coding: [38.2, 22.5, 20.3, 13.8],    // EvoAgentBench-SE, Table 1
-  terminal: [27.4, 41.6, 50.2, 25.3],  // LongCLI-Bench, Table 2 (evolved policy)
-  session: [21.1, 22.1, 44.6, 39.7],   // MemoryAgentBench, Table 3
-  learned: [15.0, 27.2, 24.7, 12.0],   // LongCLI-Bench, evolved vs initial rules
+  everyday: [38.2, 22.5, 20.3, 13.8],  // EvoAgentBench-SE (SWE-bench issues), Table 1
+  longHorizon: [27.4, 41.6, 50.2, 25.3], // LongCLI-Bench, Table 2 (evolved policy)
+  qa: [21.1, 22.1, 44.6, 39.7],         // MemoryAgentBench, Table 3
+  learned: [15.0, 27.2, 24.7, 12.0],    // LongCLI-Bench, evolved vs initial rules (tasks never seen while learning)
 }
 const T = zh ? {
-  title: '同样的任务，token 最多省一半', upto: '最多',
-  tiles: [['coding', '修 bug、写功能'], ['terminal', '终端里的长任务'], ['session', '超长对话'], ['learned', '越用越省']],
+  upto: '最多',
+  cards: [['everyday', '日常开发', '在真实项目里解决一个 issue'],
+    ['longHorizon', '长程编码', '连续数小时的自主开发'],
+    ['qa', '海量资料问答', '上下文深度问答任务']],
+  learn: '越用越省',
+  learnText: 'TokenWise 根据你的使用，自适应地学习优化策略。',
+  before: '学习前', after: '学习后',
 } : {
-  title: 'Same tasks. Up to half the tokens.', upto: 'up to',
-  tiles: [['coding', 'Fixing bugs, building features'], ['terminal', 'Long jobs in the terminal'], ['session', 'Very long sessions'], ['learned', 'Saves more as it learns']],
+  upto: 'up to',
+  cards: [['everyday', 'Everyday Coding', 'Resolve an issue in a real project'],
+    ['longHorizon', 'Long-Horizon Coding', 'Hours of autonomous development'],
+    ['qa', 'Large-Context Q&A', 'In-depth Q&A over a large context']],
+  learn: 'Saves more over time',
+  learnText: 'TokenWise adaptively learns its optimization strategy from how you work.',
+  before: 'Before', after: 'After',
 }
 const pct = v => `−${Math.round(v)}%`
+const best = k => Math.max(...SAVED[k])
 
-document.getElementById('d').innerHTML = `<h2 class="display">${T.title}</h2>
-  <div class="grid">${T.tiles.map(([k, h]) => `<div class="card${k === 'learned' ? ' learn' : ''}"><h3>${h}</h3>
-    <div class="hero"><small>${T.upto}</small><strong>${pct(Math.max(...SAVED[k]))}</strong></div></div>`).join('')}</div>`
+document.getElementById('d').innerHTML = `<div class="grid">${T.cards.map(([k, h, sub]) => `<div class="card"><h3>${h}</h3><p>${sub}</p>
+    <div class="hero"><small>${T.upto}</small><strong>${pct(best(k))}</strong></div></div>`).join('')}</div>
+  <div class="learn"><div><h3>${T.learn}</h3><p>${T.learnText}</p></div>
+    <div class="bars">
+      <div class="bar"><span>${T.before}</span><span class="t"><span class="f" style="width:100%"></span></span></div>
+      <div class="bar after"><span>${T.after}</span><span class="t"><span class="f" style="width:${100 - best('learned')}%"></span><span class="v" style="left:calc(${100 - best('learned')}% + 10px)">${pct(best('learned'))}</span></span></div>
+    </div></div>`
 
 await document.fonts.ready
 window.ready = true
