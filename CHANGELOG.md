@@ -6,6 +6,24 @@ First open-source release line: compact tool output on nine hosts and any shell,
 recoverable compaction on every host whose plugin interface
 allows it (in full on five, assisted on three), and self-evolving filters. (0.1.0 and 0.2.0 were never published; their contents are part of this release.)
 
+- 68 more built-in filters, 97 in all, in TokenWise's own style and under the
+  same contract (every problem line, total and summary kept; every removal
+  counted; unknown lines and anything colored pass through). They cover the
+  commands RTK covers: GitHub CLI, `diff`, jj, Jest/Vitest, Playwright, Next,
+  Angular, pnpm list/outdated, Turborepo, Prisma, Prettier, mypy, pyright, ty,
+  Ruff's concise text, pre-commit, uv, Poetry, Bundler, Composer, RuboCop,
+  Minitest, PHPUnit, `go build`, C/C++ compilers, Swift, xcodebuild,
+  PlatformIO, Trunk, Gradle, Spring Boot, Liquibase, dotnet, mix, Docker and
+  Compose tables, kubectl, Helm, skopeo, AWS and gcloud JSON, Terraform and
+  OpenTofu, Pulumi, Ansible, psql, wc, ast-grep, df, du, ps, stat, ping, rsync,
+  systemctl, iptables, Homebrew, go-task, jq, Quarto, hadolint, ShellCheck and
+  yamllint. Commands whose output has nothing safe to remove (eslint's
+  stylish text, rspec, golangci-lint, sops, curl, ssh and others) are left
+  whole. Filter runtime `static-v15`.
+- Codex and CodeBuddy route a command through TokenWise before it runs only
+  when a filter reads it; `make`, `mvn`, `docker build`, `docker`/`kubectl
+  logs`, `pip install` and `yarn` were missing from that list, so their
+  filters never ran there. Filters now declare their commands themselves.
 - `tokenwise saved` and `tokenwise dashboard` show what TokenWise saved you:
   the tokens the model did not have to read, this week, in the last 30 days or
   since you installed it, today, per day, and in which agents. In the terminal
