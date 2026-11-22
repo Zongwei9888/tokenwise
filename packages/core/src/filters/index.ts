@@ -22,13 +22,23 @@ import { searchContextFilter } from './search-context.ts'
 import { pipInstallFilter } from './pip-install.ts'
 import { yarnInstallFilter } from './yarn-install.ts'
 import { terraformFilter } from './terraform.ts'
+import { mypyFilter } from './mypy.ts'
+import { pyrightFilter } from './pyright.ts'
+import { tyFilter } from './ty.ts'
+import { ruffTextFilter } from './ruff-text.ts'
+import { preCommitFilter } from './pre-commit.ts'
+import { bundleInstallFilter, composerInstallFilter, poetryInstallFilter, uvSyncFilter } from './install-lists.ts'
+import { rubocopFilter } from './rubocop.ts'
+import { minitestFilter } from './minitest.ts'
+import { phpunitFilter } from './phpunit.ts'
 import type { EconomyFilter, FilterCandidate, FilterInput } from '../types.ts'
 
 export const STATIC_FILTERS: readonly EconomyFilter[] = Object.freeze([
   pytestFilter, grepFilter, gitDiffFilter, tscFilter, eslintJsonFilter, viteBuildFilter, pnpmInstallFilter, pipInstallFilter, yarnInstallFilter,
   ruffJsonFilter, goTestJsonFilter, gitStatusFilter, searchContextFilter, searchLayoutFilter, pathListFilter, testProgressFilter, lsListingFilter, testReportFilter, cargoBuildFilter, gitShowFilter,
   gitLogFilter, gitBlameFilter, dockerBuildFilter, containerLogsFilter, makeFilter, mavenFilter,
-  terraformFilter,
+  terraformFilter, mypyFilter, pyrightFilter, tyFilter, ruffTextFilter, preCommitFilter, uvSyncFilter, poetryInstallFilter, bundleInstallFilter,
+  composerInstallFilter, rubocopFilter, minitestFilter, phpunitFilter,
 ])
 
 /** Some filter reads this command's output (see `EconomyFilter.commands`). */

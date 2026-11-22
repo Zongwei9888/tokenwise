@@ -1,0 +1,163 @@
+I001 [*] Import block is un-sorted or un-formatted
+ --> app/models.py:1:1
+  |
+1 | / from typing import overload
+2 | | import requests
+3 | | import yaml
+  | |___________^
+help: Organize imports
+  |
+1 | from typing import overload
+2 +
+3 | import requests
+  |
+
+F401 [*] `requests` imported but unused
+ --> app/models.py:2:8
+  |
+1 | from typing import overload
+2 | import requests
+  |        ^^^^^^^^
+3 | import yaml
+  |
+help: Remove unused import: `requests`
+  |
+1 | from typing import overload
+  - import requests
+2 | import yaml
+  |
+
+F401 [*] `yaml` imported but unused
+ --> app/models.py:3:8
+  |
+1 | from typing import overload
+2 | import requests
+3 | import yaml
+  |        ^^^^
+help: Remove unused import: `yaml`
+  |
+2 | import requests
+  - import yaml
+3 |
+  |
+
+F841 Local variable `x` is assigned to but never used
+  --> app/models.py:34:5
+   |
+32 |     u: User = make(3)
+33 |     u.missing
+34 |     x: int = "a"
+   |     ^
+35 |     y: list[int] = ["a", "b"]
+36 |     z = undefined_name
+   |
+help: Remove assignment to unused variable `x`
+   |
+33 |     u.missing
+   -     x: int = "a"
+34 |     y: list[int] = ["a", "b"]
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+F841 Local variable `y` is assigned to but never used
+  --> app/models.py:35:5
+   |
+33 |     u.missing
+34 |     x: int = "a"
+35 |     y: list[int] = ["a", "b"]
+   |     ^
+36 |     z = undefined_name
+   |
+help: Remove assignment to unused variable `y`
+   |
+34 |     x: int = "a"
+   -     y: list[int] = ["a", "b"]
+35 |     z = undefined_name
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+F841 Local variable `z` is assigned to but never used
+  --> app/models.py:36:5
+   |
+34 |     x: int = "a"
+35 |     y: list[int] = ["a", "b"]
+36 |     z = undefined_name
+   |     ^
+help: Remove assignment to unused variable `z`
+   |
+35 |     y: list[int] = ["a", "b"]
+   -     z = undefined_name
+   |
+note: This is an unsafe fix and may change runtime behavior
+
+F821 Undefined name `undefined_name`
+  --> app/models.py:36:9
+   |
+34 |     x: int = "a"
+35 |     y: list[int] = ["a", "b"]
+36 |     z = undefined_name
+   |         ^^^^^^^^^^^^^^
+
+I001 [*] Import block is un-sorted or un-formatted
+ --> app/service.py:1:1
+  |
+1 | / from app.models import User, make
+2 | | from typing import Optional
+  | |___________________________^
+help: Organize imports
+  |
+  - from app.models import User, make
+1 | from typing import Optional
+2 |
+3 + from app.models import User, make
+4 +
+5 |
+  |
+
+F401 [*] `app.models.make` imported but unused
+ --> app/service.py:1:30
+  |
+1 | from app.models import User, make
+  |                              ^^^^
+2 | from typing import Optional
+  |
+help: Remove unused import: `app.models.make`
+  |
+  - from app.models import User, make
+1 + from app.models import User
+2 | from typing import Optional
+  |
+
+UP045 [*] Use `X | None` for type annotations
+ --> app/service.py:5:43
+  |
+5 | def find(users: list[User], name: str) -> Optional[User]:
+  |                                           ^^^^^^^^^^^^^^
+6 |     for u in users:
+7 |         if u.name == name:
+  |
+help: Convert to `X | None`
+  |
+4 |
+  - def find(users: list[User], name: str) -> Optional[User]:
+5 + def find(users: list[User], name: str) -> User | None:
+6 |     for u in users:
+  |
+
+UP045 [*] Use `X | None` for type annotations
+  --> app/service.py:11:15
+   |
+11 | def age_of(u: Optional[User]) -> int:
+   |               ^^^^^^^^^^^^^^
+12 |     return u.age + 1
+   |
+help: Convert to `X | None`
+   |
+10 |
+   - def age_of(u: Optional[User]) -> int:
+11 + def age_of(u: User | None) -> int:
+12 |     return u.age + 1
+   |
+
+Found 11 errors.
+[*] 7 fixable with `--fix` (3 unsafe fixes available with `--fix --unsafe-fixes`).

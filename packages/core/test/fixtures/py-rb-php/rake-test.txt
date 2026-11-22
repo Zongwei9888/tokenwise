@@ -1,0 +1,28 @@
+Run options: --seed 46406
+
+# Running:
+
+.S..............E..........F..................
+
+Finished in 0.001513s, 30403.1726 runs/s, 29081.2955 assertions/s.
+
+  1) Error:
+CalcTest#test_div_zero:
+ZeroDivisionError: divided by 0
+    /Users/demo/calc/lib/calc.rb:7:in `/'
+    /Users/demo/calc/lib/calc.rb:7:in `div'
+    /Users/demo/calc/test/calc_test.rb:18:in `test_div_zero'
+
+  2) Failure:
+CalcTest#test_wrong [/Users/demo/calc/test/calc_test.rb:22]:
+Expected: 5
+  Actual: 4
+
+46 runs, 44 assertions, 1 failures, 1 errors, 1 skips
+
+You have skipped tests. Run with --verbose for details.
+rake aborted!
+Command failed with status (1)
+/Library/Ruby/Gems/2.6.0/gems/rake-12.3.3/exe/rake:27:in `<top (required)>'
+Tasks: TOP => test
+(See full trace by running task with --trace)
