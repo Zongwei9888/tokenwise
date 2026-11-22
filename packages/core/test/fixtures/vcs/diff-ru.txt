@@ -1,0 +1,151 @@
+Binary files a/bin.dat and b/bin.dat differ
+Only in b: new.txt
+diff -ru a/noeol.txt b/noeol.txt
+--- a/noeol.txt	2026-11-22 17:16:08
++++ b/noeol.txt	2026-11-22 17:16:08
+@@ -1,2 +1,2 @@
+ one
+-two
+\ No newline at end of file
++three
+\ No newline at end of file
+Only in a: only-a
+diff -ru a/src/big.txt b/src/big.txt
+--- a/src/big.txt	2026-11-22 17:16:08
++++ b/src/big.txt	2026-11-22 17:16:08
+@@ -28,66 +28,66 @@
+ line 28: value = 1
+ line 29: value = 8
+ line 30: value = 2
+-line 31: value = 9
+-line 32: value = 3
+-line 33: value = 10
+-line 34: value = 4
+-line 35: value = 11
+-line 36: value = 5
+-line 37: value = 12
+-line 38: value = 6
+-line 39: value = 0
+-line 40: value = 7
+-line 41: value = 1
+-line 42: value = 8
+-line 43: value = 2
+-line 44: value = 9
+-line 45: value = 3
+-line 46: value = 10
+-line 47: value = 4
+-line 48: value = 11
+-line 49: value = 5
+-line 50: value = 12
+-line 51: value = 6
+-line 52: value = 0
+-line 53: value = 7
+-line 54: value = 1
+-line 55: value = 8
+-line 56: value = 2
+-line 57: value = 9
+-line 58: value = 3
+-line 59: value = 10
+-line 60: value = 4
+-line 61: value = 11
+-line 62: value = 5
+-line 63: value = 12
+-line 64: value = 6
+-line 65: value = 0
+-line 66: value = 7
+-line 67: value = 1
+-line 68: value = 8
+-line 69: value = 2
+-line 70: value = 9
+-line 71: value = 3
+-line 72: value = 10
+-line 73: value = 4
+-line 74: value = 11
+-line 75: value = 5
+-line 76: value = 12
+-line 77: value = 6
+-line 78: value = 0
+-line 79: value = 7
+-line 80: value = 1
+-line 81: value = 8
+-line 82: value = 2
+-line 83: value = 9
+-line 84: value = 3
+-line 85: value = 10
+-line 86: value = 4
+-line 87: value = 11
+-line 88: value = 5
+-line 89: value = 12
+-line 90: value = 6
++line 31: VALUE = 9
++line 32: VALUE = 3
++line 33: VALUE = 10
++line 34: VALUE = 4
++line 35: VALUE = 11
++line 36: VALUE = 5
++line 37: VALUE = 12
++line 38: VALUE = 6
++line 39: VALUE = 0
++line 40: VALUE = 7
++line 41: VALUE = 1
++line 42: VALUE = 8
++line 43: VALUE = 2
++line 44: VALUE = 9
++line 45: VALUE = 3
++line 46: VALUE = 10
++line 47: VALUE = 4
++line 48: VALUE = 11
++line 49: VALUE = 5
++line 50: VALUE = 12
++line 51: VALUE = 6
++line 52: VALUE = 0
++line 53: VALUE = 7
++line 54: VALUE = 1
++line 55: VALUE = 8
++line 56: VALUE = 2
++line 57: VALUE = 9
++line 58: VALUE = 3
++line 59: VALUE = 10
++line 60: VALUE = 4
++line 61: VALUE = 11
++line 62: VALUE = 5
++line 63: VALUE = 12
++line 64: VALUE = 6
++line 65: VALUE = 0
++line 66: VALUE = 7
++line 67: VALUE = 1
++line 68: VALUE = 8
++line 69: VALUE = 2
++line 70: VALUE = 9
++line 71: VALUE = 3
++line 72: VALUE = 10
++line 73: VALUE = 4
++line 74: VALUE = 11
++line 75: VALUE = 5
++line 76: VALUE = 12
++line 77: VALUE = 6
++line 78: VALUE = 0
++line 79: VALUE = 7
++line 80: VALUE = 1
++line 81: VALUE = 8
++line 82: VALUE = 2
++line 83: VALUE = 9
++line 84: VALUE = 3
++line 85: VALUE = 10
++line 86: VALUE = 4
++line 87: VALUE = 11
++line 88: VALUE = 5
++line 89: VALUE = 12
++line 90: VALUE = 6
+ line 91: value = 0
+ line 92: value = 7
+ line 93: value = 1
+diff -ru a/src/small.txt b/src/small.txt
+--- a/src/small.txt	2026-11-22 17:16:08
++++ b/src/small.txt	2026-11-22 17:16:08
+@@ -1,3 +1,3 @@
+ alpha
+-beta
++BETA
+ gamma
+Only in b: sub

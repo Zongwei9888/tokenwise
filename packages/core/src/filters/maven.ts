@@ -43,6 +43,7 @@ function projectMapped(input: FilterInput): MappedProjection | undefined {
 }
 
 export const mavenFilter: EconomyFilter = {
+  commands: command => ['mvn', 'mvnw'].includes(toolArgv(command)?.[0] ?? ''),
   name: 'maven', transformation: 'noise-removal', projectMapped,
   project: input => projectMapped(input)?.text,
 }

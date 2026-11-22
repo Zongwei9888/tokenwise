@@ -1,0 +1,20 @@
+Building for debugging...
+[0/7] Write sources
+[0/7] Write Demo-entitlement.plist
+[2/7] Write sources
+[3/7] Write swift-version--1AB21518FC5DEDBE.txt
+[5/10] Compiling Core Format.swift
+[6/10] Compiling Core Greeter.swift
+/repo/Sources/Core/Greeter.swift:2:7: warning: variable 'message' was never mutated; consider changing to 'let' constant
+1 | public func greet(_ name: String) -> String {
+2 |   var message = "Hello, \(name)!"
+  |       `- warning: variable 'message' was never mutated; consider changing to 'let' constant
+3 |   return message
+4 | }
+[7/10] Emitting module Core
+[8/12] Emitting module Demo
+[9/12] Compiling Demo main.swift
+[9/12] Write Objects.LinkFileList
+[10/12] Linking Demo
+[11/12] Applying Demo
+Build complete! (19.47s)

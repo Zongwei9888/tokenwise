@@ -52,7 +52,10 @@ summarized under [Hosts at a glance](#hosts-at-a-glance).
 2. **Decide** (`decideShellProjection`): the command must be literal or an
    inspectable search/listing pipeline; truncated or interrupted output
    passes; stdout goes through the filter set; stderr only through filters
-   with a proven stderr contract (Cargo reports, exact duplicate folding).
+   with a proven stderr contract (Cargo reports, exact duplicate folding, and
+   filters that declare their tool reports on stderr: compilers, `go build`,
+   BuildKit, Jest). Each filter also declares the commands it reads
+   (`commands`); hosts that decide before a command runs route only those.
 3. **Admit**: the projection must be strictly smaller in UTF-8 bytes and save
    at least `minimumSavedTokens` (≥ 1).
 4. **Save, journal, deliver**: the original and the source map go to the

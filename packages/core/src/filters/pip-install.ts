@@ -52,5 +52,11 @@ function projectMapped(input: FilterInput): MappedProjection | undefined {
 
 export const pipInstallFilter: EconomyFilter = {
   name: 'pip-install', transformation: 'noise-removal',
+  commands: command => {
+    const argv = toolArgv(command)
+    if (argv === undefined) return false
+    const offset = /^pip[\d.]*$/u.test(argv[0] ?? '') ? 1 : /^python[\d.]*$/u.test(argv[0] ?? '') && argv[1] === '-m' && argv[2] === 'pip' ? 3 : -1
+    return offset > 0 && argv[offset] === 'install'
+  },
   project: input => projectMapped(input)?.text, projectMapped,
 }

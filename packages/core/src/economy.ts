@@ -1,5 +1,5 @@
 /** Host-neutral Token Economy decision for one shell execution. No I/O, no host types. */
-import { projectStaticFilter } from './filters/index.ts'
+import { STATIC_FILTERS, filterCoversCommand, projectStaticFilter } from './filters/index.ts'
 import { ProjectionBuilder } from './projection-map.ts'
 import type { MappedProjection, SourceMap } from './projection-map.ts'
 import { hasBuiltinCommand, inspectShell } from './shell-inspection.ts'
@@ -149,7 +149,7 @@ export function classifyMiss(command: string): EconomyMatchDetail {
   const shell = inspectShell(command)
   return shell === undefined ? 'unsupported-shell-syntax'
     : shell.compound ? 'compound-output-unrecognized'
-    : hasBuiltinCommand(command) ? 'output-format-unrecognized' : 'command-not-covered'
+    : hasBuiltinCommand(command) || filterCoversCommand(command) ? 'output-format-unrecognized' : 'command-not-covered'
 }
 
 /**
@@ -192,6 +192,7 @@ export function decideShellProjection(result: ShellResult, options: EconomyDecis
       const candidate = projectStaticFilter({ command: result.command, stdout: result.stderr.text, exitCode: result.exitCode, options: filterOptions })
       if (candidate !== undefined) {
         const approved = candidate.filter === 'cargo-build'
+          || STATIC_FILTERS.find(filter => filter.name === candidate.filter)?.stderr === true
           || candidate.transformation === 'diagnostic-deduplication' && exactDiagnosticDeduplication(result.stderr.text, candidate.text)
         if (!approved) {
           return pass('stream-policy-rejected', { filter: candidate.filter, transformation: candidate.transformation,
@@ -264,7 +265,7 @@ const SEARCH_AND_LISTING_HEADS = new Set(['grep', 'rg', 'ripgrep', 'find', 'ls',
  * only cost savings; a true result does not promise a projection.
  */
 export function mayProject(command: string): boolean {
-  if (hasBuiltinCommand(command)) return true
+  if (hasBuiltinCommand(command) || filterCoversCommand(command)) return true
   const shell = inspectShell(command)
   return shell !== undefined && shell.heads.some(head => SEARCH_AND_LISTING_HEADS.has(head))
 }

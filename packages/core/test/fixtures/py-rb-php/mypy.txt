@@ -1,0 +1,28 @@
+app/models.py:2: error: Library stubs not installed for "requests"  [import-untyped]
+app/models.py:2: note: Hint: "python3 -m pip install types-requests"
+app/models.py:2: note: (or run "mypy --install-types" to install all missing stub packages)
+app/models.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+app/models.py:3: error: Library stubs not installed for "yaml"  [import-untyped]
+app/models.py:3: note: Hint: "python3 -m pip install types-PyYAML"
+app/models.py:15: error: Incompatible return value type (got "str", expected "int")  [return-value]
+app/models.py:31: error: No overload variant of "conv" matches argument type "str"  [call-overload]
+app/models.py:31: note: Possible overload variants:
+app/models.py:31: note:     def conv(x: int) -> int
+app/models.py:31: note:     def conv(x: bytes) -> bytes
+app/models.py:32: error: Argument 1 to "make" has incompatible type "int"; expected "str"  [arg-type]
+app/models.py:33: error: "User" has no attribute "missing"  [attr-defined]
+app/models.py:34: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+app/models.py:35: error: List item 0 has incompatible type "str"; expected "int"  [list-item]
+app/models.py:35: error: List item 1 has incompatible type "str"; expected "int"  [list-item]
+app/models.py:36: error: Name "undefined_name" is not defined  [name-defined]
+app/service.py:5: error: Missing return statement  [return]
+app/service.py:12: error: Item "None" of "User | None" has no attribute "age"  [union-attr]
+app/service.py:25: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+app/legacy.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+app/legacy.py:7: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+app/legacy.py:12: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+app/legacy.py:17: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+app/legacy.py:18: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+app/legacy.py:23: error: Incompatible return value type (got "str", expected "int")  [return-value]
+app/legacy.py:27: error: Incompatible return value type (got "str", expected "bool")  [return-value]
+Found 14 errors in 3 files (checked 4 source files)

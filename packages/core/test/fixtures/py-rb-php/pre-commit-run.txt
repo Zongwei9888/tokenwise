@@ -1,0 +1,26 @@
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check json...............................................................Passed
+check toml...............................................................Passed
+check for added large files..............................................Passed
+check for merge conflicts................................................Passed
+debug statements (python)................................................Passed
+no print statements......................................................Failed
+- hook id: no-print
+- exit code: 1
+
+app.py:5:    print("hello")
+
+flake8...................................................................Failed
+- hook id: flake-ish
+- exit code: 1
+
+app.py:1:1: F401 os imported but unused
+
+mixed line ending........................................................Passed
+check that executables have shebangs.................(no files to check)Skipped
+rst check............................................(no files to check)Skipped
+fix requirements.........................................................Failed
+- hook id: fixer
+- files were modified by this hook

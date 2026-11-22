@@ -34,6 +34,10 @@ function projectMapped(input: FilterInput): MappedProjection | undefined {
 }
 
 export const yarnInstallFilter: EconomyFilter = {
+  commands: command => {
+    const argv = toolArgv(command)
+    return argv?.[0] === 'yarn' && (argv.length === 1 || ['add', 'install', 'upgrade', 'remove'].includes(argv[1] ?? ''))
+  },
   name: 'yarn-install', transformation: 'noise-removal',
   project: input => projectMapped(input)?.text, projectMapped,
 }

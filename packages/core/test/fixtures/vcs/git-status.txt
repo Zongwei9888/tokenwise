@@ -1,0 +1,16 @@
+On branch main
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   src/core/parse.ts
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   src/cmds/alpha.ts
+	modified:   src/cmds/gamma.ts
+	modified:   src/core/render.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	src/core/extra.ts
+

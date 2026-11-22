@@ -1,0 +1,16 @@
+  File: "src/a/file1.txt"
+  Size: 23           FileType: Regular File
+  Mode: (0644/-rw-r--r--)         Uid: (  501/demo)  Gid: (   20/   staff)
+Device: 1,17   Inode: 827494049    Links: 1
+Access: Sun Nov 22 17:14:33 2026
+Modify: Sun Nov 22 17:14:33 2026
+Change: Sun Nov 22 17:14:33 2026
+ Birth: Sun Nov 22 17:14:33 2026
+  File: "src/b"
+  Size: 160          FileType: Directory
+  Mode: (0755/drwxr-xr-x)         Uid: (  501/demo)  Gid: (   20/   staff)
+Device: 1,17   Inode: 827494047    Links: 5
+Access: Sun Nov 22 17:14:33 2026
+Modify: Sun Nov 22 17:14:33 2026
+Change: Sun Nov 22 17:14:33 2026
+ Birth: Sun Nov 22 17:14:33 2026

@@ -1,0 +1,21 @@
+Using Python 3.12.9 environment at: /Users/demo/app/.venv
+Resolved 18 packages in 19ms
+Installed 18 packages in 52ms
+ + ast-serialize==0.13.1
+ + cfgv==3.5.0
+ + distlib==0.4.4
+ + filelock==4.2.4
+ + identify==2.6.20
+ + librt==0.16.0
+ + mypy==2.4.1
+ + mypy-extensions==1.1.0
+ + nodeenv==1.11.0
+ + packaging==26.3
+ + pathspec==1.1.1
+ + platformdirs==4.13.5
+ + pre-commit==4.7.0
+ + python-discovery==1.6.4
+ + pyyaml==6.0.3
+ + ruff==0.17.3
+ + typing-extensions==4.16.0
+ + virtualenv==21.14.12
