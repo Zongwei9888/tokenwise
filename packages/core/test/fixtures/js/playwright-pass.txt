@@ -1,0 +1,17 @@
+
+Running 12 tests using 2 workers
+
+  ✓   1 tests/cart.spec.ts:3:7 › cart › renders title (3ms)
+  ✓   2 tests/home.spec.ts:3:7 › home › renders title (3ms)
+  ✓   3 tests/cart.spec.ts:4:7 › cart › keeps state (1ms)
+  ✓   4 tests/home.spec.ts:4:7 › home › keeps state (1ms)
+  ✓   5 tests/cart.spec.ts:5:7 › cart › formats price (1ms)
+  ✓   6 tests/home.spec.ts:5:7 › home › formats price (2ms)
+  ✓   7 tests/profile.spec.ts:3:7 › profile › renders title (0ms)
+  ✓   9 tests/profile.spec.ts:4:7 › profile › keeps state (3ms)
+  ✓   8 tests/search.spec.ts:3:7 › search › renders title (2ms)
+  ✓  10 tests/profile.spec.ts:5:7 › profile › formats price (1ms)
+  ✓  11 tests/search.spec.ts:4:7 › search › keeps state (1ms)
+  ✓  12 tests/search.spec.ts:5:7 › search › formats price (0ms)
+
+  12 passed (695ms)

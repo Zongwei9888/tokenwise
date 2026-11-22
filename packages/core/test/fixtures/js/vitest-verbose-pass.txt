@@ -1,0 +1,27 @@
+
+ RUN  v5.0.4 /repo
+
+ ✓ src/dates.test.ts > dates > adds one 1ms
+ ✓ src/dates.test.ts > dates > handles empty input 0ms
+ ✓ src/dates.test.ts > dates > keeps order 0ms
+ ✓ src/strings.test.ts > strings > adds one 1ms
+ ✓ src/strings.test.ts > strings > handles empty input 0ms
+ ✓ src/strings.test.ts > strings > keeps order 0ms
+ ✓ src/parse.test.ts > parse > adds one 1ms
+ ✓ src/parse.test.ts > parse > handles empty input 0ms
+ ✓ src/parse.test.ts > parse > keeps order 0ms
+ ✓ src/arrays.test.ts > arrays > adds one 1ms
+ ✓ src/arrays.test.ts > arrays > handles empty input 0ms
+ ✓ src/arrays.test.ts > arrays > keeps order 0ms
+ ✓ src/math.test.ts > math > adds one 1ms
+ ✓ src/math.test.ts > math > handles empty input 0ms
+ ✓ src/math.test.ts > math > keeps order 0ms
+ ✓ src/format.test.ts > format > adds one 1ms
+ ✓ src/format.test.ts > format > handles empty input 0ms
+ ✓ src/format.test.ts > format > keeps order 0ms
+
+ Test Files  6 passed (6)
+      Tests  18 passed (18)
+   Start at  17:13:32
+   Duration  184ms (import 49%, worker 18%, tests 17%, transform 15%, environment 1%)
+

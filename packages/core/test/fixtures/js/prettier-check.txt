@@ -1,0 +1,5 @@
+Checking formatting...
+[warn] package.json
+[warn] src/bad.js
+[warn] src/components/ugly.js
+[warn] Code style issues found in 3 files. Run Prettier with --write to fix.

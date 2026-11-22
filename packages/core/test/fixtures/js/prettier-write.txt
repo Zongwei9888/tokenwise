@@ -1,0 +1,11 @@
+package-lock.json 13ms (unchanged)
+package.json 1ms
+src/bad.js 5ms
+src/components/a.js 2ms (unchanged)
+src/components/b.js 1ms (unchanged)
+src/components/c.js 1ms (unchanged)
+src/components/d.js 1ms (unchanged)
+src/components/e.js 1ms (unchanged)
+src/components/f.js 1ms (unchanged)
+src/components/g.js 1ms (unchanged)
+src/components/ugly.js 1ms

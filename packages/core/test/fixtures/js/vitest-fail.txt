@@ -1,0 +1,49 @@
+
+ RUN  v5.0.4 /repo
+
+ ❯ src/broken.test.ts (4 tests | 2 failed | 1 skipped) 6ms
+   ❯ broken (4)
+     × compares totals 4ms
+     × throws 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/broken.test.ts > broken > compares totals
+AssertionError: expected { total: 3 } to deeply equal { total: 4 }
+
+- Expected
++ Received
+
+  {
+-   "total": 4,
++   "total": 3,
+  }
+
+ ❯ src/broken.test.ts:4:54
+      2| describe('broken', () => {
+      3|   it('passes first', () => { expect(true).toBe(true) })
+      4|   it('compares totals', () => { expect({ total: 3 }).toEqual({ total: …
+       |                                                      ^
+      5|   it.skip('is skipped', () => {})
+      6|   it('throws', () => { throw new Error('boom: cannot parse config') })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/broken.test.ts > broken > throws
+Error: boom: cannot parse config
+ ❯ src/broken.test.ts:6:30
+      4|   it('compares totals', () => { expect({ total: 3 }).toEqual({ total: …
+      5|   it.skip('is skipped', () => {})
+      6|   it('throws', () => { throw new Error('boom: cannot parse config') })
+       |                              ^
+      7| })
+      8|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  2 failed | 19 passed | 1 skipped (22)
+   Start at  17:13:31
+   Duration  251ms (import 42%, transform 34%, worker 13%, tests 11%)
+

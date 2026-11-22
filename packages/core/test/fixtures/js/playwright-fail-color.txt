@@ -1,0 +1,59 @@
+
+Running 16 tests using 2 workers
+
+  ✓   1 tests/cart.spec.ts:3:7 › cart › renders title (3ms)
+  ✓   2 tests/checkout.spec.ts:3:7 › checkout › applies coupon (3ms)
+  ✓   3 tests/cart.spec.ts:4:7 › cart › keeps state (1ms)
+  ✓   5 tests/cart.spec.ts:5:7 › cart › formats price (1ms)
+  ✘   4 tests/checkout.spec.ts:4:7 › checkout › computes total (5ms)
+  ✓   6 tests/home.spec.ts:3:7 › home › renders title (1ms)
+  ✓   7 tests/home.spec.ts:4:7 › home › keeps state (2ms)
+  ✓   8 tests/home.spec.ts:5:7 › home › formats price (1ms)
+  ✓   9 tests/profile.spec.ts:3:7 › profile › renders title (1ms)
+  ✓  10 tests/profile.spec.ts:4:7 › profile › keeps state (0ms)
+  ✓  11 tests/profile.spec.ts:5:7 › profile › formats price (1ms)
+  ✓  12 tests/search.spec.ts:3:7 › search › renders title (0ms)
+  ✓  13 tests/search.spec.ts:4:7 › search › keeps state (0ms)
+  ✓  14 tests/search.spec.ts:5:7 › search › formats price (0ms)
+  -  15 tests/checkout.spec.ts:5:8 › checkout › ships abroad
+  ✘  16 tests/checkout.spec.ts:6:7 › checkout › submits order (1ms)
+
+
+  1) tests/checkout.spec.ts:4:7 › checkout › computes total ────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 1[39m
+
+    [2m  Object {[22m
+    [32m-   "total": 4,[39m
+    [31m+   "total": 3,[39m
+    [2m  }[22m
+
+      2 | test.describe('checkout', () => {
+      3 |   test('applies coupon', async () => { expect(1).toBe(1) })
+    > 4 |   test('computes total', async () => { expect({ total: 3 }).toEqual({ total: 4 }) })
+        |                                                             ^
+      5 |   test.skip('ships abroad', async () => {})
+      6 |   test('submits order', async () => { throw new Error('boom: cannot reach payment service') })
+      7 | })
+        at /repo/tests/checkout.spec.ts:4:61
+
+  2) tests/checkout.spec.ts:6:7 › checkout › submits order ─────────────────────────────────────────
+
+    Error: boom: cannot reach payment service
+
+      4 |   test('computes total', async () => { expect({ total: 3 }).toEqual({ total: 4 }) })
+      5 |   test.skip('ships abroad', async () => {})
+    > 6 |   test('submits order', async () => { throw new Error('boom: cannot reach payment service') })
+        |                                             ^
+      7 | })
+      8 |
+        at /repo/tests/checkout.spec.ts:6:45
+
+  2 failed
+    tests/checkout.spec.ts:4:7 › checkout › computes total ─────────────────────────────────────────
+    tests/checkout.spec.ts:6:7 › checkout › submits order ──────────────────────────────────────────
+  1 skipped
+  13 passed (1.3s)
