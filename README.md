@@ -2,49 +2,55 @@
 
 <h1>
   <img src="docs/assets/logo.svg" width="48" height="48" align="absmiddle" alt="">
-  TokenWise: Self-Evolving Context for Agents with <br> Up to 50% Token Savings
+  TokenWise: Self-Evolving Context with <br> Up to 50% Token Savings
 </h1>
 
 <p>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-0A7A69?style=flat-square&labelColor=071E1B"></a>
   <img alt="Agents: 9 and any shell" src="https://img.shields.io/badge/agents-9_%2B_any_shell-0A7A69?style=flat-square&labelColor=071E1B">
+  <a href="https://github.com/HKUDS/.github/blob/main/profile/README.md"><img src="https://img.shields.io/badge/Feishu-Group-E9DBFC?style=flat-square&logo=feishu&logoColor=white" alt="Feishu"></a>
+  <a href="https://github.com/HKUDS/.github/blob/main/profile/README.md"><img src="https://img.shields.io/badge/WeChat-Group-C5EAB4?style=flat-square&logo=wechat&logoColor=white" alt="WeChat"></a>
 </p>
 
 **English** · [简体中文](docs/zh/README.md)
 
-### The self-evolving token layer for AI agents
-
 </div>
+
+<p align="center"><img src="media/images/savings.png" alt="Algorithm development and debugging (iterative bug fixing and algorithm improvement): up to 38% fewer tokens. Long-horizon software engineering (system-level engineering across large multi-module codebases): up to 50% fewer tokens. Large-context Q&amp;A (deep reasoning over long documents and histories): up to 45% fewer tokens. Self-evolution unlocks more savings: TokenWise learns from real workflows and reduces token usage by an additional 27% over time." width="100%"></p>
 
 ## Why TokenWise?
 
-**Your agent pays for every token it reads, and much of it is noise.**
+**The Problem: AI agents pay for every token they read—even the ones they do not need.**
 
-Today's agents face:
-- 🗑️ **Redundant context:** repeated and irrelevant information crowds the
-  context and drives up the cost.
-- 📈 **Growing context:** the longer the conversation, the more every turn pays
-  again for everything piled up before it.
-- 🔒 **Rigid rules:** existing optimizations rely on fixed rules that don't fit
-  your project.
-- 🧩 **Siloed agents:** each agent handles it on its own, and nothing is shared.
+- 🗑️ **Redundant and irrelevant tokens**
+  - Repeated instructions, logs, and tool outputs
+  - Outdated information that distracts the agent
 
-**TokenWise keeps the noise out, so the model reads only what it needs.**
+- 📈 **Growing token costs**
+  - Context expands with every interaction
+  - Each turn pays to process the accumulated history again
 
-- **Visible savings.** Shows the tokens saved in every conversation, live.
-- **Saves more the longer you use it.** It learns new ways to optimize.
-- **Cross-platform.** Works across many agent platforms.
+- 🧠 **No self-evolving context**
+  - Fixed rules cannot learn from changing workflows
+  - Each agent starts over instead of reusing what works
 
-## 📊 Results
+---
 
-<p align="center"><img src="media/images/savings.png" alt="Algorithm development and maintenance (bug fixing and algorithm improvement): up to 38% fewer tokens. Systems software engineering (long-horizon, multi-module system development): up to 50%. Large-context Q&amp;A (in-depth Q&amp;A over a large context): up to 45%. Saves more over time: TokenWise adaptively learns its optimization strategy; after learning, up to 27% fewer tokens than before." width="100%"></p>
+### The TokenWise Approach
 
-<sub>From our paper's evaluation; the paper is coming soon.</sub>
+- ✂️ **Read less. Keep what matters.**  
+  Remove noise before it reaches the model while preserving task-critical context.
 
-<p align="center"><a href="https://youtu.be/9p36ZR2rNtE"><img src="media/video/promo.gif" alt="TokenWise in nine agents: noise turns into coins, every answer ends with what was saved, and the savings grow through the week" width="100%"></a></p>
-<p align="center"><sub>▶ <a href="https://youtu.be/9p36ZR2rNtE">Watch the video on YouTube</a> · 35 seconds</sub></p>
+- 🧠 **Evolve with every workflow.**  
+  Learn from real usage and adapt to new tools, commands, and context.
 
-## 🤖 Supported agents
+- 🔄 **Learn once. Improve every agent.**  
+  Share proven optimization strategies across agents and platforms.
+
+- 📊 **See every token saved.**  
+  Track per-response and cumulative savings in real time.
+
+## 🤖 Drop-In Plugin for the Agents You Already Use
 
 <table width="100%">
   <tr>
@@ -64,14 +70,14 @@ Today's agents face:
   </tr>
 </table>
 
-macOS and Linux. Each agent connects through what its own plugin interface
-allows, so the depth varies a little; the details are under [How each agent is connected](#how-each-agent-is-connected).
 
-## 🪙 See what it saved
+## 🪙 See How Much TokenWise Saves
+
+**Every response shows the tokens saved and the reduction percentage—directly inside your agent.**
 
 <p align="center"><img src="media/images/cards.png" alt="The card at the end of an answer in Claude Code, Codex, GitHub Copilot CLI, Hermes Agent, OpenCode, CodeBuddy, Grok Build, DeepSeek Harness and pi" width="100%"></p>
 
-<sub>Numbers are from one real run in each agent.</sub>
+<sub>Results are based on one real-world run with each agent.</sub>
 
 ## 🚀 Get started
 
@@ -93,12 +99,10 @@ tokenwise setup        # finds your agents and adds TokenWise to each
 tokenwise doctor --probe   # asks each agent to run one command and checks TokenWise saw it
 ```
 
-## 📰 News
+<p align="center"><a href="https://youtu.be/9p36ZR2rNtE"><img src="media/video/promo.gif" alt="TokenWise in nine agents: noise turns into coins, every answer ends with what was saved, and the savings grow through the week" width="100%"></a></p>
+<p align="center"><sub>▶ <a href="https://youtu.be/9p36ZR2rNtE">Watch the video on YouTube</a> · 35 seconds</sub></p>
 
-- **2026-11** · Every answer ends with what TokenWise saved, in all nine agents;
-  a new logo, and a 35-second video.
-- **2026-10** · TokenWise is open source: self-evolution reachable from every agent,
-  and one-command setup.
+Available on **macOS and Linux**. Integration depth varies by agent; see [connection details](#how-each-agent-is-connected).
 
 ## What's next
 
